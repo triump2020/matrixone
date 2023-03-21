@@ -1,0 +1,74 @@
+apiVersion: core.matrixorigin.io/v1alpha1
+kind: MatrixOneCluster
+metadata:
+  name: nightly-regression-dis
+  namespace: mo-nightly-regression
+spec:
+  nodeSelector:
+    role: benchmark-index
+  dn:
+    cacheVolume:
+      size: 100Gi
+    sharedStorageCache:
+      memoryCacheSize: 1Gi
+      diskCacheSize: 100Gi
+    config: |
+      [dn.Txn.Storage]
+      backend = "TAE"
+      log-backend = "logservice"
+      [dn.Ckp]
+      flush-interval = "60s"
+      min-count = 100
+      scan-interval = "5s"
+      incremental-interval = "60s"
+      global-interval = "100000s"
+      [log]
+      level = "info"
+      format = "json"
+      max-size = 512
+    replicas: 1
+    resources:
+      requests:
+        cpu: 15
+        memory: 50Gi
+  imageRepository: matrixorigin/matrixone
+  logService:
+    replicas: 3
+    resources:
+      requests:
+        cpu: 15
+        memory: 50Gi
+    sharedStorage:
+      s3:
+        path: mo-ares/mo-benchmark/
+        secretRef:
+          name: aws-regression
+    volume:
+      size: 100Gi
+      storageClassName: gp3-10000
+    config: |
+      [log]
+      level = "info"
+      format = "json"
+      max-size = 512
+  tp:
+    cacheVolume:
+      size: 100Gi
+    sharedStorageCache:
+      memoryCacheSize: 1Gi
+      diskCacheSize: 100Gi
+    config: |
+      [cn.Engine]
+      type = "distributed-tae"
+      [cn.rpc]
+      max-message-size = "100M"
+      [log]
+      level = "info"
+      format = "json"
+      max-size = 512
+    replicas: 2
+    resources:
+      requests:
+        cpu: 15
+        memory: 50Gi
+  version: imagetag
