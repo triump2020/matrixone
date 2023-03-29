@@ -36,7 +36,7 @@ on:
       RunTimes:
         required: true
         default: 5
-        type: int1
+        type: int
       Scale:
         required: true
         default: 10
