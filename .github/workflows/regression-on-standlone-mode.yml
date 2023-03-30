@@ -64,7 +64,7 @@ on:
 jobs:
   build_verification_test:
     if: ${{ inputs.JobName  == 'all-jobs' || inputs.JobName  == 'build_verification_test' }}
-    runs-on: 128-runner
+    runs-on: runner_auto_test
     name: Build Verification Test
     container:
       image: matrixorigin/golang:1.19-ubuntu2204
@@ -116,7 +116,7 @@ jobs:
 
   load_data_20_col_test:
     if: ${{ inputs.JobName == 'all-jobs' ||  inputs.JobName == 'load_data_20_col_test' }}
-    runs-on: 128-runner
+    runs-on: runner_auto_test
     name: LOAD DATA 20 COLUMNS TEST
     container:
       image: matrixorigin/golang:1.19-ubuntu2204
@@ -169,7 +169,7 @@ jobs:
 
   load_data_100_col_test:
     if: ${{ inputs.JobName  == 'all-jobs' || inputs.JobName  == 'load_data_100_col_test' }}
-    runs-on: 128-runner
+    runs-on: runner_auto_test
     name: LOAD DATA 100 COLUMNS TEST
     container:
       image: matrixorigin/golang:1.19-ubuntu2204
@@ -223,7 +223,7 @@ jobs:
 
   load_data_200_col_test:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'load_data_200_col_test' }}
-    runs-on: 128-runner
+    runs-on: runner_auto_test
     name: LOAD DATA 200 COLUMNS TEST
     container:
       image: matrixorigin/golang:1.19-ubuntu2204
@@ -277,7 +277,7 @@ jobs:
 
   ssb_benchmark_test:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'ssb_benchmark_test' }}
-    runs-on: 128-runner
+    runs-on: runner_auto_test
     name: SSB BENCHMARK TEST
     container:
       image: matrixorigin/golang:1.19-ubuntu2204
@@ -349,7 +349,7 @@ jobs:
 
   tpch_benchmark_test:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'tpch_benchmark_test' }}
-    runs-on: 128-runner
+    runs-on: runner_auto_test
     name: TPCH BENCHMARK TEST
     container:
       image: matrixorigin/golang:1.19-ubuntu2204
@@ -420,7 +420,7 @@ jobs:
 
   oltp_point_select_test:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'oltp_point_select_test' }}
-    runs-on: 128-runner
+    runs-on: runner_auto_test
     name: OLTP POINT SELECT TEST
     container:
       image: matrixorigin/golang:1.19-ubuntu2204
@@ -490,7 +490,7 @@ jobs:
 
   oltp_update_test:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'oltp_update_test' }}
-    runs-on: 128-runner
+    runs-on: runner_auto_test
     name: OLTP UPDATE TEST
     container:
       image: matrixorigin/golang:1.19-ubuntu2204
@@ -560,7 +560,7 @@ jobs:
 
   oltp_insert_test:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'oltp_insert_test' }}
-    runs-on: 128-runner
+    runs-on: runner_auto_test
     name: OLTP INSERT TEST
     container:
       image: matrixorigin/golang:1.19-ubuntu2204
@@ -630,7 +630,7 @@ jobs:
 
   oltp_delete_test:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'oltp_delete_test' }}
-    runs-on: 128-runner
+    runs-on: runner_auto_test
     name: OLTP DELETE TEST
     container:
       image: matrixorigin/golang:1.19-ubuntu2204
@@ -700,7 +700,7 @@ jobs:
 
   tpcc_benchmark_test:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'tpcc_benchmark_test' }}
-    runs-on: 128-runner
+    runs-on: runner_auto_test
     name: TPCC BENCHMARK TEST
     container:
       image: matrixorigin/golang:1.19-ubuntu2204
