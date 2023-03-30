@@ -74,6 +74,7 @@ jobs:
     steps:
       - name: Prepare Test ENV
         run: |
+          echo $GITHUB_WORKSPACE
           mkdir -p $GITHUB_WORKSPACE/container/${{ github.run_id }}/
           apt-get update
           apt-get install git vim net-tools mysql-client openjdk-8-jdk sysbench bc pip -y
