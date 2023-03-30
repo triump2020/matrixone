@@ -1070,7 +1070,7 @@ jobs:
           cd $GITHUB_WORKSPACE/mo-load-data
           ./load.sh -h ${{ steps.get_mo_addr.outputs.mo_svc_ip }} -c cases/00_from_s3/tpcc_${{ inputs.TPCC_WarehouseNum }} -r -m -g
 
-      - name: Start TPCC ${{ inputs.TPCC_WarehouseNum }} Warehouses ${{ inputs.TPCC_WarehouseNum }} terminals Test
+      - name: Start TPCC ${{ inputs.TPCC_WarehouseNum }} Warehouses ${{ inputs.TPCC_TerminalNum }} terminals Test
         if: ${{ always() && !cancelled() }}
         run: |
           export LC_ALL="C.UTF-8"
