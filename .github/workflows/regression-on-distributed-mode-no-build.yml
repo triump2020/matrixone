@@ -8,7 +8,7 @@ on:
       JobName:
         description: 'job name'
         required: true
-        default: 'tpch_benchmark_test'
+        default: 'all'
         type: choice
         options:
           - all-jobs
@@ -24,7 +24,6 @@ on:
           - oltp_delete_test
           - oltp_all_test
           - tpcc_benchmark_test
-          - load_data_test
       Image:
         required: true
         default: 'nightly-01ad8c22'
@@ -35,11 +34,11 @@ on:
         type: string
       RunTimes:
         required: true
-        default: 1
+        default: 5
         type: int
       Scale:
         required: true
-        default: 1
+        default: 10
         type: int
       OLTP_TableNum:
         required: true
@@ -62,7 +61,7 @@ on:
         default: 50
         type: int
 
-jobs:
+jobs:  
   setup_mo_test_env:
     runs-on: x86-runner
     timeout-minutes: 60
@@ -82,17 +81,17 @@ jobs:
           sudo apt-get install git vim net-tools mysql-client openjdk-8-jdk sysbench bc pip -y
           sudo pip3 install PyYAML==6.0
           sudo pip3 install shyaml==0.6.2
-
+          
       - name: Prepare AWS Tools
         run: |
-          sudo apt-get update && sudo apt-get install awscli -y
+          sudo apt-get update && sudo apt-get install awscli -y 
           sudo apt-get install -y ca-certificates curl
       - name: Prepare AWS Kubectl
         uses: azure/setup-kubectl@v3
         with:
           version: 'v1.23.6'
         id: install
-
+                   
       - name: Prepare AWS Config
         run: |
            aws configure<<EOF
@@ -102,66 +101,66 @@ jobs:
            json
            exit
            EOF
-
+           
       - name: Prepare Kubeconfig
         run: |
            aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
            export KUBECONFIG=$(pwd)/eks-ci
-           if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi
-
+           if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
+       
       - name: Clean EKS ENV
         run: |
           export KUBECONFIG=$(pwd)/eks-ci
           if [ "$(kubectl -n mo-nightly-regression get pod|wc -l)" -gt 1 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl -n mo-nightly-regression delete -f $GITHUB_WORKSPACE/mo-nightly-regression/mo-bench.yaml;sleep 30s;fi
           aws s3 rm s3://mo-ares/mo-benchmark/data --recursive > /dev/null 2>&1
           aws s3 rm s3://mo-ares/mo-benchmark/etl --recursive > /dev/null 2>&1
-
+          
       - name: ECHO mo-bench.yaml
         run: |
           echo '${{ inputs.Image }}'
           sed -i "s/imagetag/${{ inputs.Image }}/" $GITHUB_WORKSPACE/mo-nightly-regression/mo-bench.yaml
-          cat $GITHUB_WORKSPACE/mo-nightly-regression/mo-bench.yaml
-
+          cat $GITHUB_WORKSPACE/mo-nightly-regression/mo-bench.yaml 
+          
       - name: Create MO Cluster
         run: |
           export KUBECONFIG=$(pwd)/eks-ci
           kubectl -n mo-nightly-regression apply -f $GITHUB_WORKSPACE/mo-nightly-regression/mo-bench.yaml
           sleep 100s
-          while true; do if [ "$(kubectl -n mo-nightly-regression get pods --field-selector status.phase=Running|wc -l)" -eq 6 ]; then break; else sleep 10s; continue; fi; done
+          while true; do if [ "$(kubectl -n mo-nightly-regression get pods --field-selector status.phase=Running|wc -l)" -eq 7 ]; then break; else sleep 10s; continue; fi; done
           kubectl -n mo-nightly-regression get pod
           if [ ! -d $GITHUB_WORKSPACE/mo-server-log ]; then mkdir $GITHUB_WORKSPACE/mo-server-log;fi;
-
+          
   build_verification_test:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'build_verification_test' }}
     name: Build Verification Test
     runs-on: x86-runner
     timeout-minutes: 120
     needs: setup_mo_test_env
-    steps:
+    steps: 
       - name: clone mo-tester repo
         uses: actions/checkout@v2
         with:
           repository: matrixorigin/mo-tester
           path: ./mo-tester
-          ref: main
-
+          ref: main 
+          
       - name: clone matrixone repo
         run: |
           git clone  https://github.com/matrixorigin/matrixone.git
           cd $GITHUB_WORKSPACE/matrixone
-          git reset --hard ${{ inputs.Ref }}
-
+          git reset --hard ${{ inputs.Ref }}     
+          
       - name: Prepare AWS Tools
         run: |
-          sudo apt-get update && sudo apt-get install awscli -y
+          sudo apt-get update && sudo apt-get install awscli -y 
           sudo apt-get install -y ca-certificates curl
-
+          
       - name: Prepare AWS Kubectl
         uses: azure/setup-kubectl@v3
         with:
           version: 'v1.23.6'
         id: install
-
+                   
       - name: Prepare AWS Config
         run: |
            aws configure<<EOF
@@ -170,24 +169,24 @@ jobs:
            us-west-2
            json
            exit
-           EOF
-
+           EOF 
+           
       - name: Set up JDK 8 for x64
         uses: actions/setup-java@v3
         with:
           java-version: '8'
           distribution: 'adopt'
-          architecture: x64
-
-      - name: alter mo-tester addr
+          architecture: x64  
+          
+      - name: alter mo-tester addr   
         run: |
           aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
           export KUBECONFIG=$(pwd)/eks-ci
           export add_ip=$(kubectl -n mo-nightly-regression get svc | grep "6001/TCP"|awk '{print $3}')
           sed -i "s/127.0.0.1:6001/${add_ip}:6001/" ./mo-tester/mo.yml
           sed -i "s/60000/300000/" ./mo-tester/mo.yml
-          cat ./mo-tester/mo.yml
-
+          cat ./mo-tester/mo.yml    
+          
       - name: cn-0 pod prepare data
         run: |
            aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
@@ -201,7 +200,7 @@ jobs:
            exit
            EOF
            exit
-
+           
       - name: cn-1 pod prepare data
         run: |
            aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
@@ -215,14 +214,14 @@ jobs:
            exit
            EOF
            exit
-
+         
       - name: Start BVT Test
         run: |
           export LC_ALL="C.UTF-8"
           locale
           cd $GITHUB_WORKSPACE/mo-tester
-          ./run.sh -n -g -p $GITHUB_WORKSPACE/matrixone/test/distributed/cases -s /matrixone/test/distributed/resources 2>&1
-
+          ./run.sh -n -g -p $GITHUB_WORKSPACE/matrixone/test/distributed/cases -s /matrixone/test/distributed/resources 2>&1     
+  
   ssb_benchmark_test:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'ssb_benchmark_test' }}
     name: SSB BENCHMARK TEST
@@ -263,7 +262,7 @@ jobs:
           sudo pip3 install PyMySQL==1.0.2
       - name: Prepare AWS Tools
         run: |
-          sudo apt-get update && sudo apt-get install awscli -y
+          sudo apt-get update && sudo apt-get install awscli -y 
           sudo apt-get install -y ca-certificates curl
       - name: Prepare AWS Kubectl
         uses: azure/setup-kubectl@v3
@@ -284,7 +283,7 @@ jobs:
         run: |
            aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
            export KUBECONFIG=$(pwd)/eks-ci
-           if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi
+           if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
       - name: Get MO Cluster Addr
         id: get_mo_addr
         run: |
@@ -292,7 +291,7 @@ jobs:
           mo_svc_ip=$(kubectl -n mo-nightly-regression get svc | grep "6001/TCP"|awk '{print $3}')
           echo $mo_svc_ip
           echo ::set-output name=mo_svc_ip::${mo_svc_ip}
-
+          
       - name: Start Load SSB ${{ inputs.Scale }}G Data
         if: ${{ always() && !cancelled() }}
         run: |
@@ -347,7 +346,7 @@ jobs:
           sudo pip3 install PyMySQL==1.0.2
       - name: Prepare AWS Tools
         run: |
-          sudo apt-get update && sudo apt-get install awscli -y
+          sudo apt-get update && sudo apt-get install awscli -y 
           sudo apt-get install -y ca-certificates curl
       - name: Prepare AWS Kubectl
         uses: azure/setup-kubectl@v3
@@ -368,7 +367,7 @@ jobs:
         run: |
            aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
            export KUBECONFIG=$(pwd)/eks-ci
-           if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi
+           if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
       - name: Get MO Cluster Addr
         id: get_mo_addr
         run: |
@@ -389,8 +388,8 @@ jobs:
         run: |
           export LC_ALL="C.UTF-8"
           cd $GITHUB_WORKSPACE/mo-tpch
-          ./run.sh -h ${{ steps.get_mo_addr.outputs.mo_svc_ip }} -q all -s ${{ inputs.Scale }} -t 5
-
+          ./run.sh -h ${{ steps.get_mo_addr.outputs.mo_svc_ip }} -q all -s ${{ inputs.Scale }} -t ${{ inputs.RunTimes }}
+          
   oltp_point_select_test:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'oltp_point_select_test' }}
     name: SYSBENCH OLTP TEST
@@ -423,7 +422,7 @@ jobs:
 
       - name: Prepare AWS Tools
         run: |
-          sudo apt-get update && sudo apt-get install awscli -y
+          sudo apt-get update && sudo apt-get install awscli -y 
           sudo apt-get install -y ca-certificates curl
       - name: Prepare AWS Kubectl
         uses: azure/setup-kubectl@v3
@@ -444,7 +443,7 @@ jobs:
         run: |
           aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
           export KUBECONFIG=$(pwd)/eks-ci
-          if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi
+          if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
       - name: Get MO Cluster Addr
         id: get_mo_addr
         run: |
@@ -459,10 +458,10 @@ jobs:
           sudo pip3 install PyYAML==6.0
           sudo pip3 install shyaml==0.6.2
           sudo pip3 install PyMySQL==1.0.2
-
+          
           cd $GITHUB_WORKSPACE/mo-load
           sed -i 's/127.0.0.1/${{ steps.get_mo_addr.outputs.mo_svc_ip }}/g' mo.yml
-
+          
       - name: Start Prepare Data of ${{ inputs.OLTP_TableNum }}-tables-${{ inputs.OLTP_TableSize }}-per-table
         if: ${{ always() && !cancelled() }}
         run: |
@@ -470,7 +469,7 @@ jobs:
           cd $GITHUB_WORKSPACE/mo-sysbench
           mysql -h${{ steps.get_mo_addr.outputs.mo_svc_ip }} -udump -p111 -P6001 -e "create database if not exists sbtest;"
           sysbench  --mysql-host=${{ steps.get_mo_addr.outputs.mo_svc_ip }} --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=${{ inputs.OLTP_TableNum }} --table_size=--tables=${{ inputs.OLTP_TableSize }} --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off prepare
-
+      
       - name: Start OLTP Point Select Test With ${{ inputs.OLTP_ThreadNum }} Threads
         if: ${{ always() && !cancelled() }}
         run: |
@@ -478,7 +477,7 @@ jobs:
           locale
           cd $GITHUB_WORKSPACE/mo-load
           ./start.sh -c cases/sysbench/point_select_${{ inputs.OLTP_TableNum }}_${{ inputs.OLTP_TableSize }} -t ${{ inputs.OLTP_ThreadNum }}
-
+ 
   oltp_update_test:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'oltp_update_test' }}
     name: SYSBENCH OLTP TEST
@@ -511,7 +510,7 @@ jobs:
 
       - name: Prepare AWS Tools
         run: |
-          sudo apt-get update && sudo apt-get install awscli -y
+          sudo apt-get update && sudo apt-get install awscli -y 
           sudo apt-get install -y ca-certificates curl
       - name: Prepare AWS Kubectl
         uses: azure/setup-kubectl@v3
@@ -532,7 +531,7 @@ jobs:
         run: |
           aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
           export KUBECONFIG=$(pwd)/eks-ci
-          if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi
+          if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
       - name: Get MO Cluster Addr
         id: get_mo_addr
         run: |
@@ -547,7 +546,7 @@ jobs:
           sudo pip3 install PyYAML==6.0
           sudo pip3 install shyaml==0.6.2
           sudo pip3 install PyMySQL==1.0.2
-
+          
           cd $GITHUB_WORKSPACE/mo-load
           sed -i 's/127.0.0.1/${{ steps.get_mo_addr.outputs.mo_svc_ip }}/g' mo.yml
       - name: Start Prepare Data of ${{ inputs.OLTP_TableNum }}-tables-${{ inputs.OLTP_TableSize }}-per-table
@@ -564,7 +563,7 @@ jobs:
           locale
           cd $GITHUB_WORKSPACE/mo-load
           ./start.sh -c cases/sysbench/update_pk_${{ inputs.OLTP_TableNum }}_${{ inputs.OLTP_TableSize }} -t ${{ inputs.OLTP_ThreadNum }}
-
+  
   oltp_insert_test:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'oltp_insert_test' }}
     name: SYSBENCH OLTP TEST
@@ -597,7 +596,7 @@ jobs:
 
       - name: Prepare AWS Tools
         run: |
-          sudo apt-get update && sudo apt-get install awscli -y
+          sudo apt-get update && sudo apt-get install awscli -y 
           sudo apt-get install -y ca-certificates curl
       - name: Prepare AWS Kubectl
         uses: azure/setup-kubectl@v3
@@ -618,7 +617,7 @@ jobs:
         run: |
           aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
           export KUBECONFIG=$(pwd)/eks-ci
-          if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi
+          if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
       - name: Get MO Cluster Addr
         id: get_mo_addr
         run: |
@@ -633,7 +632,7 @@ jobs:
           sudo pip3 install PyYAML==6.0
           sudo pip3 install shyaml==0.6.2
           sudo pip3 install PyMySQL==1.0.2
-
+          
           cd $GITHUB_WORKSPACE/mo-load
           sed -i 's/127.0.0.1/${{ steps.get_mo_addr.outputs.mo_svc_ip }}/g' mo.yml
       - name: Start Prepare Data of ${{ inputs.OLTP_TableNum }}-tables-${{ inputs.OLTP_TableSize }}-per-table
@@ -648,10 +647,10 @@ jobs:
         run: |
           export LC_ALL="C.UTF-8"
           locale
-
+          
           cd $GITHUB_WORKSPACE/mo-load
           ./start.sh -c cases/sysbench/simple_insert_${{ inputs.OLTP_TableNum }}_${{ inputs.OLTP_TableSize }} -t ${{ inputs.OLTP_ThreadNum }}
-
+  
   oltp_delete_test:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'oltp_delete_test' }}
     name: SYSBENCH OLTP TEST
@@ -684,7 +683,7 @@ jobs:
 
       - name: Prepare AWS Tools
         run: |
-          sudo apt-get update && sudo apt-get install awscli -y
+          sudo apt-get update && sudo apt-get install awscli -y 
           sudo apt-get install -y ca-certificates curl
       - name: Prepare AWS Kubectl
         uses: azure/setup-kubectl@v3
@@ -705,7 +704,7 @@ jobs:
         run: |
           aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
           export KUBECONFIG=$(pwd)/eks-ci
-          if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi
+          if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
       - name: Get MO Cluster Addr
         id: get_mo_addr
         run: |
@@ -720,7 +719,7 @@ jobs:
           sudo pip3 install PyYAML==6.0
           sudo pip3 install shyaml==0.6.2
           sudo pip3 install PyMySQL==1.0.2
-
+          
           cd $GITHUB_WORKSPACE/mo-load
           sed -i 's/127.0.0.1/${{ steps.get_mo_addr.outputs.mo_svc_ip }}/g' mo.yml
       - name: Start Prepare Data of ${{ inputs.OLTP_TableNum }}-tables-${{ inputs.OLTP_TableSize }}-per-table
@@ -737,7 +736,7 @@ jobs:
           locale
           cd $GITHUB_WORKSPACE/mo-load
           ./start.sh -c cases/sysbench/delete_pk_${{ inputs.OLTP_TableNum }}_${{ inputs.OLTP_TableSize }} -t ${{ inputs.OLTP_ThreadNum }}
-
+  
   oltp_all_test:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'oltp_all_test' }}
     name: SYSBENCH OLTP TEST
@@ -770,7 +769,7 @@ jobs:
 
       - name: Prepare AWS Tools
         run: |
-          sudo apt-get update && sudo apt-get install awscli -y
+          sudo apt-get update && sudo apt-get install awscli -y 
           sudo apt-get install -y ca-certificates curl
       - name: Prepare AWS Kubectl
         uses: azure/setup-kubectl@v3
@@ -791,7 +790,7 @@ jobs:
         run: |
           aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
           export KUBECONFIG=$(pwd)/eks-ci
-          if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi
+          if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
       - name: Get MO Cluster Addr
         id: get_mo_addr
         run: |
@@ -806,7 +805,7 @@ jobs:
           sudo pip3 install PyYAML==6.0
           sudo pip3 install shyaml==0.6.2
           sudo pip3 install PyMySQL==1.0.2
-
+          
           cd $GITHUB_WORKSPACE/mo-load
           sed -i 's/127.0.0.1/${{ steps.get_mo_addr.outputs.mo_svc_ip }}/g' mo.yml
       - name: Start Prepare Data of 10-tables-100000-per-table
@@ -872,7 +871,7 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE/mo-nightly-regression/result
           python Processor.py ${{ github.run_id }} ${{ needs.docker-image-build.outputs.version }} SYSBENCH
-
+  
   tpcc_benchmark_test:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'tpcc_benchmark_test' }}
     name: TPCC BENCHMARK TEST
@@ -912,7 +911,7 @@ jobs:
           sudo pip3 install PyMySQL==1.0.2
       - name: Prepare AWS Tools
         run: |
-          sudo apt-get update && sudo apt-get install awscli -y
+          sudo apt-get update && sudo apt-get install awscli -y 
           sudo apt-get install -y ca-certificates curl
       - name: Prepare AWS Kubectl
         uses: azure/setup-kubectl@v3
@@ -933,7 +932,7 @@ jobs:
         run: |
            aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
            export KUBECONFIG=$(pwd)/eks-ci
-           if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi
+           if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
       - name: Get MO Cluster Addr
         id: get_mo_addr
         run: |
@@ -962,7 +961,7 @@ jobs:
           sed -i 's/127.0.0.1/${{ steps.get_mo_addr.outputs.mo_svc_ip }}/g' props_${{ inputs.TPCC_WarehouseNum }}.mo
           sed -i 's/runMins=1/runMins=10/g' props_${{ inputs.TPCC_WarehouseNum }}.mo
           ./runBenchmark.sh props_${{ inputs.TPCC_WarehouseNum }}.mo
-
+          
   load_data_20_col_test:
     if: ${{ inputs.JobName == 'all-jobs' ||  inputs.JobName == 'load_data_20_col_test' }}
     runs-on: x86-runner
@@ -994,7 +993,7 @@ jobs:
           sudo pip3 install PyMySQL==1.0.2
       - name: Prepare AWS Tools
         run: |
-          sudo apt-get update && sudo apt-get install awscli -y
+          sudo apt-get update && sudo apt-get install awscli -y 
           sudo apt-get install -y ca-certificates curl
       - name: Prepare AWS Kubectl
         uses: azure/setup-kubectl@v3
@@ -1015,7 +1014,7 @@ jobs:
         run: |
            aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
            export KUBECONFIG=$(pwd)/eks-ci
-           if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi
+           if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
       - name: Get MO Cluster Addr
         id: get_mo_addr
         run: |
@@ -1030,7 +1029,7 @@ jobs:
           echo mo_svc_ip=${{ steps.get_mo_addr.outputs.mo_svc_ip }}
           cd $GITHUB_WORKSPACE/mo-load-data
           ./load.sh -h ${{ steps.get_mo_addr.outputs.mo_svc_ip }} -c cases/00_from_s3/20_columns/ -r -m -g
-
+           
   load_data_100_col_test:
     if: ${{ inputs.JobName  == 'all-jobs' || inputs.JobName  == 'load_data_100_col_test' }}
     runs-on: x86-runner
@@ -1062,7 +1061,7 @@ jobs:
           sudo pip3 install PyMySQL==1.0.2
       - name: Prepare AWS Tools
         run: |
-          sudo apt-get update && sudo apt-get install awscli -y
+          sudo apt-get update && sudo apt-get install awscli -y 
           sudo apt-get install -y ca-certificates curl
       - name: Prepare AWS Kubectl
         uses: azure/setup-kubectl@v3
@@ -1083,7 +1082,7 @@ jobs:
         run: |
            aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
            export KUBECONFIG=$(pwd)/eks-ci
-           if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi
+           if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
       - name: Get MO Cluster Addr
         id: get_mo_addr
         run: |
@@ -1097,7 +1096,7 @@ jobs:
           export LC_ALL="C.UTF-8"
           cd $GITHUB_WORKSPACE/mo-load-data
           ./load.sh -h ${{ steps.get_mo_addr.outputs.mo_svc_ip }} -c cases/00_from_s3/100_columns -r -m -g
-
+          
   load_data_200_col_test:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'load_data_200_col_test' }}
     runs-on: x86-runner
@@ -1129,7 +1128,7 @@ jobs:
           sudo pip3 install PyMySQL==1.0.2
       - name: Prepare AWS Tools
         run: |
-          sudo apt-get update && sudo apt-get install awscli -y
+          sudo apt-get update && sudo apt-get install awscli -y 
           sudo apt-get install -y ca-certificates curl
       - name: Prepare AWS Kubectl
         uses: azure/setup-kubectl@v3
@@ -1150,7 +1149,7 @@ jobs:
         run: |
            aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
            export KUBECONFIG=$(pwd)/eks-ci
-           if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi
+           if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
       - name: Get MO Cluster Addr
         id: get_mo_addr
         run: |
@@ -1163,8 +1162,8 @@ jobs:
         run: |
           export LC_ALL="C.UTF-8"
           cd $GITHUB_WORKSPACE/mo-load-data
-          ./load.sh -h ${{ steps.get_mo_addr.outputs.mo_svc_ip }} -c cases/00_from_s3/200_columns -r -m -g
-
+          ./load.sh -h ${{ steps.get_mo_addr.outputs.mo_svc_ip }} -c cases/00_from_s3/200_columns -r -m -g          
+          
   load_data_test:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'load_data_test' }}
     name: LOAD DATA TEST
@@ -1196,7 +1195,7 @@ jobs:
           sudo pip3 install PyMySQL==1.0.2
       - name: Prepare AWS Tools
         run: |
-          sudo apt-get update && sudo apt-get install awscli -y
+          sudo apt-get update && sudo apt-get install awscli -y 
           sudo apt-get install -y ca-certificates curl
       - name: Prepare AWS Kubectl
         uses: azure/setup-kubectl@v3
@@ -1217,7 +1216,7 @@ jobs:
         run: |
            aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
            export KUBECONFIG=$(pwd)/eks-ci
-           if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi
+           if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
       - name: Get MO Cluster Addr
         id: get_mo_addr
         run: |
