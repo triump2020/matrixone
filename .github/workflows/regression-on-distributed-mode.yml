@@ -8,7 +8,7 @@ on:
       JobName:
         description: 'job name'
         required: true
-        default: 'all'
+        default: 'load_data_20_col_test'
         type: choice
         options:
           - all-jobs
@@ -30,7 +30,7 @@ on:
         type: string
       Ref:
         required: true
-        default: 'main'
+        default: '57410b8ecb379ee8008711d1a9179c10462cbadc'
         type: string
       RunTimes:
         required: true
