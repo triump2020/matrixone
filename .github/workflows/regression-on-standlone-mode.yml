@@ -67,7 +67,7 @@ jobs:
     runs-on: runner_auto_test
     name: Build Verification Test
     container:
-      image: matrixorigin/golang:1.19-ubuntu2204
+      image: matrixorigin/debugtools:0.1.1
       volumes:
         - /data/load_data:/data/load_data
 
