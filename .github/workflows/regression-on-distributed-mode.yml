@@ -8,7 +8,7 @@ on:
       JobName:
         description: 'job name'
         required: true
-        default: 'load_data_20_col_test'
+        default: 'all-jobs'
         type: choice
         options:
           - all-jobs
@@ -26,11 +26,11 @@ on:
           - tpcc_benchmark_test
       Repo:
         required: true
-        default: 'matrixorigin/matrixone'
+        default: 'zhangxu19830126/matrixone'
         type: string
       Ref:
         required: true
-        default: '7120770b819ec6ec000c2e4ffc0af24fa4c9043e'
+        default: '60201249136b4d97f8f9d6050ea2f5457a179cbc'
         type: string
       RunTimes:
         required: true
