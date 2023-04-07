@@ -66,6 +66,10 @@ spec:
       level = "info"
       format = "json"
       max-size = 512
+      [cn]
+      turn-on-push-model = true
+      [cn.txn]
+      non-freshness = true
     replicas: 2
     resources:
       requests:
