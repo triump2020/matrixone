@@ -1,4 +1,4 @@
-name: Regression Test on Distributed Mode
+name: Regression Test on Distributed Mode All Jobs
 
 on:
   #schedule:
