@@ -179,8 +179,9 @@ jobs:
         run: |
           export KUBECONFIG=$(pwd)/eks-ci
           if [ "$(kubectl -n mo-nightly-regression get pod|wc -l)" -gt 1 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl -n mo-nightly-regression delete -f $GITHUB_WORKSPACE/mo-nightly-regression/mo-bench.yaml;sleep 30s;fi
-          aws s3 rm s3://mo-ares/mo-benchmark/data --recursive > /dev/null 2>&1
-          aws s3 rm s3://mo-ares/mo-benchmark/etl --recursive > /dev/null 2>&1
+          aws s3 rm s3://mo-ares/mo-benchmark-test/data --recursive > /dev/null 2>&1
+          #aws s3 rm s3://mo-ares/mo-benchmark-test/etl --recursive > /dev/null 2>&1
+          aws s3 --recursive mv s3://mo-ares/mo-benchmark-test/etl s3://mo-ares/mo-benchmark-test/etl_$(date "+%Y%m%d%H%M%S") > /dev/null 2>&1
           
       - name: ECHO mo-bench.yaml
         run: |
@@ -212,11 +213,11 @@ jobs:
           path: ./mo-tester
           ref: main 
           
-      - name: clone matrixone repo
-        run: |
-          git clone  https://github.com/matrixorigin/matrixone.git
-          cd $GITHUB_WORKSPACE/matrixone
-          git reset --hard ${{ inputs.Ref }}     
+      - name: clone ${{ inputs.Repo }} repo
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.Repo }}
+          ref: ${{ inputs.Ref }}    
           
       - name: Prepare AWS Tools
         run: |
@@ -262,7 +263,7 @@ jobs:
            kubectl exec -it nightly-regression-dis-tp-cn-0 -n mo-nightly-regression -- /bin/sh<<EOF
            apt-get update
            apt-get install git vim net-tools mysql-client openjdk-8-jdk -y
-           git clone https://github.com/matrixorigin/matrixone.git
+           git clone https://github.com/${{ inputs.Repo }}.git
            cd matrixone
            git reset --hard ${{ inputs.Ref }}
            exit
@@ -276,7 +277,7 @@ jobs:
            kubectl exec -it nightly-regression-dis-tp-cn-1 -n mo-nightly-regression -- /bin/sh<<EOF
            apt-get update
            apt-get install git vim net-tools mysql-client openjdk-8-jdk -y
-           git clone https://github.com/matrixorigin/matrixone.git
+           git clone https://github.com/${{ inputs.Repo }}.git
            cd matrixone
            git reset --hard ${{ inputs.Ref }}
            exit
@@ -289,7 +290,7 @@ jobs:
           locale
           cd $GITHUB_WORKSPACE/mo-tester
           ./run.sh -n -g -p $GITHUB_WORKSPACE/matrixone/test/distributed/cases -s /matrixone/test/distributed/resources 2>&1     
-  
+    
   ssb_benchmark_test:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'ssb_benchmark_test' }}
     name: SSB BENCHMARK TEST
@@ -564,7 +565,7 @@ jobs:
 
   oltp_update_test:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'oltp_update_test' }}
-    name: SYSBENCH OLTP TEST
+    name: SYSBENCH OLTP UPDATE TEST
     runs-on: x86-runner
     needs: [setup_mo_test_env,docker-image-build]
     steps:
@@ -656,7 +657,7 @@ jobs:
 
   oltp_insert_test:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'oltp_insert_test' }}
-    name: SYSBENCH OLTP TEST
+    name: SYSBENCH OLTP INSERT TEST
     runs-on: x86-runner
     needs: [setup_mo_test_env,docker-image-build]
     steps:
@@ -749,7 +750,7 @@ jobs:
 
   oltp_delete_test:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'oltp_delete_test' }}
-    name: SYSBENCH OLTP TEST
+    name: SYSBENCH OLTP DELETE TEST
     runs-on: x86-runner
     needs: [setup_mo_test_env,docker-image-build]
     steps:
@@ -840,7 +841,7 @@ jobs:
           ./start.sh -c cases/sysbench/delete_pk_${{ inputs.OLTP_TableNum }}_${{ inputs.OLTP_TableSize }} -t ${{ inputs.OLTP_ThreadNum }}
 
   oltp_all_test:
-    if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'oltp_all_test' }}
+    if: ${{ inputs.JobName == 'oltp_all_test' }}
     name: SYSBENCH OLTP TEST
     runs-on: x86-runner
     needs: [setup_mo_test_env,docker-image-build]
@@ -1287,7 +1288,7 @@ jobs:
           ./load.sh -h ${{ steps.get_mo_addr.outputs.mo_svc_ip }} -c cases/00_from_s3/200_columns -r -m -g  
           
   load_data_test:
-    if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'load_data_test' }}
+    if: ${{ inputs.JobName == 'load_data_test' }}
     name: LOAD DATA TEST
     runs-on: x86-runner
     needs: [setup_mo_test_env,docker-image-build]
