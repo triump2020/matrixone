@@ -67,12 +67,12 @@ jobs:
     timeout-minutes: 60
     name: SETUP MO TEST ENV
     steps:
-      - name: Clone mo-night-regression Repo
+      - name: Clone mo-auto-test Repo
         uses: actions/checkout@v2
         with:
-          repository: matrixorigin/mo-nightly-regression
+          repository: matrixorigin/mo-auto-test
           token: ${{secrets.TOOL_REPO_TOKEN}}
-          path: ./mo-nightly-regression
+          path: ./mo-auto-test
           ref: main
 
       - name: Prepare Test EVN
@@ -120,13 +120,13 @@ jobs:
       - name: ECHO mo-bench.yaml
         run: |
           echo '${{ inputs.Image }}'
-          sed -i "s/imagetag/${{ inputs.Image }}/" $GITHUB_WORKSPACE/mo-nightly-regression/mo-bench.yaml
-          cat $GITHUB_WORKSPACE/mo-nightly-regression/mo-bench.yaml 
+          sed -i "s/imagetag/${{ inputs.Image }}/" $GITHUB_WORKSPACE/mo-auto-test/mo-bench.yaml
+          cat $GITHUB_WORKSPACE/mo-auto-test/mo-bench.yaml 
           
       - name: Create MO Cluster
         run: |
           export KUBECONFIG=$(pwd)/eks-ci
-          kubectl -n mo-nightly-regression apply -f $GITHUB_WORKSPACE/mo-nightly-regression/mo-bench.yaml
+          kubectl -n mo-nightly-regression apply -f $GITHUB_WORKSPACE/mo-auto-test/mo-bench.yaml
           sleep 100s
           while true; do if [ "$(kubectl -n mo-nightly-regression get pods --field-selector status.phase=Running|wc -l)" -eq 7 ]; then break; else sleep 10s; continue; fi; done
           kubectl -n mo-nightly-regression get pod
