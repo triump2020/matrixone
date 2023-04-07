@@ -111,7 +111,7 @@ jobs:
       - name: Clean EKS ENV
         run: |
           export KUBECONFIG=$(pwd)/eks-ci
-          if [ "$(kubectl -n mo-nightly-regression get pod|wc -l)" -gt 1 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl -n mo-nightly-regression delete -f $GITHUB_WORKSPACE/mo-auto-test/mo-bench.yaml;sleep 30s;fi
+          if [ "$(kubectl -n mo-nightly-regression get pod|wc -l)" -gt 1 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl -n mo-nightly-regression delete -f $GITHUB_WORKSPACE/mo-auto-test/mo-ben.yml;sleep 30s;fi
           aws s3 rm s3://mo-ares/mo-benchmark/data --recursive > /dev/null 2>&1
           #aws s3 rm s3://mo-ares/mo-benchmark/etl --recursive > /dev/null 2>&1
           aws s3 --recursive mv s3://mo-ares/mo-benchmark-test/etl s3://mo-ares/mo-benchmark-test/etl_$(date "+%Y%m%d%H%M%S") > /dev/null 2>&1
@@ -120,13 +120,13 @@ jobs:
       - name: ECHO mo-bench.yaml
         run: |
           echo '${{ inputs.Image }}'
-          sed -i "s/imagetag/${{ inputs.Image }}/" $GITHUB_WORKSPACE/mo-auto-test/mo-bench.yaml
-          cat $GITHUB_WORKSPACE/mo-auto-test/mo-bench.yaml 
+          sed -i "s/imagetag/${{ inputs.Image }}/" $GITHUB_WORKSPACE/mo-auto-test/mo-ben.yml
+          cat $GITHUB_WORKSPACE/mo-auto-test/mo-ben.yml
           
       - name: Create MO Cluster
         run: |
           export KUBECONFIG=$(pwd)/eks-ci
-          kubectl -n mo-nightly-regression apply -f $GITHUB_WORKSPACE/mo-auto-test/mo-bench.yaml
+          kubectl -n mo-nightly-regression apply -f $GITHUB_WORKSPACE/mo-auto-test/mo-ben.yml
           sleep 100s
           while true; do if [ "$(kubectl -n mo-nightly-regression get pods --field-selector status.phase=Running|wc -l)" -eq 7 ]; then break; else sleep 10s; continue; fi; done
           kubectl -n mo-nightly-regression get pod
