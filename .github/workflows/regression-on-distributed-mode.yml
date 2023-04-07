@@ -32,6 +32,9 @@ on:
         required: true
         default: '60201249136b4d97f8f9d6050ea2f5457a179cbc'
         type: string
+      Cn_Config:
+        default: ''
+        type: string
       RunTimes:
         required: true
         default: 5
@@ -74,6 +77,12 @@ jobs:
         with:
           repository: ${{ inputs.Repo }}
           ref: ${{ inputs.Ref }}
+          
+      - name: Alter Cn Config
+        run : |
+          echo $GITHUB_WORKSPACE
+          if ${{ inputs.Cn_Config }} !='' ; then if [`expr index "${{ inputs.Cn_Config }}" ";"` != 0 ]; then array=(`echo ${{ inputs.Cn_Config }} | tr ';' ' '` );else array=${{ inputs.Cn_Config }};fi
+          for var in ${array[@]};do origin="$(echo $var|cut -d "=" -f 1)= .*" ;sed -i "s/$origin/$var/" $GITHUB_WORKSPACE/matrixone/etc/launch-tae-multi-CN-tae-DN/cn1.toml;sed -i "s/$origin/$var/" $GITHUB_WORKSPACE/matrixone/etc/launch-tae-multi-CN-tae-DN/cn2.toml;done;fi
 
       - name: Prepare
         id: prep
