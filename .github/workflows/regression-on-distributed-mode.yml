@@ -472,7 +472,7 @@ jobs:
           ./run.sh -h ${{ steps.get_mo_addr.outputs.mo_svc_ip }} -q all -s ${{ inputs.Scale }} -t ${{ inputs.RunTimes }}
 
   oltp_point_select_test:
-    if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'oltp_point_select_test' }}
+    if: ${{ inputs.JobName == 'oltp_point_select_test' }}
     name: SYSBENCH OLTP TEST
     runs-on: x86-runner
     needs: [setup_mo_test_env,docker-image-build]
@@ -564,7 +564,7 @@ jobs:
           ./start.sh -c cases/sysbench/point_select_${{ inputs.OLTP_TableNum }}_${{ inputs.OLTP_TableSize }} -t ${{ inputs.OLTP_ThreadNum }}
 
   oltp_update_test:
-    if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'oltp_update_test' }}
+    if: ${{ inputs.JobName == 'oltp_update_test' }}
     name: SYSBENCH OLTP UPDATE TEST
     runs-on: x86-runner
     needs: [setup_mo_test_env,docker-image-build]
@@ -656,7 +656,7 @@ jobs:
           ./start.sh -c cases/sysbench/update_pk_${{ inputs.OLTP_TableNum }}_${{ inputs.OLTP_TableSize }} -t ${{ inputs.OLTP_ThreadNum }}
 
   oltp_insert_test:
-    if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'oltp_insert_test' }}
+    if: ${{ inputs.JobName == 'oltp_insert_test' }}
     name: SYSBENCH OLTP INSERT TEST
     runs-on: x86-runner
     needs: [setup_mo_test_env,docker-image-build]
@@ -749,7 +749,7 @@ jobs:
           ./start.sh -c cases/sysbench/simple_insert_${{ inputs.OLTP_TableNum }}_${{ inputs.OLTP_TableSize }} -t ${{ inputs.OLTP_ThreadNum }}
 
   oltp_delete_test:
-    if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'oltp_delete_test' }}
+    if: ${{ inputs.JobName == 'oltp_delete_test' }}
     name: SYSBENCH OLTP DELETE TEST
     runs-on: x86-runner
     needs: [setup_mo_test_env,docker-image-build]
@@ -841,7 +841,7 @@ jobs:
           ./start.sh -c cases/sysbench/delete_pk_${{ inputs.OLTP_TableNum }}_${{ inputs.OLTP_TableSize }} -t ${{ inputs.OLTP_ThreadNum }}
 
   oltp_all_test:
-    if: ${{ inputs.JobName == 'oltp_all_test' }}
+    if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'oltp_all_test' }}
     name: SYSBENCH OLTP TEST
     runs-on: x86-runner
     needs: [setup_mo_test_env,docker-image-build]
@@ -1086,7 +1086,7 @@ jobs:
           ./runBenchmark.sh props_${{ inputs.TPCC_WarehouseNum }}.mo
           
   load_data_20_col_test:
-    if: ${{ inputs.JobName == 'all-jobs' ||  inputs.JobName == 'load_data_20_col_test' }}
+    if: ${{ inputs.JobName == 'load_data_20_col_test' }}
     runs-on: x86-runner
     needs: setup_mo_test_env
     name: LOAD DATA 20 COLUMNS TEST
@@ -1154,7 +1154,7 @@ jobs:
           ./load.sh -h ${{ steps.get_mo_addr.outputs.mo_svc_ip }} -c cases/00_from_s3/20_columns/ -r -m -g
            
   load_data_100_col_test:
-    if: ${{ inputs.JobName  == 'all-jobs' || inputs.JobName  == 'load_data_100_col_test' }}
+    if: ${{ inputs.JobName  == 'load_data_100_col_test' }}
     runs-on: x86-runner
     needs: setup_mo_test_env
     name: LOAD DATA 100 COLUMNS TEST
@@ -1221,7 +1221,7 @@ jobs:
           ./load.sh -h ${{ steps.get_mo_addr.outputs.mo_svc_ip }} -c cases/00_from_s3/100_columns -r -m -g
           
   load_data_200_col_test:
-    if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'load_data_200_col_test' }}
+    if: ${{ inputs.JobName == 'load_data_200_col_test' }}
     runs-on: x86-runner
     needs: setup_mo_test_env
     name: LOAD DATA 200 COLUMNS TEST
@@ -1288,7 +1288,7 @@ jobs:
           ./load.sh -h ${{ steps.get_mo_addr.outputs.mo_svc_ip }} -c cases/00_from_s3/200_columns -r -m -g  
           
   load_data_test:
-    if: ${{ inputs.JobName == 'load_data_test' }}
+    if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'load_data_test' }}
     name: LOAD DATA TEST
     runs-on: x86-runner
     needs: [setup_mo_test_env,docker-image-build]
