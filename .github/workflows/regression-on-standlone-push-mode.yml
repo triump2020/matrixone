@@ -1,4 +1,4 @@
-name: Regression Test on Standlone Mode
+name: Regression Test on Standlone Push Mode
 
 on:
   #schedule:
