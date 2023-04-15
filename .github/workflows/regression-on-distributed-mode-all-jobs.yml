@@ -600,13 +600,6 @@ jobs:
           grep user config.yml
           grep SYSBENCH config.yml
 
-      - name: Collect and Persist Test Result
-        if: ${{ always() && !cancelled() }}
-        run: |
-          cd $GITHUB_WORKSPACE/mo-nightly-regression/result
-          python Processor.py ${{ github.run_id }} ${{ needs.docker-image-build.outputs.version }} SYSBENCH
-
-
   tpcc_benchmark_test:
     if: ${{ inputs.JobName == 'all-jobs' }}
     name: TPCC BENCHMARK TEST
