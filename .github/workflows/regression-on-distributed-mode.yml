@@ -193,7 +193,7 @@ jobs:
       - name: Create MO Cluster
         run: |
           export KUBECONFIG=$(pwd)/eks-ci
-          kubectl -n mo-nightly-regression apply -f $GITHUB_WORKSPACE/mo-auto-test/mo-bench.yml
+          kubectl -n mo-nightly-regression apply -f $GITHUB_WORKSPACE/mo-auto-test/mo-ben.yml
           sleep 100s
           while true; do if [ "$(kubectl -n mo-nightly-regression get pods --field-selector status.phase=Running|wc -l)" -eq 7 ]; then break; else sleep 10s; continue; fi; done
           kubectl -n mo-nightly-regression get pod
