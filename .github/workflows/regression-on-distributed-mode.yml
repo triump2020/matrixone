@@ -26,11 +26,11 @@ on:
           - tpcc_benchmark_test
       Repo:
         required: true
-        default: 'zhangxu19830126/matrixone'
+        default: 'LeftHandCold/matrixone'
         type: string
       Ref:
         required: true
-        default: '60201249136b4d97f8f9d6050ea2f5457a179cbc'
+        default: 'ee7960a160b72ed0bfcc1e006c75794574e490e0'
         type: string
       RunTimes:
         required: true
