@@ -392,7 +392,7 @@ jobs:
           ./run.sh -h ${{ steps.get_mo_addr.outputs.mo_svc_ip }} -q all -s ${{ inputs.Scale }} -t ${{ inputs.RunTimes }}
   oltp_point_select_test:
     if: ${{ inputs.JobName == 'oltp_point_select_test' }}
-    name: SYSBENCH OLTP TEST
+    name: SYSBENCH OLTP SELECT TEST
     runs-on: x86-runner
     needs: setup_mo_test_env
     steps:
@@ -860,11 +860,7 @@ jobs:
           grep port config.yml
           grep user config.yml
           grep SYSBENCH config.yml
-      - name: Collect and Persist Test Result
-        if: ${{ always() && !cancelled() }}
-        run: |
-          cd $GITHUB_WORKSPACE/mo-nightly-regression/result
-          python Processor.py ${{ github.run_id }} ${{ needs.docker-image-build.outputs.version }} SYSBENCH
+          
   tpcc_benchmark_test:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'tpcc_benchmark_test' }}
     name: TPCC BENCHMARK TEST
