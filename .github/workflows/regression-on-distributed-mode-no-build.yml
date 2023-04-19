@@ -26,7 +26,7 @@ on:
           - tpcc_benchmark_test
       Image:
         required: true
-        default: 'nightly-01ad8c22'
+        default: 'temp-nightly-c8fdfdb'
         type: string
       Ref:
         required: true
