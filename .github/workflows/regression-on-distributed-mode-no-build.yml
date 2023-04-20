@@ -111,7 +111,7 @@ jobs:
       - name: Clean EKS ENV
         run: |
           export KUBECONFIG=$(pwd)/eks-ci
-          if [ "$(kubectl -n mo-nightly-regression get pod|wc -l)" -gt 1 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl -n mo-nightly-regression delete -f $GITHUB_WORKSPACE/mo-auto-test/mo-ben.yml;sleep 30s;fi
+          if [ "$(kubectl -n mo-nightly-regression get pod|grep "nightly-regression-*"|wc -l)" -ne 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl -n mo-nightly-regression delete -f $GITHUB_WORKSPACE/mo-auto-test/mo-ben.yml;sleep 30s;fi
           aws s3 rm s3://mo-ares/mo-benchmark/data --recursive > /dev/null 2>&1
           #aws s3 rm s3://mo-ares/mo-benchmark/etl --recursive > /dev/null 2>&1
           aws s3 --recursive mv s3://mo-ares/mo-benchmark-test/etl s3://mo-ares/mo-benchmark-test/etl_$(date "+%Y%m%d%H%M%S") > /dev/null 2>&1
@@ -128,7 +128,7 @@ jobs:
           export KUBECONFIG=$(pwd)/eks-ci
           kubectl -n mo-nightly-regression apply -f $GITHUB_WORKSPACE/mo-auto-test/mo-ben.yml
           sleep 100s
-          while true; do if [ "$(kubectl -n mo-nightly-regression get pods --field-selector status.phase=Running|wc -l)" -eq 7 ]; then break; else sleep 10s; continue; fi; done
+          while true; do if [ "$(kubectl -n mo-nightly-regression get pods --field-selector status.phase=Running|grep "nightly-regression-*"|wc -l)" -eq 6 ]; then break; else sleep 10s; continue; fi; done
           kubectl -n mo-nightly-regression get pod
           if [ ! -d $GITHUB_WORKSPACE/mo-server-log ]; then mkdir $GITHUB_WORKSPACE/mo-server-log;fi;
           
