@@ -301,12 +301,15 @@ jobs:
           sleep 50s
           cd $GITHUB_WORKSPACE/mo-load-data
           ./load.sh -h ${{ steps.get_mo_addr.outputs.mo_svc_ip }} -c cases/00_from_s3/ssb_${{ inputs.Scale }} -r -m -g
+          sleep 300s
+          
       - name: Start SSB ${{ inputs.Scale }}G multi table Test
         if: ${{ always() && !cancelled() }}
         run: |
           export LC_ALL="C.UTF-8"
           cd $GITHUB_WORKSPACE/mo-ssb
           ./run.sh -h ${{ steps.get_mo_addr.outputs.mo_svc_ip }} -q all -s ${{ inputs.Scale }} -t 5
+          
   tpch_benchmark_test:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'tpch_benchmark_test' }}
     name: TPCH BENCHMARK TEST
@@ -384,6 +387,8 @@ jobs:
           sleep 50s
           cd $GITHUB_WORKSPACE/mo-load-data
           ./load.sh -h ${{ steps.get_mo_addr.outputs.mo_svc_ip }} -c cases/00_from_s3/tpch_${{ inputs.Scale }} -r -m -g
+          sleep 300s
+          
       - name: Start TPCH ${{ inputs.Scale }}G Test
         if: ${{ always() && !cancelled() }}
         run: |
