@@ -138,20 +138,7 @@ jobs:
     runs-on: x86-runner
     timeout-minutes: 120
     needs: setup_mo_test_env
-    steps: 
-      - name: clone mo-tester repo
-        uses: actions/checkout@v2
-        with:
-          repository: matrixorigin/mo-tester
-          path: ./mo-tester
-          ref: main 
-          
-      - name: clone ${{ inputs.Repo }} repo
-        uses: actions/checkout@v3
-        with:
-          repository: ${{ inputs.Repo }}
-          ref: ${{ inputs.Ref }}    
-          
+    steps:          
       - name: Prepare AWS Tools
         run: |
           sudo apt-get update && sudo apt-get install awscli -y 
@@ -171,7 +158,20 @@ jobs:
            us-west-2
            json
            exit
-           EOF 
+           EOF  
+          
+      - name: clone ${{ inputs.Repo }} repo
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.Repo }}
+          ref: ${{ inputs.Ref }} 
+      
+      - name: clone mo-tester repo
+        uses: actions/checkout@v2
+        with:
+          repository: matrixorigin/mo-tester
+          path: ./mo-tester
+          ref: main
            
       - name: Set up JDK 8 for x64
         uses: actions/setup-java@v3
