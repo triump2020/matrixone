@@ -26,6 +26,13 @@ spec:
       level = "info"
       format = "json"
       max-size = 512
+      [dn.LogtailServer]
+      rpc-max-message-size = "16KiB"
+      rpc-payload-copy-buffer-size = "16KiB"
+      rpc-enable-checksum = true
+      logtail-collect-interval = "2ms"
+      logtail-response-send-timeout = "10s"
+      max-logtail-fetch-failure = 5
     replicas: 1
     resources:
       requests:
@@ -66,6 +73,11 @@ spec:
       level = "info"
       format = "json"
       max-size = 512
+      [cn]
+      turn-on-push-model = true
+      [cn.txn]
+      enable-sacrificing-freshness = true
+      enable-cn-based-consistency = true
     replicas: 2
     resources:
       requests:
