@@ -63,7 +63,7 @@ spec:
       size: 100Gi
     sharedStorageCache:
       memoryCacheSize: 16Gi
-      diskCacheSize: 100Gi
+      diskCacheSize: 1
     config: |
       [cn.Engine]
       type = "distributed-tae"
