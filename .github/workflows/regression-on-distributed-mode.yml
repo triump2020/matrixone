@@ -30,11 +30,11 @@ on:
         type: string
       Ref:
         required: true
-        default: '6ad43430a6ceb69fd7e21f2caabf76f94b5c5cd1'
+        default: 'c0d01d9d3e38983bfb3ac4d62affb13e88ac5db6'
         type: string
       RunTimes:
         required: true
-        default: 5
+        default: 1
         type: int
       Scale:
         required: true
