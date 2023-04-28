@@ -18,7 +18,7 @@ on:
         type: string
       Ref:
         required: true
-        default: '60201249136b4d97f8f9d6050ea2f5457a179cbc'
+        default: 'b8cf6e63cdb8d7d3b95ccddf2cbb1646466c9c9c'
         type: string
       RunTimes:
         required: true
