@@ -105,15 +105,15 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build
-        uses: docker/build-push-action@v2
-        with:
-          builder: ${{ steps.buildx.outputs.name }}
-          context: .
-          file: ./optools/images/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.prep.outputs.tags }}
+#       - name: Build
+#         uses: docker/build-push-action@v2
+#         with:
+#           builder: ${{ steps.buildx.outputs.name }}
+#           context: .
+#           file: ./optools/images/Dockerfile
+#           platforms: linux/amd64,linux/arm64
+#           push: true
+#           tags: ${{ steps.prep.outputs.tags }}
   
   setup_mo_test_env:
     needs: docker-image-build
@@ -177,14 +177,14 @@ jobs:
           sed -i "s/imagetag/${{ needs.docker-image-build.outputs.version }}/" $GITHUB_WORKSPACE/mo-auto-test/mo-ben.yml
           cat $GITHUB_WORKSPACE/mo-auto-test/mo-ben.yml 
           
-      - name: Create MO Cluster
-        run: |
-          export KUBECONFIG=$(pwd)/eks-ci
-          kubectl -n mo-nightly-regression apply -f $GITHUB_WORKSPACE/mo-auto-test/mo-ben.yml
-          sleep 100s
-          while true; do if [ "$(kubectl -n mo-nightly-regression get pods --field-selector status.phase=Running|grep "nightly-regression-*"|wc -l)" -eq 6 ]; then break; else sleep 10s; continue; fi; done
-          kubectl -n mo-nightly-regression get pod
-          if [ ! -d $GITHUB_WORKSPACE/mo-server-log ]; then mkdir $GITHUB_WORKSPACE/mo-server-log;fi;
+#       - name: Create MO Cluster
+#         run: |
+#           export KUBECONFIG=$(pwd)/eks-ci
+#           kubectl -n mo-nightly-regression apply -f $GITHUB_WORKSPACE/mo-auto-test/mo-ben.yml
+#           sleep 100s
+#           while true; do if [ "$(kubectl -n mo-nightly-regression get pods --field-selector status.phase=Running|grep "nightly-regression-*"|wc -l)" -eq 6 ]; then break; else sleep 10s; continue; fi; done
+#           kubectl -n mo-nightly-regression get pod
+#           if [ ! -d $GITHUB_WORKSPACE/mo-server-log ]; then mkdir $GITHUB_WORKSPACE/mo-server-log;fi;
 
   build_verification_test:
     if: ${{ inputs.JobName == 'all-jobs' }}
