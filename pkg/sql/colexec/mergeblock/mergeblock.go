@@ -15,8 +15,10 @@ package mergeblock
 
 import (
 	"bytes"
+	"sync/atomic"
 
 	"github.com/matrixorigin/matrixone/pkg/container/batch"
+	"github.com/matrixorigin/matrixone/pkg/container/vector"
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
@@ -81,12 +83,42 @@ func Call(idx int, proc *process.Process, arg any, isFirst bool, isLast bool) (b
 		}
 	}
 
+	var insertBatch *batch.Batch
+	var affectedRows uint64
 	for _, bat := range ap.container.mp2[0] {
 		//batches in mp2 will be deeply copied into txn's workspace.
+		affectedRows = affectedRows + uint64(bat.Length())
 		if err = ap.Tbl.Write(proc.Ctx, bat); err != nil {
 			return false, err
 		}
+		if !ap.IsEnd {
+			if insertBatch == nil {
+				insertBatch = batch.NewWithSize(len(bat.Attrs))
+				insertBatch.SetAttributes(bat.Attrs)
+				for i := range bat.Attrs {
+					vec := vector.NewVec(*bat.Vecs[i].GetType())
+					if err := vec.UnionBatch(bat.Vecs[i], 0, bat.Vecs[i].Length(), nil, proc.GetMPool()); err != nil {
+						return false, err
+					}
+					insertBatch.SetVector(int32(i), vec)
+					insertBatch.Zs = append(insertBatch.Zs, bat.Zs...)
+				}
+			} else {
+				_, err := insertBatch.Append(proc.Ctx, proc.GetMPool(), bat)
+				if err != nil {
+					return false, err
+				}
+			}
+		}
 	}
+	if ap.IsEnd {
+		proc.SetInputBatch(nil)
+	} else {
+		proc.SetInputBatch(insertBatch)
+	}
+
 	ap.container.mp2[0] = ap.container.mp2[0][:0]
+
+	atomic.AddUint64(&ap.affectedRows, affectedRows)
 	return false, nil
 }
