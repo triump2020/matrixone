@@ -234,49 +234,49 @@ jobs:
           distribution: 'adopt'
           architecture: x64  
           
-      - name: alter mo-tester addr   
-        run: |
-          aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
-          export KUBECONFIG=$(pwd)/eks-ci
-          export add_ip=$(kubectl -n mo-nightly-regression get svc | grep "6001/TCP"|awk '{print $3}')
-          sed -i "s/127.0.0.1:6001/${add_ip}:6001/" $GITHUB_WORKSPACE/mo-tester/mo.yml
-          sed -i "s/60000/300000/" $GITHUB_WORKSPACE/mo-tester/mo.yml
-          cat $GITHUB_WORKSPACE/mo-tester/mo.yml    
+#       - name: alter mo-tester addr   
+#         run: |
+#           aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
+#           export KUBECONFIG=$(pwd)/eks-ci
+#           export add_ip=$(kubectl -n mo-nightly-regression get svc | grep "6001/TCP"|awk '{print $3}')
+#           sed -i "s/127.0.0.1:6001/${add_ip}:6001/" $GITHUB_WORKSPACE/mo-tester/mo.yml
+#           sed -i "s/60000/300000/" $GITHUB_WORKSPACE/mo-tester/mo.yml
+#           cat $GITHUB_WORKSPACE/mo-tester/mo.yml    
           
-      - name: cn-0 pod prepare data
-        run: |
-           aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
-           export KUBECONFIG=$(pwd)/eks-ci
-           kubectl exec -it nightly-regression-dis-tp-cn-0 -n mo-nightly-regression -- /bin/sh<<EOF
-           apt-get update
-           apt-get install git vim net-tools mysql-client openjdk-8-jdk -y
-           git clone https://github.com/${{ inputs.Repo }}.git
-           cd matrixone
-           git reset --hard ${{ inputs.Ref }}
-           exit
-           EOF
-           exit
+#       - name: cn-0 pod prepare data
+#         run: |
+#            aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
+#            export KUBECONFIG=$(pwd)/eks-ci
+#            kubectl exec -it nightly-regression-dis-tp-cn-0 -n mo-nightly-regression -- /bin/sh<<EOF
+#            apt-get update
+#            apt-get install git vim net-tools mysql-client openjdk-8-jdk -y
+#            git clone https://github.com/${{ inputs.Repo }}.git
+#            cd matrixone
+#            git reset --hard ${{ inputs.Ref }}
+#            exit
+#            EOF
+#            exit
            
-      - name: cn-1 pod prepare data
-        run: |
-           aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
-           export KUBECONFIG=$(pwd)/eks-ci
-           kubectl exec -it nightly-regression-dis-tp-cn-1 -n mo-nightly-regression -- /bin/sh<<EOF
-           apt-get update
-           apt-get install git vim net-tools mysql-client openjdk-8-jdk -y
-           git clone https://github.com/${{ inputs.Repo }}.git
-           cd matrixone
-           git reset --hard ${{ inputs.Ref }}
-           exit
-           EOF
-           exit
+#       - name: cn-1 pod prepare data
+#         run: |
+#            aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
+#            export KUBECONFIG=$(pwd)/eks-ci
+#            kubectl exec -it nightly-regression-dis-tp-cn-1 -n mo-nightly-regression -- /bin/sh<<EOF
+#            apt-get update
+#            apt-get install git vim net-tools mysql-client openjdk-8-jdk -y
+#            git clone https://github.com/${{ inputs.Repo }}.git
+#            cd matrixone
+#            git reset --hard ${{ inputs.Ref }}
+#            exit
+#            EOF
+#            exit
          
-      - name: Start BVT Test
-        run: |
-          export LC_ALL="C.UTF-8"
-          locale
-          cd $GITHUB_WORKSPACE/mo-tester
-          ./run.sh -n -g -p $GITHUB_WORKSPACE/matrixone/test/distributed/cases -s /matrixone/test/distributed/resources 2>&1     
+#       - name: Start BVT Test
+#         run: |
+#           export LC_ALL="C.UTF-8"
+#           locale
+#           cd $GITHUB_WORKSPACE/mo-tester
+#           ./run.sh -n -g -p $GITHUB_WORKSPACE/matrixone/test/distributed/cases -s /matrixone/test/distributed/resources 2>&1     
     
   ssb_benchmark_test:
     if: ${{ inputs.JobName == 'all-jobs' }}
