@@ -25,11 +25,11 @@ on:
         - tpcc_benchmark_test
       Repo:
         required: true
-        default: 'matrixorigin/matrixone'
+        default: 'zhangxu19830126/matrixone'
         type: string
       Ref:
         required: true
-        default: 'main'
+        default: 'b8cf6e63cdb8d7d3b95ccddf2cbb1646466c9c9c'
         type: string
       RunTimes:
         required: true
