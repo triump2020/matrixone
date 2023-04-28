@@ -241,7 +241,7 @@ jobs:
           export add_ip=$(kubectl -n mo-nightly-regression get svc | grep "6001/TCP"|awk '{print $3}')
           sed -i "s/127.0.0.1:6001/${add_ip}:6001/" $GITHUB_WORKSPACE/mo-tester/mo.yml
           sed -i "s/60000/300000/" $GITHUB_WORKSPACE/mo-tester/mo.yml
-          cat ./mo-tester/mo.yml    
+          cat $GITHUB_WORKSPACE/mo-tester/mo.yml    
           
       - name: cn-0 pod prepare data
         run: |
