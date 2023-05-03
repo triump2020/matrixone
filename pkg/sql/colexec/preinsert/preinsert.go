@@ -16,6 +16,7 @@ package preinsert
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/matrixorigin/matrixone/pkg/catalog"
 	"github.com/matrixorigin/matrixone/pkg/container/batch"
@@ -52,6 +53,9 @@ func Call(idx int, proc *proc, x any, _, _ bool) (bool, error) {
 	}
 
 	defer proc.PutBatch(bat)
+	if len(bat.Vecs) != len(arg.Attrs) {
+		fmt.Print("ddd")
+	}
 	newBat := batch.NewWithSize(len(arg.Attrs))
 	newBat.Attrs = arg.Attrs
 	for idx := range arg.Attrs {
@@ -105,8 +109,8 @@ func Call(idx int, proc *proc, x any, _, _ bool) (bool, error) {
 }
 
 func genAutoIncrCol(bat *batch.Batch, proc *proc, arg *Argument) error {
-	return colexec.UpdateInsertBatch(arg.Eg, arg.Ctx, proc,
-		arg.TableDef.Cols, bat, arg.TableDef.TblId, arg.SchemaName, arg.TableDef.Name)
+	return colexec.UpdateInsertBatch(proc, arg.TableDef.Cols, bat,
+		arg.TableDef.TblId, arg.SchemaName, arg.TableDef.Name)
 }
 
 func genCompositePrimaryKey(bat *batch.Batch, proc *proc, tableDef *pb.TableDef) error {

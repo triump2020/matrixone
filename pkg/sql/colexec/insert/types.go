@@ -34,7 +34,6 @@ type container struct {
 type Argument struct {
 	ctr          *container
 	affectedRows uint64
-	Engine       engine.Engine
 	ToWriteS3    bool // mark if this insert's target is S3 or not.
 	InsertCtx    *InsertCtx
 }
@@ -63,4 +62,8 @@ func (ap *Argument) Free(proc *process.Process, pipelineFailed bool) {
 
 func (ap *Argument) AffectedRows() uint64 {
 	return ap.affectedRows
+}
+
+func (ap *Argument) GetAffectedRows() *uint64 {
+	return &ap.affectedRows
 }

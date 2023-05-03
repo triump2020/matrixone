@@ -825,6 +825,7 @@ func (c *Compile) compilePlanScope(ctx context.Context, step int32, curNodeIdx i
 		if err != nil {
 			return nil, err
 		}
+
 		insertArg, err := constructInsert(n, c.e, c.proc)
 		if err != nil {
 			return nil, err
@@ -837,20 +838,40 @@ func (c *Compile) compilePlanScope(ctx context.Context, step int32, curNodeIdx i
 		}
 		insertArg.ToWriteS3 = toWriteS3
 		mergeBlockIsEnd := insertArg.InsertCtx.IsEnd
+
 		if toWriteS3 {
 			insertArg.InsertCtx.IsEnd = false
 		}
-		for i := range ss {
-			ss[i].appendInstruction(vm.Instruction{
-				Op:      vm.Insert,
-				Idx:     c.anal.curr,
-				IsFirst: currentFirstFlag,
-				Arg:     insertArg,
-			})
-		}
 
 		if toWriteS3 {
-			rs := c.newMergeScope(ss)
+			dataScope := c.newMergeScope(ss)
+			dataScope.IsEnd = true
+			mcpu := dataScope.NodeInfo.Mcpu
+			scopes := make([]*Scope, 0, mcpu)
+			regs := make([]*process.WaitRegister, 0, mcpu)
+			for i := 0; i < mcpu; i++ {
+				scopes = append(scopes, &Scope{
+					Magic:        Merge,
+					Instructions: []vm.Instruction{{Op: vm.Merge, Arg: &merge.Argument{}}},
+				})
+				scopes[i].Proc = process.NewFromProc(c.proc, c.ctx, 1)
+				regs = append(regs, scopes[i].Proc.Reg.MergeReceivers...)
+			}
+
+			dataScope.Instructions = append(dataScope.Instructions, vm.Instruction{
+				Op:  vm.Dispatch,
+				Arg: constructDispatchLocal(false, regs),
+			})
+			for i := range scopes {
+				scopes[i].appendInstruction(vm.Instruction{
+					Op:      vm.Insert,
+					Idx:     c.anal.curr,
+					IsFirst: currentFirstFlag,
+					Arg:     insertArg,
+				})
+			}
+			rs := c.newMergeScope(scopes)
+			rs.PreScopes = append(rs.PreScopes, dataScope)
 			rs.Magic = MergeInsert
 			rs.Instructions = append(rs.Instructions, vm.Instruction{
 				Op: vm.MergeBlock,
@@ -860,8 +881,16 @@ func (c *Compile) compilePlanScope(ctx context.Context, step int32, curNodeIdx i
 				},
 			})
 			ss = []*Scope{rs}
+		} else {
+			for i := range ss {
+				ss[i].appendInstruction(vm.Instruction{
+					Op:      vm.Insert,
+					Idx:     c.anal.curr,
+					IsFirst: currentFirstFlag,
+					Arg:     insertArg,
+				})
+			}
 		}
-
 		c.setAnalyzeCurrent(ss, curr)
 		return ss, nil
 	case plan.Node_FUNCTION_SCAN:
@@ -1941,9 +1970,7 @@ func (c *Compile) newJoinProbeScope(s *Scope, ss []*Scope) *Scope {
 	})
 	rs.IsEnd = true
 	rs.Proc = process.NewWithAnalyze(s.Proc, c.ctx, 1, c.anal.Nodes())
-	rs.Proc.Reg.MergeReceivers[0] = s.Proc.Reg.MergeReceivers[0]
-
-	remoteReceivRegInfosTransplant(s, rs, 0, 0)
+	regTransplant(s, rs, 0, 0)
 	return rs
 }
 
@@ -1963,15 +1990,14 @@ func (c *Compile) newJoinBuildScope(s *Scope, ss []*Scope) *Scope {
 	})
 	rs.IsEnd = true
 	rs.Proc = process.NewWithAnalyze(s.Proc, c.ctx, 1, c.anal.Nodes())
-	rs.Proc.Reg.MergeReceivers[0] = s.Proc.Reg.MergeReceivers[1]
-
-	remoteReceivRegInfosTransplant(s, rs, 1, 0)
+	regTransplant(s, rs, 1, 0)
 	return rs
 }
 
 // Transplant the source's RemoteReceivRegInfos which index equal to sourceIdx to
 // target with new index targetIdx
-func remoteReceivRegInfosTransplant(source, target *Scope, sourceIdx, targetIdx int) {
+func regTransplant(source, target *Scope, sourceIdx, targetIdx int) {
+	target.Proc.Reg.MergeReceivers[targetIdx] = source.Proc.Reg.MergeReceivers[sourceIdx]
 	i := 0
 	for i < len(source.RemoteReceivRegInfos) {
 		op := &source.RemoteReceivRegInfos[i]
