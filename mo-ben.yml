@@ -48,6 +48,7 @@ spec:
     sharedStorage:
       s3:
         path: mo-ares/mo-benchmark-test/
+        s3RetentionPolicy: Retain
         secretRef:
           name: aws-regression
     volume:
