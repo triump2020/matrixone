@@ -50,7 +50,7 @@ spec:
         path: mo-ares/mo-benchmark-test/
         s3RetentionPolicy: Retain
         secretRef:
-          name: aws-regression
+          name: aws-auto
     volume:
       size: 100Gi
       storageClassName: gp3-10000
