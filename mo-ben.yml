@@ -1,11 +1,11 @@
 apiVersion: core.matrixorigin.io/v1alpha1
 kind: MatrixOneCluster
 metadata:
-  name: nightly-regression-dis
-  namespace: mo-nightly-regression
+  name: autotest-dis
+  namespace: mo-autotest
 spec:
   nodeSelector:
-    role: benchmark-index
+    role: benchmark-regression
   dn:
     cacheVolume:
       size: 100Gi
