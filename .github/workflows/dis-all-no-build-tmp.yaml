@@ -47,7 +47,7 @@ on:
 
 jobs: 
   setup_mo_test_env:
-    needs: docker-image-build
+    #needs: docker-image-build
     runs-on: x86-runner
     timeout-minutes: 60
     name: SETUP MO TEST ENV
@@ -122,7 +122,7 @@ jobs:
     name: Build Verification Test
     runs-on: x86-runner
     timeout-minutes: 120
-    needs: [setup_mo_test_env,docker-image-build]
+    needs: [setup_mo_test_env]
     steps: 
       - name: clone mo-tester repo
         uses: actions/checkout@v2
@@ -214,7 +214,7 @@ jobs:
     name: SSB BENCHMARK TEST
     runs-on: x86-runner
     timeout-minutes: 120
-    needs: [setup_mo_test_env,docker-image-build,build_verification_test]
+    needs: [setup_mo_test_env,build_verification_test]
     steps:
       - name: Clone mo-ssb Repo
         uses: actions/checkout@v2
@@ -305,7 +305,7 @@ jobs:
     name: TPCH BENCHMARK TEST
     runs-on: x86-runner
     timeout-minutes: 180
-    needs: [setup_mo_test_env,docker-image-build,build_verification_test,ssb_benchmark_test]
+    needs: [setup_mo_test_env,build_verification_test,ssb_benchmark_test]
     steps:
       - name: Clone mo-tpch Repo
         uses: actions/checkout@v2
@@ -395,7 +395,7 @@ jobs:
     if: ${{ inputs.JobName == 'oltp_all_test' }}
     name: SYSBENCH OLTP TEST
     runs-on: x86-runner
-    needs: [setup_mo_test_env,docker-image-build,build_verification_test,ssb_benchmark_test,tpch_benchmark_test]
+    needs: [setup_mo_test_env,build_verification_test,ssb_benchmark_test,tpch_benchmark_test]
     steps:
       - name: Clone mo-load Repo
         uses: actions/checkout@v2
@@ -537,7 +537,7 @@ jobs:
     if: ${{ inputs.JobName == 'all-jobs' }}
     name: TPCC BENCHMARK TEST
     runs-on: x86-runner
-    needs: [setup_mo_test_env,docker-image-build,build_verification_test,ssb_benchmark_test,tpch_benchmark_test,oltp_all_test]
+    needs: [setup_mo_test_env,build_verification_test,ssb_benchmark_test,tpch_benchmark_test,oltp_all_test]
     steps:
       - name: Clone mo-tpcc Repo
         uses: actions/checkout@v2
@@ -633,7 +633,7 @@ jobs:
     if: ${{ inputs.JobName == 'load_data_test' }}
     name: LOAD DATA TEST
     runs-on: x86-runner
-    needs: [setup_mo_test_env,docker-image-build,build_verification_test,ssb_benchmark_test,tpch_benchmark_test,oltp_all_test,tpcc_benchmark_test]
+    needs: [setup_mo_test_env,build_verification_test,ssb_benchmark_test,tpch_benchmark_test,oltp_all_test,tpcc_benchmark_test]
     steps:
       - name: Clone mo-load-data Repo
         uses: actions/checkout@v2
