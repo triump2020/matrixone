@@ -1,0 +1,551 @@
+name: Regression Test on Standlone Mode
+
+on:
+  schedule:
+    - cron: '0 16 * * *'
+  workflow_dispatch:
+    inputs:
+      JobName:
+        description: 'job name'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+        - all-jobs
+        - setup_mo_test_env
+        - build_verification_test
+        - sysbench_oltp_test
+        - tpcc_benchmark_test
+        - tpch_benchmark_test
+        - ssb_benchmark_test
+        - load_data_test
+        - report_test_result
+jobs:
+  setup_mo_test_env:
+    if: ${{ inputs.JobName }} == 'all-jobs' || ${{ inputs.JobName }} == 'setup_mo_test_env'
+    runs-on: runner_auto_test
+    name: SETUP MO TEST ENV
+    steps:
+      - name: Initialize the Project Environment
+        run: |
+          if [ "$(ps -ef | grep 'mo-service' | grep -v "grep" | wc -l)" -gt 0 ]; then 
+            sudo pkill -9 mo-service; echo 'kill mo-service process success'; 
+          else 
+            echo 'mo-service process port is not occupied';
+          fi
+          rm -rf ${{ github.workspace }}/head/mo-data
+
+      - name: Checkout MatrixOne
+        uses: actions/checkout@v2
+        with:
+          path: ./head
+          repository: matrixorigin/matrixone
+          ref: main
+
+      - name: Build MatrixOne
+        run: |
+          cd $GITHUB_WORKSPACE/head && make build
+          commit_id=$(git rev-parse --short HEAD)
+          echo $commit_id
+
+      - name: Start MO Service
+        run: |
+          cd $GITHUB_WORKSPACE/head
+          sed -i '/.*memory-capacity = */c\memory-capacity = "16GB"' etc/launch-tae-CN-tae-DN/cn.toml
+          sed -i '/.*turn-on-push-model = */c\turn-on-push-model = true' etc/launch-tae-CN-tae-DN/cn.toml
+          sed -i '/.*enable-sacrificing-freshness = */c\enable-sacrificing-freshness = true' etc/launch-tae-CN-tae-DN/cn.toml
+          echo "" >> etc/launch-tae-CN-tae-DN/cn.toml
+          echo "[cn.frontend]" >> etc/launch-tae-CN-tae-DN/cn.toml 
+          echo "printDebug = true" >> etc/launch-tae-CN-tae-DN/cn.toml 
+          echo "printDebugInterval = 30" >> etc/launch-tae-CN-tae-DN/cn.toml
+          ./optools/run_bvt.sh $GITHUB_WORKSPACE/head launch-tae-CN-tae-DN
+          locale
+          sleep 50s
+          
+      - name: Copy MO-Tester Repository
+        run: |
+          cd $GITHUB_WORKSPACE && rm -rf mo-tester
+          cp -r /data/mo-tester $GITHUB_WORKSPACE
+          if [ -d "$GITHUB_WORKSPACE/mo-tester" ]; then echo "copy mo-tester success"; else echo "copy mo-tester failed"; exit 1; fi 
+
+      - name: Echo ENV Parameters
+        run: |
+          echo $GITHUB_WORKSPACE
+          echo `go version`
+          echo `java -version`
+
+      - name: Start Test JDBC Connection
+        if: ${{ always() && !cancelled() }}
+        run: |
+          cd /data/mo-test-jdbc
+          java -jar mo-test-jdbc.jar
+      
+      - name: Statistical Resource Usage
+        run: |
+          cd /data/mo-nightly-regression
+          RUNNER_TRACKING_ID="" && nohup ./resr.sh &
+
+      - name: Generate Upload Files
+        if: ${{ always() }}
+        continue-on-error: true
+        run: |
+          mkdir -p ${{ github.workspace }}/upload
+          cd ${{ github.workspace }}/head && cp mo-service.log  basics.log && echo "basics test execute end..." > mo-service.log
+          mv ${{ github.workspace }}/head/basics.log ${{ github.workspace }}/upload/
+
+  build_verification_test:
+    if: ${{ inputs.JobName }} == 'all-jobs' || ${{ inputs.JobName }} == 'build_verification_test'
+    name: Build Verification Test
+    runs-on: runner_auto_test
+    needs: setup_mo_test_env
+    steps:
+      - name: Initialize the Project Environment
+        run: |
+          if [ "$(ps -ef | grep 'mo-service' | grep -v "grep" | wc -l)" -gt 0 ]; then 
+            echo 'mo server normal running'; 
+          else 
+            cd $GITHUB_WORKSPACE/head && rm -rf mo-data
+            nohup ./mo-service -debug-http :9876 -launch ./etc/launch-tae-CN-tae-DN/launch.toml > mo-service.log 2>&1 &
+            locale
+            sleep 120s
+          fi
+
+      - name: Start BVT Test
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          cd /data/mo-tester
+          ./run.sh -n -g -p  $GITHUB_WORKSPACE/head/test/distributed/cases 2>&1 
+
+      - name: Generate Upload Files
+        if: ${{ always() }}
+        continue-on-error: true
+        run: |
+          cd ${{ github.workspace }}/head && cp mo-service.log mo-bvt.log && echo "test bvt end..." > mo-service.log
+          mv ${{ github.workspace }}/head/mo-bvt.log ${{ github.workspace }}/upload/
+
+  sysbench_oltp_test:
+    if: ${{ inputs.JobName }} == 'all-jobs' || ${{ inputs.JobName }} == 'sysbench_oltp_test'
+    name: SYSBENCH OLTP TEST
+    runs-on: runner_auto_test
+    needs: setup_mo_test_env
+    steps:
+      - name: Initialize the project environment
+        run: |
+          if [ "$(ps -ef | grep 'mo-service' | grep -v "grep" | wc -l)" -gt 0 ]; then 
+            echo 'mo server normal running'; 
+          else 
+            cd $GITHUB_WORKSPACE/head && rm -rf mo-data
+            nohup ./mo-service -debug-http :9876 -launch ./etc/launch-tae-CN-tae-DN/launch.toml > mo-service.log 2>&1 &
+            locale
+            sleep 120s
+          fi
+
+      - name: Start Prepare Data of 10-tables-100000-per-table
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          cd /data/mo-sysbench
+          mysql -h127.0.0.1 -udump -p111 -P6001 -e "create database if not exists sbtest;"
+          sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off prepare
+
+      - name: Start OLTP Point Select Test
+        run: |
+          export LC_ALL="C.UTF-8"
+          locale
+          cd /data/mo-load
+          ./start.sh -c cases/sysbench/point_select_10_100000 -t 100
+          ./start.sh -c cases/sysbench/point_select_10_100000 -t 500
+          ./start.sh -c cases/sysbench/point_select_10_100000 -t 1000
+
+      - name: Start OLTP Update Test
+        run: |
+          export LC_ALL="C.UTF-8"
+          locale
+          cd /data/mo-load
+          ./start.sh -c cases/sysbench/update_pk_10_100000 -t 100
+          ./start.sh -c cases/sysbench/update_pk_10_100000 -t 500
+          ./start.sh -c cases/sysbench/update_pk_10_100000 -t 1000
+
+      - name: Start OLTP Insert Test With 100 Threads
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          locale
+          cd /data/mo-sysbench
+          mysql -h127.0.0.1 -udump -p111 -P6001 -e "create database if not exists sbtest;"
+          sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off cleanup
+          sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off prepare
+          
+          cd /data/mo-load
+          ./start.sh -c cases/sysbench/simple_insert_10_100000 -t 100
+
+      - name: Start OLTP Insert Test With 500 Threads
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          locale
+          cd /data/mo-sysbench
+          mysql -h127.0.0.1 -udump -p111 -P6001 -e "create database if not exists sbtest;"
+          sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off cleanup
+          sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off prepare
+          
+          cd /data/mo-load
+          ./start.sh -c cases/sysbench/simple_insert_10_100000 -t 500
+
+      - name: Start OLTP Insert Test With 1000 Threads
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          locale
+          cd /data/mo-sysbench
+          mysql -h127.0.0.1 -udump -p111 -P6001 -e "create database if not exists sbtest;"
+          sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off cleanup
+          sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off prepare
+          
+          cd /data/mo-load
+          ./start.sh -c cases/sysbench/simple_insert_10_100000 -t 1000
+
+      - name: Start OLTP Delete Test With 100 Threads
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          locale
+          cd /data/mo-sysbench
+          mysql -h127.0.0.1 -udump -p111 -P6001 -e "create database if not exists sbtest;"
+          sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off cleanup
+          sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off prepare
+          
+          cd /data/mo-load
+          ./start.sh -c cases/sysbench/delete_pk_10_100000 -t 100
+
+      - name: Start OLTP Delete Test With 500 Threads
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          locale
+          cd /data/mo-sysbench
+          mysql -h127.0.0.1 -udump -p111 -P6001 -e "create database if not exists sbtest;"
+          sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off cleanup
+          sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off prepare
+          
+          cd /data/mo-load
+          ./start.sh -c cases/sysbench/delete_pk_10_100000 -t 500
+
+      - name: Start OLTP Delete Test With 1000 Threads
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          locale
+          cd /data/mo-sysbench
+          mysql -h127.0.0.1 -udump -p111 -P6001 -e "create database if not exists sbtest;"
+          sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off cleanup
+          sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off prepare
+          
+          cd /data/mo-load
+          ./start.sh -c cases/sysbench/delete_pk_10_100000 -t 1000
+
+      - name: Generate Upload Files
+        if: ${{ always() }}
+        continue-on-error: true
+        run: |
+          cd ${{ github.workspace }}/head && cp mo-service.log mo-sysbench.log && echo "test sysbench end..." > mo-service.log
+          mv ${{ github.workspace }}/head/mo-sysbench.log ${{ github.workspace }}/upload/
+
+  ssb_benchmark_test:
+    if: ${{ inputs.JobName }} == 'all-jobs' || ${{ inputs.JobName }} == 'ssb_benchmark_test'
+    name: SSB BENCHMARK TEST
+    runs-on: runner_auto_test
+    needs: setup_mo_test_env
+    steps:
+      - name: Initialize the Project Environment
+        run: |
+          if [ "$(ps -ef | grep 'mo-service' | grep -v "grep" | wc -l)" -gt 0 ]; then 
+            echo 'mo server normal running...';
+          else 
+            cd $GITHUB_WORKSPACE/head && rm -rf mo-data
+            nohup ./mo-service -debug-http :9876 -launch ./etc/launch-tae-CN-tae-DN/launch.toml > mo-service.log 2>&1 &
+            locale
+            sleep 120s
+          fi
+      
+      - name: Start Load Data SSB Multi table
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          locale
+          sleep 50s
+          cd /data/mo-load-data
+          ./load.sh -c cases/ssb_1 -m
+          ./load.sh -c cases/ssb_10 -m
+          ./load.sh -c cases/ssb_100 -m
+          
+      - name: Start SSB 1G multi table Test 
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          cd /data/mo-ssb
+          ./run.sh -q all -s 1 -t 5
+          
+      - name: Start SSB 10G multi table Test 
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          cd /data/mo-ssb
+          ./run.sh -q all -s 10 -t 5
+          
+      - name: Start SSB 100G multi table Test 
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          cd /data/mo-ssb
+          ./run.sh -q all -s 100 -t 5
+        
+      - name: Generate Upload Files
+        if: ${{ always() }}
+        continue-on-error: true
+        run: |
+          cd ${{ github.workspace }}/head && cp mo-service.log mo-ssb.log && echo "test ssb end..." > mo-service.log 
+          mv ${{ github.workspace }}/head/mo-ssb.log ${{ github.workspace }}/upload/
+          
+  tpch_benchmark_test:
+    if: ${{ inputs.JobName }} == 'all-jobs' || ${{ inputs.JobName }} == 'tpch_benchmark_test'
+    name: TPCH BENCHMARK TEST
+    runs-on: runner_auto_test
+    needs: setup_mo_test_env
+    steps:
+      - name: Initialize the Project Environment
+        run: |
+          if [ "$(ps -ef | grep 'mo-service' | grep -v "grep" | wc -l)" -gt 0 ]; then 
+            echo 'mo server normal running'; 
+          else 
+            cd $GITHUB_WORKSPACE/head && rm -rf mo-data
+            nohup ./mo-service -debug-http :9876 -launch ./etc/launch-tae-CN-tae-DN/launch.toml > mo-service.log 2>&1 &
+            locale
+            sleep 120s
+          fi
+          
+      - name: Load TPCH Test Data 
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          locale
+          sleep 50s
+          cd /data/mo-load-data
+          ./load.sh -c cases/tpch_1 -m
+          ./load.sh -c cases/tpch_10 -m
+          ./load.sh -c cases/tpch_100 -m
+      
+      - name: Start TPCH 1G Test 
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          cd /data/mo-tpch
+          ./run.sh -q all -s 1 -t 5
+          
+      - name: Start TPCH 10G Test 
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          cd /data/mo-tpch
+          ./run.sh -q all -s 10 -t 5
+          
+#      - name: Start TPCH 100G Test
+#        if: ${{ always() && !cancelled() }}
+#        run: |
+#          export LC_ALL="C.UTF-8"
+#          cd /data/mo-tpch
+#          ./run.sh -q all -s 100 -t 5
+
+      - name: Generate Upload Files
+        if: ${{ always() }}
+        continue-on-error: true
+        run: |
+          cd ${{ github.workspace }}/head && cp mo-service.log mo-tpch.log && echo "test tpch end..." > mo-service.log
+          mv ${{ github.workspace }}/head/mo-tpch.log ${{ github.workspace }}/upload/
+
+  tpcc_benchmark_test:
+    if: ${{ inputs.JobName }} == 'all-jobs' || ${{ inputs.JobName }} == 'tpcc_benchmark_test'
+    name: TPCC BENCHMARK TEST
+    runs-on: runner_auto_test
+    needs: setup_mo_test_env
+    steps:
+      - name: Initialize the Project Environment
+        run: |
+          if [ "$(ps -ef | grep 'mo-service' | grep -v "grep" | wc -l)" -gt 0 ]; then 
+            echo 'mo server normal running'; 
+          else 
+            cd $GITHUB_WORKSPACE/head && rm -rf mo-data
+            nohup ./mo-service -debug-http :9876 -launch ./etc/launch-tae-CN-tae-DN/launch.toml > mo-service.log 2>&1 &
+            locale
+            sleep 120s
+          fi
+          
+      - name: Load TPCC Data
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          locale
+          sleep 50s
+          cd /data/mo-load-data
+          ./load.sh -c cases/tpcc_1 -m
+          ./load.sh -c cases/tpcc_10 -m
+
+      - name: Start TPCC 1 Warehouses 1 terminals Test
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          locale
+          cd /data/mo-tpcc
+                    
+          if [ -f benchmarksql-error.log ];then
+            mv benchmarksql-error.log benchmarksql-error-1-1.log
+          fi
+          
+          sed -i '/.*terminals=*/c\terminals=1' props_1.mo
+          sed -i '/.*expectedErrorCodes=*/c\expectedErrorCodes=20619,1062' props_1.mo 
+          ./runBenchmark.sh props_1.mo
+          ./runVerify.sh props_1.mo
+
+      - name: Start TPCC 1 Warehouses 5 terminals Test
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          locale
+          cd /data/mo-tpcc
+          
+          if [ -f benchmarksql-error.log ];then
+            mv benchmarksql-error.log benchmarksql-error-1-5.log
+          fi
+          
+          sed -i '/.*terminals=*/c\terminals=5' props_1.mo
+          sed -i '/.*expectedErrorCodes=*/c\expectedErrorCodes=20619,1062' props_1.mo
+          ./runBenchmark.sh props_1.mo
+          ./runVerify.sh props_1.mo
+
+      - name: Start TPCC 1 Warehouses 10 terminals Test
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          locale
+          cd /data/mo-tpcc
+          
+          if [ -f benchmarksql-error.log ];then
+            mv benchmarksql-error.log benchmarksql-error-1-10.log
+          fi
+          
+          sed -i '/.*terminals=*/c\terminals=10' props_1.mo
+          sed -i '/.*expectedErrorCodes=*/c\expectedErrorCodes=20619,1062' props_1.mo
+          ./runBenchmark.sh props_1.mo
+          ./runVerify.sh props_1.mo
+
+      - name: Start TPCC 10 Warehouses 10 terminals Test
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          locale
+          cd /data/mo-tpcc
+          
+          if [ -f benchmarksql-error.log ];then
+            mv benchmarksql-error.log benchmarksql-error-10-10.log
+          fi
+          
+          sed -i '/.*terminals=*/c\terminals=10' props_10.mo
+          sed -i '/.*expectedErrorCodes=*/c\expectedErrorCodes=20619,1062' props_10.mo
+          ./runBenchmark.sh props_10.mo
+          ./runVerify.sh props_10.mo
+
+      - name: Start TPCC 10 Warehouses 50 terminals Test
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          locale
+          cd /data/mo-tpcc
+          
+          if [ -f benchmarksql-error.log ];then
+            mv benchmarksql-error.log benchmarksql-error-10-50.log
+          fi
+          
+          sed -i '/.*terminals=*/c\terminals=50' props_10.mo
+          sed -i '/.*expectedErrorCodes=*/c\expectedErrorCodes=20619,1062' props_10.mo
+          ./runBenchmark.sh props_10.mo
+          ./runVerify.sh props_10.mo
+
+      - name: Start TPCC 10 Warehouses 100 terminals Test
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          locale
+          cd /data/mo-tpcc
+          
+          if [ -f benchmarksql-error.log ];then
+            mv benchmarksql-error.log benchmarksql-error-100-50.log
+          fi
+          
+          sed -i '/.*terminals=*/c\terminals=100' props_10.mo
+          sed -i '/.*expectedErrorCodes=*/c\expectedErrorCodes=20619,1062' props_10.mo
+          ./runBenchmark.sh props_10.mo
+          ./runVerify.sh props_10.mo
+          
+      - name: Generate Upload Files
+        if: ${{ always() }}
+        continue-on-error: true
+        run: |
+          cd ${{ github.workspace }}/head && cp mo-service.log mo-tpcc.log && echo "test tpcc end..." > mo-service.log
+          mv ${{ github.workspace }}/head/mo-tpcc.log ${{ github.workspace }}/upload/
+        
+  load_data_test:
+    if: ${{ inputs.JobName }} == 'all-jobs' || ${{ inputs.JobName }} == 'load_data_test'
+    name: LOAD DATA TEST
+    runs-on: runner_auto_test
+    needs: setup_mo_test_env
+    steps:
+      - name: Initialize the Project Environment
+        run: |
+          if [ "$(ps -ef | grep 'mo-service' | grep -v "grep" | wc -l)" -gt 0 ]; then 
+            echo 'mo server normal running';
+          else 
+            cd $GITHUB_WORKSPACE/head && rm -rf mo-data
+            nohup ./mo-service -debug-http :9876 -launch ./etc/launch-tae-CN-tae-DN/launch.toml > mo-service.log 2>&1 &
+            locale
+            sleep 120s
+          fi
+          
+      - name: Start LOAD DATA 20 Columns Test 
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          cd /data/mo-load-data
+          ./load.sh -c cases/20_columns -m
+      
+      - name: Start LOAD DATA 100 Columns Test 
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          cd /data/mo-load-data
+          ./load.sh -c cases/100_columns -m
+      
+      - name: Start LOAD DATA 200 Columns Test 
+        if: ${{ always() && !cancelled() }}
+        run: |
+          export LC_ALL="C.UTF-8"
+          cd /data/mo-load-data
+          ./load.sh -c cases/200_columns -m
+          
+      - name: Generate Upload Files
+        if: ${{ always() }}
+        continue-on-error: true
+        run: |
+          cd ${{ github.workspace }}/head && cp mo-service.log load-data.log && echo "test load data end..." > mo-service.log
+          mv ${{ github.workspace }}/head/load-data.log ${{ github.workspace }}/upload/
+  
+  report_test_result:
+    if: ${{ always() && !cancelled() }}
+    name: REPORT TEST RESULT
+    runs-on: runner_auto_test
+    needs: [setup_mo_test_env,build_verification_test,sysbench_oltp_test,tpcc_benchmark_test,tpch_benchmark_test,ssb_benchmark_test,load_data_test]
+    steps:
+      - name: Stop Resource Utility Colleciton
+        run: |
+          pid=$(ps -ef | grep resr.sh | grep -v grep | awk -F ' ' '{print $2}')
+          kill -9 $pid
