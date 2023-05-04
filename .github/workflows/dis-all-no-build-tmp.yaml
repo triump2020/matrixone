@@ -232,14 +232,6 @@ jobs:
           path: ./mo-load-data
           ref: main
 
-      - name: Clone mo-autotest Repo
-        uses: actions/checkout@v2
-        with:
-          repository: matrixorigin/mo-autotest
-          token: ${{secrets.TOOL_REPO_TOKEN}}
-          path: ./mo-autotest
-          ref: main
-
       - name: Prepare Test EVN
         run: |
           sudo apt-get update
@@ -323,14 +315,6 @@ jobs:
           path: ./mo-load-data
           ref: main
 
-      - name: Clone mo-autotest Repo
-        uses: actions/checkout@v2
-        with:
-          repository: matrixorigin/mo-autotest
-          token: ${{secrets.TOOL_REPO_TOKEN}}
-          path: ./mo-autotest
-          ref: main
-
       - name: Prepare Test EVN
         run: |
           sudo apt-get update
@@ -411,14 +395,6 @@ jobs:
           repository: matrixorigin/mo-sysbench
           token: ${{secrets.TOOL_REPO_TOKEN}}
           path: ./mo-sysbench
-          ref: main
-
-      - name: Clone mo-autotest Repo
-        uses: actions/checkout@v2
-        with:
-          repository: matrixorigin/mo-autotest
-          token: ${{secrets.TOOL_REPO_TOKEN}}
-          path: ./mo-autotest
           ref: main
 
       - name: Prepare AWS Tools
@@ -517,22 +493,6 @@ jobs:
           cd $GITHUB_WORKSPACE/mo-load
           ./start.sh -c cases/sysbench/delete_pk_10_100000 -t 1000
 
-      - name: Modify Report Database Config
-        if: ${{ always() && !cancelled() }}
-        run: |
-          echo ${{ needs.docker-image-build.outputs.version }}
-          cd $GITHUB_WORKSPACE/mo-autotest/result
-          sed -i '/  SYSBENCH:*/c\  SYSBENCH: "${{ github.workspace }}\/mo-load\/report"' config.yml
-          sed -i '/  host:*/c\  host: "${{secrets.REPORT_DB_ADDR}}"' config.yml
-          sed -i '/  port:*/c\  port: ${{secrets.REPORT_DB_PORT}}' config.yml
-          sed -i '/  user:*/c\  user: "${{secrets.REPORT_DB_USER}}"' config.yml
-          sed -i '/  password:*/c\  password: "${{secrets.REPORT_DB_PASSWORD}}"' config.yml
-          sed -i '/  database:*/c\  database: "${{secrets.REPORT_DB_NAME}}"' config.yml
-          grep host config.yml
-          grep port config.yml
-          grep user config.yml
-          grep SYSBENCH config.yml
-
   tpcc_benchmark_test:
     if: ${{ inputs.JobName == 'all-jobs' }}
     name: TPCC BENCHMARK TEST
@@ -553,14 +513,6 @@ jobs:
           repository: matrixorigin/mo-load-data
           token: ${{secrets.TOOL_REPO_TOKEN}}
           path: ./mo-load-data
-          ref: main
-
-      - name: Clone mo-autotest Repo
-        uses: actions/checkout@v2
-        with:
-          repository: matrixorigin/mo-autotest
-          token: ${{secrets.TOOL_REPO_TOKEN}}
-          path: ./mo-autotest
           ref: main
 
       - name: Prepare Test EVN
@@ -641,14 +593,6 @@ jobs:
           repository: matrixorigin/mo-load-data
           token: ${{secrets.TOOL_REPO_TOKEN}}
           path: ./mo-load-data
-          ref: main
-
-      - name: Clone mo-autotest Repo
-        uses: actions/checkout@v2
-        with:
-          repository: matrixorigin/mo-autotest
-          token: ${{secrets.TOOL_REPO_TOKEN}}
-          path: ./mo-autotest
           ref: main
 
       - name: Prepare Test EVN
