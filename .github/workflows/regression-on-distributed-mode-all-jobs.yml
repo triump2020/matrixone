@@ -92,8 +92,7 @@ jobs:
         uses: docker/setup-qemu-action@master
         with:
           image: tonistiigi/binfmt:latest
-          platforms:  linux/amd64,linux/arm64
-
+          platforms:  linux/amd64
       - name: Set up Docker Buildx
         id: buildx
         uses:  docker/setup-buildx-action@v1
@@ -111,7 +110,7 @@ jobs:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
           file: ./optools/images/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: ${{ steps.prep.outputs.tags }}
   
@@ -121,7 +120,7 @@ jobs:
     timeout-minutes: 60
     name: SETUP MO TEST ENV
     steps:
-      - name: Clone mo-night-regression Repo
+      - name: Clone mo-auto-test Repo
         uses: actions/checkout@v2
         with:
           repository: matrixorigin/mo-auto-test
@@ -161,12 +160,12 @@ jobs:
         run: |
            aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
            export KUBECONFIG=$(pwd)/eks-ci
-           if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
+           if [ "$(kubectl get namespaces|grep mo-autotest|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-autotest;kubectl -n mo-autotest create secret generic aws-auto --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
        
       - name: Clean EKS ENV
         run: |
           export KUBECONFIG=$(pwd)/eks-ci
-          if [ "$(kubectl -n mo-nightly-regression get pod|grep "nightly-regression-*"|wc -l)" -ne 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl -n mo-nightly-regression delete -f $GITHUB_WORKSPACE/mo-auto-test/mo-ben.yml;sleep 30s;fi
+          if [ "$(kubectl -n mo-autotest get pod|grep "autotest-dis-*"|wc -l)" -ne 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl -n mo-autotest delete -f $GITHUB_WORKSPACE/mo-auto-test/mo-ben.yml;sleep 30s;fi
           aws s3 rm s3://mo-ares/mo-benchmark-test/data --recursive > /dev/null 2>&1
           #aws s3 rm s3://mo-ares/mo-benchmark-test/etl --recursive > /dev/null 2>&1
           aws s3 --recursive mv s3://mo-ares/mo-benchmark-test/etl s3://mo-ares/mo-benchmark-test/etl_$(date "+%Y%m%d%H%M%S") > /dev/null 2>&1
@@ -180,10 +179,10 @@ jobs:
       - name: Create MO Cluster
         run: |
           export KUBECONFIG=$(pwd)/eks-ci
-          kubectl -n mo-nightly-regression apply -f $GITHUB_WORKSPACE/mo-auto-test/mo-ben.yml
+          kubectl -n mo-autotest apply -f $GITHUB_WORKSPACE/mo-auto-test/mo-ben.yml
           sleep 100s
-          while true; do if [ "$(kubectl -n mo-nightly-regression get pods --field-selector status.phase=Running|grep "nightly-regression-*"|wc -l)" -eq 6 ]; then break; else sleep 10s; continue; fi; done
-          kubectl -n mo-nightly-regression get pod
+          while true; do if [ "$(kubectl -n mo-autotest get pods --field-selector status.phase=Running|grep "autotest-dis-*"|wc -l)" -eq 6 ]; then break; else sleep 10s; continue; fi; done
+          kubectl -n mo-autotest get pod
           if [ ! -d $GITHUB_WORKSPACE/mo-server-log ]; then mkdir $GITHUB_WORKSPACE/mo-server-log;fi;
 
   build_verification_test:
@@ -238,7 +237,7 @@ jobs:
 #         run: |
 #           aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
 #           export KUBECONFIG=$(pwd)/eks-ci
-#           export add_ip=$(kubectl -n mo-nightly-regression get svc | grep "6001/TCP"|awk '{print $3}')
+#           export add_ip=$(kubectl -n mo-autotest get svc | grep "6001/TCP"|awk '{print $3}')
 #           sed -i "s/127.0.0.1:6001/${add_ip}:6001/" $GITHUB_WORKSPACE/mo-tester/mo.yml
 #           sed -i "s/60000/300000/" $GITHUB_WORKSPACE/mo-tester/mo.yml
 #           cat $GITHUB_WORKSPACE/mo-tester/mo.yml    
@@ -247,7 +246,7 @@ jobs:
 #         run: |
 #            aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
 #            export KUBECONFIG=$(pwd)/eks-ci
-#            kubectl exec -it nightly-regression-dis-tp-cn-0 -n mo-nightly-regression -- /bin/sh<<EOF
+#            kubectl exec -it autotest-dis-dis-tp-cn-0 -n mo-autotest -- /bin/sh<<EOF
 #            apt-get update
 #            apt-get install git vim net-tools mysql-client openjdk-8-jdk -y
 #            git clone https://github.com/${{ inputs.Repo }}.git
@@ -261,7 +260,7 @@ jobs:
 #         run: |
 #            aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
 #            export KUBECONFIG=$(pwd)/eks-ci
-#            kubectl exec -it nightly-regression-dis-tp-cn-1 -n mo-nightly-regression -- /bin/sh<<EOF
+#            kubectl exec -it autotest-dis-dis-tp-cn-1 -n mo-autotest -- /bin/sh<<EOF
 #            apt-get update
 #            apt-get install git vim net-tools mysql-client openjdk-8-jdk -y
 #            git clone https://github.com/${{ inputs.Repo }}.git
@@ -301,12 +300,12 @@ jobs:
           path: ./mo-load-data
           ref: main
 
-      - name: Clone mo-nightly-regression Repo
+      - name: Clone mo-autotest Repo
         uses: actions/checkout@v2
         with:
-          repository: matrixorigin/mo-nightly-regression
+          repository: matrixorigin/mo-autotest
           token: ${{secrets.TOOL_REPO_TOKEN}}
-          path: ./mo-nightly-regression
+          path: ./mo-autotest
           ref: main
 
       - name: Prepare Test EVN
@@ -342,13 +341,13 @@ jobs:
         run: |
            aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
            export KUBECONFIG=$(pwd)/eks-ci
-           if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
+           if [ "$(kubectl get namespaces|grep mo-autotest|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-autotest;kubectl -n mo-autotest create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
 
       - name: Get MO Cluster Addr
         id: get_mo_addr
         run: |
           export KUBECONFIG=$(pwd)/eks-ci
-          mo_svc_ip=$(kubectl -n mo-nightly-regression get svc | grep "6001/TCP"|awk '{print $3}')
+          mo_svc_ip=$(kubectl -n mo-autotest get svc | grep "6001/TCP"|awk '{print $3}')
           echo $mo_svc_ip
           echo ::set-output name=mo_svc_ip::${mo_svc_ip}
 
@@ -392,12 +391,12 @@ jobs:
           path: ./mo-load-data
           ref: main
 
-      - name: Clone mo-nightly-regression Repo
+      - name: Clone mo-autotest Repo
         uses: actions/checkout@v2
         with:
-          repository: matrixorigin/mo-nightly-regression
+          repository: matrixorigin/mo-autotest
           token: ${{secrets.TOOL_REPO_TOKEN}}
-          path: ./mo-nightly-regression
+          path: ./mo-autotest
           ref: main
 
       - name: Prepare Test EVN
@@ -433,13 +432,13 @@ jobs:
         run: |
            aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
            export KUBECONFIG=$(pwd)/eks-ci
-           if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
+           if [ "$(kubectl get namespaces|grep mo-autotest|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-autotest;kubectl -n mo-autotest create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
 
       - name: Get MO Cluster Addr
         id: get_mo_addr
         run: |
           export KUBECONFIG=$(pwd)/eks-ci
-          mo_svc_ip=$(kubectl -n mo-nightly-regression get svc | grep "6001/TCP"|awk '{print $3}')
+          mo_svc_ip=$(kubectl -n mo-autotest get svc | grep "6001/TCP"|awk '{print $3}')
           echo $mo_svc_ip
           echo ::set-output name=mo_svc_ip::${mo_svc_ip}
 
@@ -482,12 +481,12 @@ jobs:
           path: ./mo-sysbench
           ref: main
 
-      - name: Clone mo-nightly-regression Repo
+      - name: Clone mo-autotest Repo
         uses: actions/checkout@v2
         with:
-          repository: matrixorigin/mo-nightly-regression
+          repository: matrixorigin/mo-autotest
           token: ${{secrets.TOOL_REPO_TOKEN}}
-          path: ./mo-nightly-regression
+          path: ./mo-autotest
           ref: main
 
       - name: Prepare AWS Tools
@@ -515,13 +514,13 @@ jobs:
         run: |
           aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
           export KUBECONFIG=$(pwd)/eks-ci
-          if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
+          if [ "$(kubectl get namespaces|grep mo-autotest|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-autotest;kubectl -n mo-autotest create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
 
       - name: Get MO Cluster Addr
         id: get_mo_addr
         run: |
           export KUBECONFIG=$(pwd)/eks-ci
-          mo_svc_ip=$(kubectl -n mo-nightly-regression get svc | grep "6001/TCP"|awk '{print $3}')
+          mo_svc_ip=$(kubectl -n mo-autotest get svc | grep "6001/TCP"|awk '{print $3}')
           echo $mo_svc_ip
           echo ::set-output name=mo_svc_ip::${mo_svc_ip}
 
@@ -590,7 +589,7 @@ jobs:
         if: ${{ always() && !cancelled() }}
         run: |
           echo ${{ needs.docker-image-build.outputs.version }}
-          cd $GITHUB_WORKSPACE/mo-nightly-regression/result
+          cd $GITHUB_WORKSPACE/mo-autotest/result
           sed -i '/  SYSBENCH:*/c\  SYSBENCH: "${{ github.workspace }}\/mo-load\/report"' config.yml
           sed -i '/  host:*/c\  host: "${{secrets.REPORT_DB_ADDR}}"' config.yml
           sed -i '/  port:*/c\  port: ${{secrets.REPORT_DB_PORT}}' config.yml
@@ -624,12 +623,12 @@ jobs:
           path: ./mo-load-data
           ref: main
 
-      - name: Clone mo-nightly-regression Repo
+      - name: Clone mo-autotest Repo
         uses: actions/checkout@v2
         with:
-          repository: matrixorigin/mo-nightly-regression
+          repository: matrixorigin/mo-autotest
           token: ${{secrets.TOOL_REPO_TOKEN}}
-          path: ./mo-nightly-regression
+          path: ./mo-autotest
           ref: main
 
       - name: Prepare Test EVN
@@ -665,13 +664,13 @@ jobs:
         run: |
            aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
            export KUBECONFIG=$(pwd)/eks-ci
-           if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
+           if [ "$(kubectl get namespaces|grep mo-autotest|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-autotest;kubectl -n mo-autotest create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
 
       - name: Get MO Cluster Addr
         id: get_mo_addr
         run: |
           export KUBECONFIG=$(pwd)/eks-ci
-          mo_svc_ip=$(kubectl -n mo-nightly-regression get svc | grep "6001/TCP"|awk '{print $3}')
+          mo_svc_ip=$(kubectl -n mo-autotest get svc | grep "6001/TCP"|awk '{print $3}')
           echo $mo_svc_ip
           echo ::set-output name=mo_svc_ip::${mo_svc_ip}
 
@@ -712,12 +711,12 @@ jobs:
           path: ./mo-load-data
           ref: main
 
-      - name: Clone mo-nightly-regression Repo
+      - name: Clone mo-autotest Repo
         uses: actions/checkout@v2
         with:
-          repository: matrixorigin/mo-nightly-regression
+          repository: matrixorigin/mo-autotest
           token: ${{secrets.TOOL_REPO_TOKEN}}
-          path: ./mo-nightly-regression
+          path: ./mo-autotest
           ref: main
 
       - name: Prepare Test EVN
@@ -753,13 +752,13 @@ jobs:
         run: |
            aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
            export KUBECONFIG=$(pwd)/eks-ci
-           if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
+           if [ "$(kubectl get namespaces|grep mo-autotest|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-autotest;kubectl -n mo-autotest create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
 
       - name: Get MO Cluster Addr
         id: get_mo_addr
         run: |
           export KUBECONFIG=$(pwd)/eks-ci
-          mo_svc_ip=$(kubectl -n mo-nightly-regression get svc | grep "6001/TCP"|awk '{print $3}')
+          mo_svc_ip=$(kubectl -n mo-autotest get svc | grep "6001/TCP"|awk '{print $3}')
           echo $mo_svc_ip
           echo ::set-output name=mo_svc_ip::${mo_svc_ip}
 
@@ -784,19 +783,3 @@ jobs:
           export LC_ALL="C.UTF-8"
           cd $GITHUB_WORKSPACE/mo-load-data
           ./load.sh -h ${{ steps.get_mo_addr.outputs.mo_svc_ip }} -c cases/00_from_s3/200_columns -r -m -g
-
-      - name: Modify Report Database Config
-        if: ${{ always() && !cancelled() }}
-        run: |
-          echo ${{ needs.docker-image-build.outputs.version }}
-          cd $GITHUB_WORKSPACE/mo-nightly-regression/result
-          sed -i '/  LOAD:*/c\  LOAD: "${{ github.workspace }}\/mo-load-data\/report"' config.yml
-          sed -i '/  host:*/c\  host: "${{secrets.REPORT_DB_ADDR}}"' config.yml
-          sed -i '/  port:*/c\  port: ${{secrets.REPORT_DB_PORT}}' config.yml
-          sed -i '/  user:*/c\  user: "${{secrets.REPORT_DB_USER}}"' config.yml
-          sed -i '/  password:*/c\  password: "${{secrets.REPORT_DB_PASSWORD}}"' config.yml
-          sed -i '/  database:*/c\  database: "${{secrets.REPORT_DB_NAME}}"' config.yml
-          grep host config.yml
-          grep port config.yml
-          grep user config.yml
-          grep LOAD config.yml
