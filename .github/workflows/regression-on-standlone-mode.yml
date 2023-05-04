@@ -20,6 +20,42 @@ on:
         - ssb_benchmark_test
         - load_data_test
         - report_test_result
+      Repo:
+        required: true
+        default: 'matrixorigin/matrixone'
+        type: string
+      Ref:
+        required: true
+        default: 'main'
+        type: string
+      RunTimes:
+        required: true
+        default: 5
+        type: int
+      Scale:
+        required: true
+        default: 10
+        type: int
+      OLTP_TableNum:
+        required: true
+        default: 10
+        type: int
+      OLTP_TableSize:
+        required: true
+        default: 100000
+        type: int
+      OLTP_ThreadNum:
+        required: true
+        default: 1000
+        type: int
+      TPCC_WarehouseNum:
+        required: true
+        default: 10
+        type: int
+      TPCC_TerminalNum:
+        required: true
+        default: 50
+        type: int
 jobs:
   setup_mo_test_env:
     if: ${{ inputs.JobName }} == 'all-jobs' || ${{ inputs.JobName }} == 'setup_mo_test_env'
@@ -39,8 +75,8 @@ jobs:
         uses: actions/checkout@v2
         with:
           path: ./head
-          repository: matrixorigin/matrixone
-          ref: main
+          repository: ${{ inputs.Repo }}
+          ref: ${{ inputs.Ref }}
 
       - name: Build MatrixOne
         run: |
