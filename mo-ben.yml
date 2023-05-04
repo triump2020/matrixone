@@ -47,7 +47,7 @@ spec:
         memory: 50Gi
     sharedStorage:
       s3:
-        path: mo-ares/mo-benchmark-test/
+        path: mo-ares/mo-autotest/
         s3RetentionPolicy: Retain
         secretRef:
           name: aws-auto
