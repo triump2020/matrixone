@@ -145,7 +145,7 @@ jobs:
         if: ${{ always() && !cancelled() }}
         run: |
           export LC_ALL="C.UTF-8"
-          cd /data/mo-sysbench
+          cd /data/mo-auto/mo-sysbench
           mysql -h127.0.0.1 -udump -p111 -P6001 -e "create database if not exists sbtest;"
           sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off prepare
 
@@ -172,7 +172,7 @@ jobs:
         run: |
           export LC_ALL="C.UTF-8"
           locale
-          cd /data/mo-sysbench
+          cd /data/mo-auto/mo-sysbench
           mysql -h127.0.0.1 -udump -p111 -P6001 -e "create database if not exists sbtest;"
           sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off cleanup
           sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off prepare
@@ -185,7 +185,7 @@ jobs:
         run: |
           export LC_ALL="C.UTF-8"
           locale
-          cd /data/mo-sysbench
+          cd /data/mo-auto/mo-sysbench
           mysql -h127.0.0.1 -udump -p111 -P6001 -e "create database if not exists sbtest;"
           sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off cleanup
           sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off prepare
@@ -198,7 +198,7 @@ jobs:
         run: |
           export LC_ALL="C.UTF-8"
           locale
-          cd /data/mo-sysbench
+          cd /data/mo-auto/mo-sysbench
           mysql -h127.0.0.1 -udump -p111 -P6001 -e "create database if not exists sbtest;"
           sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off cleanup
           sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off prepare
@@ -211,7 +211,7 @@ jobs:
         run: |
           export LC_ALL="C.UTF-8"
           locale
-          cd /data/mo-sysbench
+          cd /data/mo-auto/mo-sysbench
           mysql -h127.0.0.1 -udump -p111 -P6001 -e "create database if not exists sbtest;"
           sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off cleanup
           sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off prepare
@@ -224,7 +224,7 @@ jobs:
         run: |
           export LC_ALL="C.UTF-8"
           locale
-          cd /data/mo-sysbench
+          cd /data/mo-auto/mo-sysbench
           mysql -h127.0.0.1 -udump -p111 -P6001 -e "create database if not exists sbtest;"
           sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off cleanup
           sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off prepare
@@ -237,7 +237,7 @@ jobs:
         run: |
           export LC_ALL="C.UTF-8"
           locale
-          cd /data/mo-sysbench
+          cd /data/mo-auto/mo-sysbench
           mysql -h127.0.0.1 -udump -p111 -P6001 -e "create database if not exists sbtest;"
           sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off cleanup
           sysbench  --mysql-host=127.0.0.1 --mysql-port=6001 --mysql-user=dump --mysql-password=111 oltp_common.lua  --mysql-db=sbtest --tables=10 --table_size=100000 --threads=1 --time=30 --report-interval=10 --create_secondary=off  --auto_inc=off prepare
@@ -275,7 +275,7 @@ jobs:
           export LC_ALL="C.UTF-8"
           locale
           sleep 50s
-          cd /data/mo-load-data
+          cd /data/mo-auto/mo-load-data
           ./load.sh -c cases/ssb_1 -m
           ./load.sh -c cases/ssb_10 -m
           ./load.sh -c cases/ssb_100 -m
@@ -284,21 +284,21 @@ jobs:
         if: ${{ always() && !cancelled() }}
         run: |
           export LC_ALL="C.UTF-8"
-          cd /data/mo-ssb
+          cd /data/mo-auto/mo-ssb
           ./run.sh -q all -s 1 -t 5
           
       - name: Start SSB 10G multi table Test 
         if: ${{ always() && !cancelled() }}
         run: |
           export LC_ALL="C.UTF-8"
-          cd /data/mo-ssb
+          cd /data/mo-auto/mo-ssb
           ./run.sh -q all -s 10 -t 5
           
       - name: Start SSB 100G multi table Test 
         if: ${{ always() && !cancelled() }}
         run: |
           export LC_ALL="C.UTF-8"
-          cd /data/mo-ssb
+          cd /data/mo-auto/mo-ssb
           ./run.sh -q all -s 100 -t 5
         
       - name: Generate Upload Files
@@ -331,7 +331,7 @@ jobs:
           export LC_ALL="C.UTF-8"
           locale
           sleep 50s
-          cd /data/mo-load-data
+          cd /data/mo-auto/mo-load-data
           ./load.sh -c cases/tpch_1 -m
           ./load.sh -c cases/tpch_10 -m
           ./load.sh -c cases/tpch_100 -m
@@ -347,7 +347,7 @@ jobs:
         if: ${{ always() && !cancelled() }}
         run: |
           export LC_ALL="C.UTF-8"
-          cd /data/mo-tpch
+          cd /data/mo-auto/mo-tpch
           ./run.sh -q all -s 10 -t 5
           
 #      - name: Start TPCH 100G Test
@@ -387,7 +387,7 @@ jobs:
           export LC_ALL="C.UTF-8"
           locale
           sleep 50s
-          cd /data/mo-load-data
+          cd /data/mo-auto/mo-load-data
           ./load.sh -c cases/tpcc_1 -m
           ./load.sh -c cases/tpcc_10 -m
 
@@ -396,7 +396,7 @@ jobs:
         run: |
           export LC_ALL="C.UTF-8"
           locale
-          cd /data/mo-tpcc
+          cd /data/mo-auto/mo-tpcc
                     
           if [ -f benchmarksql-error.log ];then
             mv benchmarksql-error.log benchmarksql-error-1-1.log
@@ -412,7 +412,7 @@ jobs:
         run: |
           export LC_ALL="C.UTF-8"
           locale
-          cd /data/mo-tpcc
+          cd /data/mo-auto/mo-tpcc
           
           if [ -f benchmarksql-error.log ];then
             mv benchmarksql-error.log benchmarksql-error-1-5.log
@@ -428,7 +428,7 @@ jobs:
         run: |
           export LC_ALL="C.UTF-8"
           locale
-          cd /data/mo-tpcc
+          cd /data/mo-auto/mo-tpcc
           
           if [ -f benchmarksql-error.log ];then
             mv benchmarksql-error.log benchmarksql-error-1-10.log
@@ -444,7 +444,7 @@ jobs:
         run: |
           export LC_ALL="C.UTF-8"
           locale
-          cd /data/mo-tpcc
+          cd /data/mo-auto/mo-tpcc
           
           if [ -f benchmarksql-error.log ];then
             mv benchmarksql-error.log benchmarksql-error-10-10.log
@@ -460,7 +460,7 @@ jobs:
         run: |
           export LC_ALL="C.UTF-8"
           locale
-          cd /data/mo-tpcc
+          cd /data/mo-auto/mo-tpcc
           
           if [ -f benchmarksql-error.log ];then
             mv benchmarksql-error.log benchmarksql-error-10-50.log
@@ -476,7 +476,7 @@ jobs:
         run: |
           export LC_ALL="C.UTF-8"
           locale
-          cd /data/mo-tpcc
+          cd /data/mo-auto/mo-tpcc
           
           if [ -f benchmarksql-error.log ];then
             mv benchmarksql-error.log benchmarksql-error-100-50.log
@@ -515,21 +515,21 @@ jobs:
         if: ${{ always() && !cancelled() }}
         run: |
           export LC_ALL="C.UTF-8"
-          cd /data/mo-load-data
+          cd /data/mo-auto/mo-load-data
           ./load.sh -c cases/20_columns -m
       
       - name: Start LOAD DATA 100 Columns Test 
         if: ${{ always() && !cancelled() }}
         run: |
           export LC_ALL="C.UTF-8"
-          cd /data/mo-load-data
+          cd /data/mo-auto/mo-load-data
           ./load.sh -c cases/100_columns -m
       
       - name: Start LOAD DATA 200 Columns Test 
         if: ${{ always() && !cancelled() }}
         run: |
           export LC_ALL="C.UTF-8"
-          cd /data/mo-load-data
+          cd /data/mo-auto/mo-load-data
           ./load.sh -c cases/200_columns -m
           
       - name: Generate Upload Files
