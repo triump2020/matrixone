@@ -1,4 +1,4 @@
-name: Regression Test on Standlone Mode ALL Jobs
+name: Regression Test on Standlone Mode ALL Jobs container
 
 on:
   #schedule:
