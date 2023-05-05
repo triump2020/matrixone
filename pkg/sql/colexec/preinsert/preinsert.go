@@ -19,7 +19,6 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/catalog"
 	"github.com/matrixorigin/matrixone/pkg/container/batch"
 	"github.com/matrixorigin/matrixone/pkg/container/vector"
-	"github.com/matrixorigin/matrixone/pkg/logutil"
 	pb "github.com/matrixorigin/matrixone/pkg/pb/plan"
 	"github.com/matrixorigin/matrixone/pkg/sql/colexec"
 	"github.com/matrixorigin/matrixone/pkg/sql/util"
@@ -52,10 +51,6 @@ func Call(idx int, proc *proc, x any, _, _ bool) (bool, error) {
 	}
 
 	defer proc.PutBatch(bat)
-	if len(bat.Vecs) != len(arg.Attrs) {
-		logutil.Info("ddd")
-
-	}
 	newBat := batch.NewWithSize(len(arg.Attrs))
 	newBat.Attrs = arg.Attrs
 	for idx := range arg.Attrs {
