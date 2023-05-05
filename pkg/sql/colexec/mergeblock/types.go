@@ -95,6 +95,10 @@ func (arg *Argument) Split(proc *process.Process, bat *batch.Batch) error {
 			if err := bat.UnmarshalBinary([]byte(metaLocs[i])); err != nil {
 				return err
 			}
+			//if idx == 0 {
+			//	arg.affectedRows += uint64(bat.Length())
+			//}
+			arg.affectedRows += uint64(bat.Length())
 			arg.container.mp2[idx] = append(arg.container.mp2[idx], bat)
 		}
 	}
