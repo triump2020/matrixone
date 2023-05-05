@@ -76,13 +76,18 @@ func (arg *Argument) Split(proc *process.Process, bat *batch.Batch) error {
 	metaLocs := vector.MustStrCol(bat.GetVector(1))
 	for i := range tblIdx {
 		if tblIdx[i] >= 0 {
-			if tblIdx[i] == 0 {
-				location, err := blockio.EncodeLocationFromString(metaLocs[i])
-				if err != nil {
-					return err
-				}
-				arg.affectedRows += uint64(location.Rows())
+			//if tblIdx[i] == 0 {
+			//	location, err := blockio.EncodeLocationFromString(metaLocs[i])
+			//	if err != nil {
+			//		return err
+			//	}
+			//	arg.affectedRows += uint64(location.Rows())
+			//}
+			location, err := blockio.EncodeLocationFromString(metaLocs[i])
+			if err != nil {
+				return err
 			}
+			arg.affectedRows += uint64(location.Rows())
 			vector.AppendBytes(arg.container.mp[int(tblIdx[i])].Vecs[0], []byte(metaLocs[i]), false, proc.GetMPool())
 		} else {
 			idx := int(-(tblIdx[i] + 1))

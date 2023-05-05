@@ -175,6 +175,7 @@ func Call(idx int, proc *process.Process, arg any, isFirst bool, isLast bool) (b
 				}
 			}
 		}
+		ap.container.mp2[0] = ap.container.mp2[0][:0]
 	}
 
 	if ap.IsEnd {
@@ -183,7 +184,7 @@ func Call(idx int, proc *process.Process, arg any, isFirst bool, isLast bool) (b
 		proc.SetInputBatch(insertBatch)
 	}
 
-	ap.container.mp2[0] = ap.container.mp2[0][:0]
+	//ap.container.mp2[0] = ap.container.mp2[0][:0]
 
 	atomic.AddUint64(&ap.affectedRows, affectedRows)
 	return false, nil
