@@ -180,8 +180,8 @@ jobs:
           export KUBECONFIG=$(pwd)/eks-ci
           if [ "$(kubectl -n mo-autotest get pod|grep "autotest-dis-*"|wc -l)" -ne 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl -n mo-autotest delete -f $GITHUB_WORKSPACE/mo-auto-test/mo-ben.yml;sleep 30s;fi
           aws s3 rm s3://mo-ares/mo-auto/data --recursive > /dev/null 2>&1
-          #aws s3 rm s3://mo-ares/mo-auto/etl --recursive > /dev/null 2>&1
-          aws s3 --recursive mv s3://mo-ares/mo-auto/etl s3://mo-ares/mo-auto/etl_$(date "+%Y%m%d%H%M%S") > /dev/null 2>&1
+          aws s3 rm s3://mo-ares/mo-auto/etl --recursive > /dev/null 2>&1
+          #aws s3 --recursive mv s3://mo-ares/mo-auto/etl s3://mo-ares/mo-auto/etl_$(date "+%Y%m%d%H%M%S") > /dev/null 2>&1
           
       - name: ECHO mo-bench.yaml
         run: |
