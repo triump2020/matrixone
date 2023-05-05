@@ -47,7 +47,7 @@ spec:
         memory: 50Gi
     sharedStorage:
       s3:
-        path: mo-ares/mo-autotest/
+        path: mo-ares/mo-auto/
         s3RetentionPolicy: Retain
         secretRef:
           name: aws-auto
@@ -63,7 +63,7 @@ spec:
     cacheVolume:
       size: 100Gi
     sharedStorageCache:
-      memoryCacheSize: 1Gi
+      memoryCacheSize: 8Gi
       diskCacheSize: 1
     config: |
       [cn.Engine]
