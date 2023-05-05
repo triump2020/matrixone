@@ -179,9 +179,9 @@ jobs:
         run: |
           export KUBECONFIG=$(pwd)/eks-ci
           if [ "$(kubectl -n mo-autotest get pod|grep "autotest-dis-*"|wc -l)" -ne 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl -n mo-autotest delete -f $GITHUB_WORKSPACE/mo-auto-test/mo-ben.yml;sleep 30s;fi
-          aws s3 rm s3://mo-ares/mo-benchmark-test/data --recursive > /dev/null 2>&1
-          #aws s3 rm s3://mo-ares/mo-benchmark-test/etl --recursive > /dev/null 2>&1
-          aws s3 --recursive mv s3://mo-ares/mo-benchmark-test/etl s3://mo-ares/mo-benchmark-test/etl_$(date "+%Y%m%d%H%M%S") > /dev/null 2>&1
+          aws s3 rm s3://mo-ares/mo-auto/data --recursive > /dev/null 2>&1
+          #aws s3 rm s3://mo-ares/mo-auto/etl --recursive > /dev/null 2>&1
+          aws s3 --recursive mv s3://mo-ares/mo-auto/etl s3://mo-ares/mo-auto/etl_$(date "+%Y%m%d%H%M%S") > /dev/null 2>&1
           
       - name: ECHO mo-bench.yaml
         run: |
@@ -192,7 +192,7 @@ jobs:
       - name: Create MO Cluster
         run: |
           export KUBECONFIG=$(pwd)/eks-ci
-          kubectl -n mo-nightly-regression apply -f $GITHUB_WORKSPACE/mo-auto-test/mo-ben.yml
+          kubectl -n mo-autotest apply -f $GITHUB_WORKSPACE/mo-auto-test/mo-ben.yml
           sleep 100s
           while true; do if [ "$(kubectl -n mo-autotest get pods --field-selector status.phase=Running|grep "autotest-dis-*"|wc -l)" -eq 6 ]; then break; else sleep 10s; continue; fi; done
           kubectl -n mo-autotest get pod
@@ -203,7 +203,7 @@ jobs:
     name: Build Verification Test
     runs-on: x86-runner
     timeout-minutes: 120
-    needs: [setup_mo_test_env,docker-image-build]
+    needs: [docker-image-build,setup_mo_test_env]
     steps: 
       - name: clone mo-tester repo
         uses: actions/checkout@v2
@@ -313,14 +313,6 @@ jobs:
           path: ./mo-load-data
           ref: main
 
-      - name: Clone mo-nightly-regression Repo
-        uses: actions/checkout@v2
-        with:
-          repository: matrixorigin/mo-nightly-regression
-          token: ${{secrets.TOOL_REPO_TOKEN}}
-          path: ./mo-nightly-regression
-          ref: main
-
       - name: Prepare Test EVN
         run: |
           sudo apt-get update
@@ -386,7 +378,7 @@ jobs:
     name: TPCH BENCHMARK TEST
     runs-on: x86-runner
     timeout-minutes: 180
-    needs: [setup_mo_test_env,docker-image-build]
+    needs: [docker-image-build,setup_mo_test_env]
     steps:
       - name: Clone mo-tpch Repo
         uses: actions/checkout@v2
@@ -402,14 +394,6 @@ jobs:
           repository: matrixorigin/mo-load-data
           token: ${{secrets.TOOL_REPO_TOKEN}}
           path: ./mo-load-data
-          ref: main
-
-      - name: Clone mo-nightly-regression Repo
-        uses: actions/checkout@v2
-        with:
-          repository: matrixorigin/mo-nightly-regression
-          token: ${{secrets.TOOL_REPO_TOKEN}}
-          path: ./mo-nightly-regression
           ref: main
 
       - name: Prepare Test EVN
@@ -476,7 +460,7 @@ jobs:
     if: ${{ inputs.JobName == 'oltp_point_select_test' }}
     name: SYSBENCH OLTP SELECT TEST
     runs-on: x86-runner
-    needs: [setup_mo_test_env,docker-image-build]
+    needs: [docker-image-build,setup_mo_test_env]
     steps:
       - name: Clone mo-load Repo
         uses: actions/checkout@v2
@@ -519,13 +503,12 @@ jobs:
         run: |
           aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
           export KUBECONFIG=$(pwd)/eks-ci
-          if [ "$(kubectl get namespaces|grep mo-nightly-regression|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-nightly-regression;kubectl -n mo-nightly-regression create secret generic aws-regression --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
 
       - name: Get MO Cluster Addr
         id: get_mo_addr
         run: |
           export KUBECONFIG=$(pwd)/eks-ci
-          mo_svc_ip=$(kubectl -n mo-nightly-regression get svc | grep "6001/TCP"|awk '{print $3}')
+          mo_svc_ip=$(kubectl -n mo-autotest get svc | grep "6001/TCP"|awk '{print $3}')
           echo $mo_svc_ip
           echo ::set-output name=mo_svc_ip::${mo_svc_ip}
 
@@ -560,7 +543,7 @@ jobs:
     if: ${{ inputs.JobName == 'oltp_update_test' }}
     name: SYSBENCH OLTP UPDATE TEST
     runs-on: x86-runner
-    needs: [setup_mo_test_env,docker-image-build]
+    needs: [docker-image-build,setup_mo_test_env]
     steps:
       - name: Clone mo-load Repo
         uses: actions/checkout@v2
@@ -576,14 +559,6 @@ jobs:
           repository: matrixorigin/mo-sysbench
           token: ${{secrets.TOOL_REPO_TOKEN}}
           path: ./mo-sysbench
-          ref: main
-
-      - name: Clone mo-nightly-regression Repo
-        uses: actions/checkout@v2
-        with:
-          repository: matrixorigin/mo-nightly-regression
-          token: ${{secrets.TOOL_REPO_TOKEN}}
-          path: ./mo-nightly-regression
           ref: main
 
       - name: Prepare AWS Tools
@@ -611,7 +586,6 @@ jobs:
         run: |
           aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
           export KUBECONFIG=$(pwd)/eks-ci
-          if [ "$(kubectl get namespaces|grep mo-autotest|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-autotest;kubectl -n mo-test create secret generic aws-auto --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
 
       - name: Get MO Cluster Addr
         id: get_mo_addr
@@ -652,7 +626,7 @@ jobs:
     if: ${{ inputs.JobName == 'oltp_insert_test' }}
     name: SYSBENCH OLTP INSERT TEST
     runs-on: x86-runner
-    needs: [setup_mo_test_env,docker-image-build]
+    needs: [docker-image-build,setup_mo_test_env]
     steps:
       - name: Clone mo-load Repo
         uses: actions/checkout@v2
@@ -695,7 +669,6 @@ jobs:
         run: |
           aws eks --region us-west-2 update-kubeconfig --name eks-ci --kubeconfig eks-ci
           export KUBECONFIG=$(pwd)/eks-ci
-          if [ "$(kubectl get namespaces|grep mo-autotest|wc -l)" -eq 0 ];then export KUBECONFIG=$(pwd)/eks-ci; kubectl create namespace mo-autotest;kubectl -n mo-autotest create secret generic aws-auto --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.ACCESSKEY_ID }} --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.SECRETACCESS_KEY }};fi 
 
       - name: Get MO Cluster Addr
         id: get_mo_addr
@@ -737,7 +710,7 @@ jobs:
     if: ${{ inputs.JobName == 'oltp_delete_test' }}
     name: SYSBENCH OLTP DELETE TEST
     runs-on: x86-runner
-    needs: [setup_mo_test_env,docker-image-build]
+    needs: [docker-image-build,setup_mo_test_env]
     steps:
       - name: Clone mo-load Repo
         uses: actions/checkout@v2
@@ -820,7 +793,7 @@ jobs:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'oltp_all_test' }}
     name: SYSBENCH OLTP TEST
     runs-on: x86-runner
-    needs: [setup_mo_test_env,docker-image-build]
+    needs: [docker-image-build,setup_mo_test_env]
     steps:
       - name: Clone mo-load Repo
         uses: actions/checkout@v2
@@ -936,7 +909,7 @@ jobs:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'tpcc_benchmark_test' }}
     name: TPCC BENCHMARK TEST
     runs-on: x86-runner
-    needs: [setup_mo_test_env,docker-image-build]
+    needs: [docker-image-build,setup_mo_test_env]
     steps:
       - name: Clone mo-tpcc Repo
         uses: actions/checkout@v2
@@ -1021,7 +994,7 @@ jobs:
   load_data_20_col_test:
     if: ${{ inputs.JobName == 'load_data_20_col_test' }}
     runs-on: x86-runner
-    needs: setup_mo_test_env
+    needs: [docker-image-build,setup_mo_test_env]
     name: LOAD DATA 20 COLUMNS TEST
     steps:
       - name: Clone mo-load-data Repo
@@ -1080,7 +1053,7 @@ jobs:
   load_data_100_col_test:
     if: ${{ inputs.JobName  == 'load_data_100_col_test' }}
     runs-on: x86-runner
-    needs: setup_mo_test_env
+    needs: [docker-image-build,setup_mo_test_env]
     name: LOAD DATA 100 COLUMNS TEST
     steps:
       - name: Clone mo-load-data Repo
@@ -1140,7 +1113,7 @@ jobs:
   load_data_200_col_test:
     if: ${{ inputs.JobName == 'load_data_200_col_test' }}
     runs-on: x86-runner
-    needs: setup_mo_test_env
+    needs: [docker-image-build,setup_mo_test_env]
     name: LOAD DATA 200 COLUMNS TEST
     steps:
       - name: Clone mo-load-data Repo
@@ -1199,7 +1172,7 @@ jobs:
     if: ${{ inputs.JobName == 'all-jobs' || inputs.JobName == 'load_data_test' }}
     name: LOAD DATA TEST
     runs-on: x86-runner
-    needs: [setup_mo_test_env,docker-image-build]
+    needs: [docker-image-build,setup_mo_test_env]
     steps:
       - name: Clone mo-load-data Repo
         uses: actions/checkout@v2
@@ -1207,14 +1180,6 @@ jobs:
           repository: matrixorigin/mo-load-data
           token: ${{secrets.TOOL_REPO_TOKEN}}
           path: ./mo-load-data
-          ref: main
-
-      - name: Clone mo-nightly-regression Repo
-        uses: actions/checkout@v2
-        with:
-          repository: matrixorigin/mo-nightly-regression
-          token: ${{secrets.TOOL_REPO_TOKEN}}
-          path: ./mo-nightly-regression
           ref: main
 
       - name: Prepare Test EVN
