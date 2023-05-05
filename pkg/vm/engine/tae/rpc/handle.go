@@ -17,6 +17,7 @@ package rpc
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"sync"
 	"syscall"
@@ -768,12 +769,16 @@ func (h *Handle) HandleWrite(
 		if req.FileName != "" {
 			locations := make([]objectio.Location, 0)
 			for _, metLoc := range req.MetaLocs {
+				if req.TableName == "lineorder" {
+					fmt.Printf("\nHandleWrite:meta location is %s\n", metLoc)
+				}
 				location, err := blockio.EncodeLocationFromString(metLoc)
 				if err != nil {
 					return err
 				}
 				locations = append(locations, location)
 			}
+
 			err = tb.AddBlksWithMetaLoc(
 				nil,
 				locations)
