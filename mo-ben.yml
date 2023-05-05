@@ -63,7 +63,7 @@ spec:
     cacheVolume:
       size: 100Gi
     sharedStorageCache:
-      memoryCacheSize: 16Gi
+      memoryCacheSize: 1Gi
       diskCacheSize: 1
     config: |
       [cn.Engine]
