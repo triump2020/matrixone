@@ -497,7 +497,7 @@ jobs:
     if: ${{ inputs.JobName == 'all-jobs' }}
     name: TPCC BENCHMARK TEST
     runs-on: x86-runner
-    needs: [setup_mo_test_env,build_verification_test,ssb_benchmark_test,tpch_benchmark_test,oltp_all_test]
+    needs: [setup_mo_test_env,build_verification_test,ssb_benchmark_test,tpch_benchmark_test]
     steps:
       - name: Clone mo-tpcc Repo
         uses: actions/checkout@v2
@@ -585,7 +585,7 @@ jobs:
     if: ${{ inputs.JobName == 'load_data_test' }}
     name: LOAD DATA TEST
     runs-on: x86-runner
-    needs: [setup_mo_test_env,build_verification_test,ssb_benchmark_test,tpch_benchmark_test,oltp_all_test,tpcc_benchmark_test]
+    needs: [setup_mo_test_env,build_verification_test,ssb_benchmark_test,tpch_benchmark_test,tpcc_benchmark_test]
     steps:
       - name: Clone mo-load-data Repo
         uses: actions/checkout@v2
