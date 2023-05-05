@@ -15,7 +15,6 @@
 package colexec
 
 import (
-	"fmt"
 	"github.com/matrixorigin/matrixone/pkg/catalog"
 	"github.com/matrixorigin/matrixone/pkg/common/moerr"
 	"github.com/matrixorigin/matrixone/pkg/common/mpool"
@@ -39,8 +38,6 @@ type S3Writer struct {
 	sortIndex int
 	pk        map[string]struct{}
 	idx       int16
-	//for debug
-	name string
 
 	writer  *blockio.BlockWriter
 	lengths []uint64
@@ -129,7 +126,6 @@ func AllocS3Writer(tableDef *plan.TableDef) (*S3Writer, error) {
 		sortIndex: -1,
 		pk:        make(map[string]struct{}),
 		idx:       0,
-		name:      tableDef.Name,
 		sels:      make([]int64, options.DefaultBlockMaxRows),
 	}
 	for j := 0; j < int(options.DefaultBlockMaxRows); j++ {
@@ -591,10 +587,6 @@ func (w *S3Writer) writeEndBlocks(proc *process.Process) error {
 		return err
 	}
 	for _, metaLoc := range metaLocs {
-		//logutil.Info("writeEndBlocks: metaloc is %s", metaLoc)
-		if w.name == "lineorder" {
-			fmt.Printf("\nwriteEndBlocks: metaloc is %s\n", metaLoc)
-		}
 		if err := vector.AppendFixed(
 			w.metaLocBat.Vecs[0],
 			w.idx,
