@@ -953,7 +953,7 @@ jobs:
           sed -i '/.*warehouses=*/c\warehouses=${{ inputs.TPCC_WarehouseNum }}' props_${{ inputs.TPCC_WarehouseNum }}.mo
           sed -i 's/tpcc/tpcc_${{ inputs.TPCC_WarehouseNum }}/g' props_${{ inputs.TPCC_WarehouseNum }}.mo
           sed -i 's/127.0.0.1/${{ steps.get_mo_addr.outputs.mo_svc_ip }}/g' props_${{ inputs.TPCC_WarehouseNum }}.mo
-          sed -i 's/runMins=1/runMins=10/g' props_${{ inputs.TPCC_WarehouseNum }}.mo
+          #sed -i 's/runMins=1/runMins=10/g' props_${{ inputs.TPCC_WarehouseNum }}.mo
           ./runBenchmark.sh props_${{ inputs.TPCC_WarehouseNum }}.mo
           
   load_data_20_col_test:
