@@ -43,8 +43,10 @@ func Call(idx int, proc *process.Process, arg any, isFirst bool, isLast bool) (b
 	}
 
 	if len(bat.Zs) == 0 {
+		bat.Clean(proc.Mp())
 		return false, nil
 	}
+	defer proc.PutBatch(bat)
 
 	if err := ap.Split(proc, bat); err != nil {
 		return false, err
@@ -183,8 +185,6 @@ func Call(idx int, proc *process.Process, arg any, isFirst bool, isLast bool) (b
 	} else {
 		proc.SetInputBatch(insertBatch)
 	}
-
-	//ap.container.mp2[0] = ap.container.mp2[0][:0]
 
 	atomic.AddUint64(&ap.affectedRows, affectedRows)
 	return false, nil
