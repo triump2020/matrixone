@@ -48,7 +48,7 @@ spec:
     sharedStorage:
       s3:
         path: mo-ares/mo-auto/
-        s3RetentionPolicy: Retain
+        s3RetentionPolicy:  Delete
         secretRef:
           name: aws-auto
     volume:
