@@ -252,6 +252,10 @@ func (c *Compile) run(s *Scope) error {
 func (c *Compile) Run(_ uint64) error {
 	var wg sync.WaitGroup
 	errC := make(chan error, len(c.scope))
+	// reset early for multi steps
+	for _, s := range c.scope {
+		s.SetContextRecursively(c.proc.Ctx)
+	}
 	for _, s := range c.scope {
 		wg.Add(1)
 		go func(scope *Scope) {
@@ -762,7 +766,6 @@ func (c *Compile) compilePlanScope(ctx context.Context, step int32, curNodeIdx i
 			return nil, err
 		}
 		rs := c.newMergeScope(ss)
-		// updateScopesLastFlag([]*Scope{rs})
 		rs.Magic = Merge
 		c.setAnalyzeCurrent([]*Scope{rs}, c.anal.curr)
 		onDuplicateKeyArg, err := constructOnduplicateKey(n, c.e, c.proc)
@@ -2154,7 +2157,7 @@ func (c *Compile) generateNodes(n *plan.Node) (engine.Nodes, error) {
 	// some log for finding a bug.
 	tblId := rel.GetTableID(ctx)
 	expectedLen := len(ranges)
-	logutil.Infof("cn generateNodes, tbl %d ranges is %d", tblId, expectedLen)
+	logutil.Debugf("cn generateNodes, tbl %d ranges is %d", tblId, expectedLen)
 
 	// If ranges == 0, dont know what type of table is this
 	if len(ranges) == 0 && n.TableDef.TableType != catalog.SystemOrdinaryRel {

@@ -57,11 +57,11 @@ import (
 	"go.uber.org/zap"
 )
 
-func PrintScope(prefix []byte, ss []*Scope) {
+func DebugPrintScope(prefix []byte, ss []*Scope) {
 	for _, s := range ss {
-		PrintScope(append(prefix, '\t'), s.PreScopes)
+		DebugPrintScope(append(prefix, '\t'), s.PreScopes)
 		p := pipeline.NewMerge(s.Instructions, nil)
-		logutil.Infof("%s:%v %v", prefix, s.Magic, p)
+		logutil.Debugf("%s:%v %v", prefix, s.Magic, p)
 	}
 }
 
@@ -81,14 +81,19 @@ func (s *Scope) Run(c *Compile) (err error) {
 	return nil
 }
 
+func (s *Scope) SetContextRecursively(ctx context.Context) {
+	if s.Proc == nil {
+		return
+	}
+	newCtx := s.Proc.ResetContextFromParent(ctx)
+	for _, scope := range s.PreScopes {
+		scope.SetContextRecursively(newCtx)
+	}
+}
+
 // MergeRun range and run the scope's pre-scopes by go-routine, and finally run itself to do merge work.
 func (s *Scope) MergeRun(c *Compile) error {
 	errChan := make(chan error, len(s.PreScopes))
-
-	for _, scope := range s.PreScopes {
-		scope.Proc.ResetContextFromParent(s.Proc.Ctx)
-	}
-
 	for _, scope := range s.PreScopes {
 		switch scope.Magic {
 		case Normal:
@@ -285,6 +290,7 @@ func (s *Scope) ParallelRun(c *Compile, remote bool) error {
 		ss[i].Proc = process.NewWithAnalyze(s.Proc, c.ctx, 0, c.anal.Nodes())
 	}
 	newScope := newParallelScope(s, ss)
+	newScope.SetContextRecursively(s.Proc.Ctx)
 	return newScope.MergeRun(c)
 }
 
@@ -683,7 +689,7 @@ func (s *Scope) notifyAndReceiveFromRemote(errChan chan error) {
 			}
 			defer func(streamSender morpc.Stream) {
 				close(reg.Ch)
-				_ = streamSender.Close()
+				_ = streamSender.Close(false)
 			}(streamSender)
 
 			c, cancel := context.WithTimeout(context.Background(), time.Second*10000)

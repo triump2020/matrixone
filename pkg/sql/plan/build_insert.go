@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"github.com/matrixorigin/matrixone/pkg/catalog"
 	"github.com/matrixorigin/matrixone/pkg/common/moerr"
 	"github.com/matrixorigin/matrixone/pkg/pb/plan"
 	"github.com/matrixorigin/matrixone/pkg/sql/parsers/tree"
@@ -59,17 +60,94 @@ func buildInsert(stmt *tree.Insert, ctx CompilerContext, isReplace bool) (p *Pla
 	}
 	builder.qry.Steps = append(builder.qry.Steps[:sourceStep], builder.qry.Steps[sourceStep+1:]...)
 
-	// new logic
 	objRef := tblInfo.objRef[0]
 	if len(rewriteInfo.onDuplicateIdx) > 0 {
-		err = buildOnDuplicateKeyPlans(builder, bindCtx, rewriteInfo)
+		// append on duplicate key node
+		dupProjection := getProjectionByLastNode(builder, lastNodeId)
+		onDuplicateKeyNode := &Node{
+			NodeType:    plan.Node_ON_DUPLICATE_KEY,
+			Children:    []int32{lastNodeId},
+			ProjectList: dupProjection,
+			OnDuplicateKey: &plan.OnDuplicateKeyCtx{
+				TableDef:        DeepCopyTableDef(tableDef),
+				OnDuplicateIdx:  rewriteInfo.onDuplicateIdx,
+				OnDuplicateExpr: rewriteInfo.onDuplicateExpr,
+			},
+		}
+		lastNodeId = builder.appendNode(onDuplicateKeyNode, bindCtx)
+
+		// append project node to make batch like update logic, not insert
+		updateColLength := len(tableDef.Cols)
+		projectProjection := make([]*Expr, updateColLength*2+1)
+		var insertColPos []int
+		for i, col := range tableDef.Cols {
+			projectProjection[i] = &plan.Expr{
+				Typ: col.Typ,
+				Expr: &plan.Expr_Col{
+					Col: &plan.ColRef{
+						ColPos: int32(i + updateColLength),
+						Name:   col.Name,
+					},
+				},
+			}
+			projectProjection[i+updateColLength+1] = &plan.Expr{
+				Typ: col.Typ,
+				Expr: &plan.Expr_Col{
+					Col: &plan.ColRef{
+						ColPos: int32(i),
+						Name:   col.Name,
+					},
+				},
+			}
+			insertColPos = append(insertColPos, updateColLength+i+1)
+		}
+		rowIdPos := updateColLength
+		projectProjection[updateColLength] = &plan.Expr{
+			Typ: dupProjection[len(dupProjection)-1].Typ,
+			Expr: &plan.Expr_Col{
+				Col: &plan.ColRef{
+					ColPos: int32(len(dupProjection) - 1),
+					Name:   catalog.Row_ID,
+				},
+			},
+		}
+		projectNode := &Node{
+			NodeType:    plan.Node_PROJECT,
+			Children:    []int32{lastNodeId},
+			ProjectList: projectProjection,
+		}
+		lastNodeId = builder.appendNode(projectNode, bindCtx)
+
+		// append sink node
+		lastNodeId = appendSinkNode(builder, bindCtx, lastNodeId)
+		sourceStep = builder.appendStep(lastNodeId)
+
+		// append plans like update
+		tableDef.Cols = append(tableDef.Cols, MakeRowIdColDef())
+		updateBindCtx := NewBindContext(builder, nil)
+		upPlanCtx := &dmlPlanCtx{
+			objRef:          objRef,
+			tableDef:        tableDef,
+			beginIdx:        0,
+			sourceStep:      sourceStep,
+			isMulti:         false,
+			updateColLength: updateColLength,
+			rowIdPos:        rowIdPos,
+			insertColPos:    insertColPos,
+		}
+		err = buildUpdatePlans(ctx, builder, updateBindCtx, upPlanCtx)
+		if err != nil {
+			return nil, err
+		}
+
+		query.StmtType = plan.Query_UPDATE
 	} else {
 		err = buildInsertPlans(ctx, builder, bindCtx, objRef, tableDef, rewriteInfo.rootId)
+		if err != nil {
+			return nil, err
+		}
+		query.StmtType = plan.Query_INSERT
 	}
-	if err != nil {
-		return nil, err
-	}
-	query.StmtType = plan.Query_INSERT
 	return &Plan{
 		Plan: &plan.Plan_Query{
 			Query: query,

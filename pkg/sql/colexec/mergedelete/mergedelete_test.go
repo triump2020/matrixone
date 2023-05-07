@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package mergedelete
 
 import (
@@ -69,28 +70,28 @@ func TestMergeDelete(t *testing.T) {
 		Zs: []int64{1},
 	}
 	uuid1 := objectio.NewSegmentid()
-	blkId1 := objectio.NewBlockid(&uuid1, 0, 0)
+	blkId1 := objectio.NewBlockid(uuid1, 0, 0)
 	metaLocBat1 := &batch.Batch{
 		Attrs: []string{
 			catalog.Row_ID,
 		},
 		Vecs: []*vector.Vector{
 			testutil.MakeRowIdVector([]types.Rowid{
-				objectio.NewRowid(&blkId1, 0),
-				objectio.NewRowid(&blkId1, 1),
-				objectio.NewRowid(&blkId1, 2),
-				objectio.NewRowid(&blkId1, 3),
-				objectio.NewRowid(&blkId1, 4),
-				objectio.NewRowid(&blkId1, 5),
-				objectio.NewRowid(&blkId1, 6),
-				objectio.NewRowid(&blkId1, 7),
-				objectio.NewRowid(&blkId1, 8),
-				objectio.NewRowid(&blkId1, 9),
-				objectio.NewRowid(&blkId1, 10),
-				objectio.NewRowid(&blkId1, 11),
-				objectio.NewRowid(&blkId1, 12),
-				objectio.NewRowid(&blkId1, 13),
-				objectio.NewRowid(&blkId1, 14),
+				*objectio.NewRowid(blkId1, 0),
+				*objectio.NewRowid(blkId1, 1),
+				*objectio.NewRowid(blkId1, 2),
+				*objectio.NewRowid(blkId1, 3),
+				*objectio.NewRowid(blkId1, 4),
+				*objectio.NewRowid(blkId1, 5),
+				*objectio.NewRowid(blkId1, 6),
+				*objectio.NewRowid(blkId1, 7),
+				*objectio.NewRowid(blkId1, 8),
+				*objectio.NewRowid(blkId1, 9),
+				*objectio.NewRowid(blkId1, 10),
+				*objectio.NewRowid(blkId1, 11),
+				*objectio.NewRowid(blkId1, 12),
+				*objectio.NewRowid(blkId1, 13),
+				*objectio.NewRowid(blkId1, 14),
 			}, nil),
 		},
 	}
