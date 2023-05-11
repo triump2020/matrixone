@@ -95,10 +95,10 @@ func (blk *block) RangeDelete(
 		}
 		view, _ := blk.GetColumnDataByIds(txn, schema, attrIds)
 		for i := start; i <= end; i++ {
-			s := fmt.Sprintf("range delete failed, err is %v, row %d, values:", err, i)
-			for i, col := range view.Columns {
+			s := fmt.Sprintf("range delete failed, err is %v, blk %v, row %d, values:", err, blk.baseBlock.meta.ID.String(), i)
+			for j, col := range view.Columns {
 				vec := col.GetData()
-				s = fmt.Sprintf("%s %v %v,", s, attrs[i], vec.Get(i))
+				s = fmt.Sprintf("%s %v %v,", s, attrs[j], vec.Get(int(i)))
 			}
 			logutil.Infof(s)
 		}
