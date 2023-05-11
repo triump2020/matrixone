@@ -18,14 +18,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/matrixorigin/matrixone/pkg/sql/colexec/deletion"
 	"net"
 	"runtime"
 	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
+
+	"github.com/google/uuid"
+	"github.com/matrixorigin/matrixone/pkg/sql/colexec/deletion"
 
 	"github.com/matrixorigin/matrixone/pkg/cnservice/cnclient"
 	"github.com/matrixorigin/matrixone/pkg/sql/colexec/dispatch"
