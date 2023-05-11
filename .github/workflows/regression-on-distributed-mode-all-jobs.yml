@@ -14,11 +14,11 @@ on:
           - all-jobs
       Repo:
         required: true
-        default: 'ouyuanning/matrixone'
+        default: 'nnsgmsone/matrixone'
         type: string
       Ref:
         required: true
-        default: '824b81a2015a696b2fff830a098705299496afe0'
+        default: '2a8cbca8ad746795c951e7ee832f0f8b3dfcd137'
         type: string
       RunTimes:
         required: true
