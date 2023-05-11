@@ -18,7 +18,6 @@ import (
 	"context"
 	"math"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/matrixorigin/matrixone/pkg/catalog"
@@ -94,7 +93,7 @@ type Transaction struct {
 	sync.Mutex
 	engine *Engine
 	// readOnly default value is true, once a write happen, then set to false
-	readOnly atomic.Bool
+	readOnly bool
 	// db       *DB
 	// blockId starts at 0 and keeps incrementing,
 	// this is used to name the file on s3 and then give it to tae to use
