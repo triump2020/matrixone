@@ -24,6 +24,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/common/moerr"
 	"github.com/matrixorigin/matrixone/pkg/container/types"
 	"github.com/matrixorigin/matrixone/pkg/logservice"
+	"github.com/matrixorigin/matrixone/pkg/logutil"
 	"github.com/matrixorigin/matrixone/pkg/objectio"
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/common"
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/logstore/driver"
@@ -247,6 +248,7 @@ func (r *baseEntry) ReadFrom(reader io.Reader) (n int64, err error) {
 	}
 	n += n1
 	payload := make([]byte, r.meta.payloadSize)
+	logutil.Infof("payload size is %d, entry length is %v", r.meta.payloadSize, len(r.meta.addr))
 	n2, err := reader.Read(payload)
 	if err != nil {
 		return 0, err
