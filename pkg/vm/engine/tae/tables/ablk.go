@@ -15,6 +15,7 @@
 package tables
 
 import (
+	"fmt"
 	"time"
 
 	"sync/atomic"
@@ -229,6 +230,31 @@ func (blk *ablock) resolveInMemoryColumnDatas(
 			view.DeleteMask.Or(deSels)
 		} else {
 			view.DeleteMask = deSels
+		}
+	}
+	return
+}
+
+func (blk *ablock) RangeDelete(
+	txn txnif.AsyncTxn,
+	start, end uint32,
+	dt handle.DeleteType) (node txnif.DeleteNode, err error) {
+	node, err = blk.baseBlock.RangeDelete(txn, start, end, dt)
+	if err != nil {
+		schema := blk.baseBlock.meta.GetSchema()
+		attrs := schema.Attrs()
+		attrIds := make([]int, len(attrs))
+		for i, attr := range attrs {
+			attrIds[i] = schema.GetColIdx(attr)
+		}
+		view, _ := blk.GetColumnDataByIds(txn, schema, attrIds)
+		for i := start; i <= end; i++ {
+			s := fmt.Sprintf("range delete failed, err is %v, blk %v, row %d, values:", err, blk.baseBlock.meta.ID.String(), i)
+			for j, col := range view.Columns {
+				vec := col.GetData()
+				s = fmt.Sprintf("%s %v %v,", s, attrs[j], vec.Get(int(i)))
+			}
+			logutil.Infof(s)
 		}
 	}
 	return
