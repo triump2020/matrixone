@@ -8,7 +8,7 @@ on:
       JobName:
         description: 'job name'
         required: true
-        default: 'tpch_benchmark_test'
+        default: 'build_verification_test'
         type: choice
         options:
           - all-jobs
@@ -26,11 +26,11 @@ on:
           - tpcc_benchmark_test
       Repo:
         required: true
-        default: 'badboynt1/matrixone'
+        default: 'triump2020/matrixone'
         type: string
       Ref:
         required: true
-        default: 'b0c501817effd66bd8829cba045f1e36d9a532b3'
+        default: '3cd35f305e86ff683b0a5e9dd91cd528dc4648c5'
         type: string
       RunTimes:
         required: true
