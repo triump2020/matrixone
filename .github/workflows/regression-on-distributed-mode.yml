@@ -8,7 +8,7 @@ on:
       JobName:
         description: 'job name'
         required: true
-        default: 'tpcc_benchmark_test'
+        default: 'tpch_benchmark_test'
         type: choice
         options:
           - all-jobs
@@ -26,15 +26,15 @@ on:
           - tpcc_benchmark_test
       Repo:
         required: true
-        default: 'JackTan25/matrixone'
+        default: 'badboynt1/matrixone'
         type: string
       Ref:
         required: true
-        default: 'aee6ba660f502f7431f4ee1484158624f0893a56'
+        default: 'f4dfccdf350de5f56db9397ff9d7473b48bfe74e'
         type: string
       RunTimes:
         required: true
-        default: 1
+        default: 5
         type: int
       Scale:
         required: true
