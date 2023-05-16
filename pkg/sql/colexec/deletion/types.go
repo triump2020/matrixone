@@ -116,6 +116,7 @@ func (arg *Argument) SplitBatch(proc *process.Process, bat *batch.Batch) error {
 		segid := rowId.GetSegid()
 		blkOffset := rowId.GetBlockOffset()
 		rowOffset := rowId.GetRowOffset()
+		// if the row is not in the bucket, we just skip it
 		if blkOffset%uint16(arg.Nbucket) != uint16(arg.IBucket) {
 			continue
 		}
@@ -126,18 +127,22 @@ func (arg *Argument) SplitBatch(proc *process.Process, bat *batch.Batch) error {
 			arg.ctr.blockId_bitmap[str] = nulls.NewWithSize(int(options.DefaultBlockMaxRows))
 		}
 		bitmap = arg.ctr.blockId_bitmap[str]
+		// row may be duplicated, so if the row is already deleted, we just skip it
 		if bitmap.Contains(uint64(rowOffset)) {
 			continue
 		} else {
 			bitmap.Np.Add(uint64(rowOffset))
 		}
+		//row comes from segment which resides in memory and belongs to txn's workspace.
 		if arg.SegmentMap[string(segid[:])] == colexec.TxnWorkSpaceIdType {
 			arg.ctr.blockId_type[str] = RawBatchOffset
 			offsetFlag = true
+			//row comes from segment which resides in S3 and belongs to txn's workspace.
 		} else if arg.SegmentMap[string(segid[:])] == colexec.CnBlockIdType {
 			arg.ctr.blockId_type[str] = CNBlockOffset
 			offsetFlag = true
 		} else {
+			//row comes from block which belongs to txn's snapshot data.
 			arg.ctr.blockId_type[str] = RawRowIdBatch
 		}
 		if _, ok := arg.ctr.blockId_rowIdBatch[str]; !ok {
@@ -190,7 +195,7 @@ func (ctr *container) flush(proc *process.Process) (uint32, error) {
 	}
 	blkids := make([]string, 0, len(ctr.blockId_rowIdBatch))
 	for blkid, bat := range ctr.blockId_rowIdBatch {
-		// don't flush cn block and RawBatch
+		// don't flush cn block and RawBatch, namely only flush rows come from txn's snapshot data.
 		if ctr.blockId_type[blkid] != 0 {
 			continue
 		}

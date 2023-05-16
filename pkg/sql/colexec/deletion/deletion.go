@@ -34,6 +34,7 @@ const (
 	// when it sends the info to mergedeletes,
 	// either it's Compaction or not.
 	Compaction
+	//offset of persisted block resides in S3
 	CNBlockOffset
 	RawBatchOffset
 	FlushMetaLoc
