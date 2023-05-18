@@ -16,6 +16,7 @@ package disttae
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"sync"
 	"time"
@@ -175,11 +176,12 @@ func (b *deletedBlocks) getDeletedOffsetsByBlock(blockID *types.Blockid) []int64
 	return offsets
 }
 
-func (b *deletedBlocks) removeBlockDeletedInfos(ids []*types.Blockid) {
+func (b *deletedBlocks) removeBlockDeletedInfos(ids []types.Blockid) {
 	b.Lock()
 	defer b.Unlock()
 	for _, id := range ids {
-		delete(b.offsets, *id)
+		delete(b.offsets, id)
+		fmt.Printf("delete blockId for deletedBlocks %s\n", (id).String())
 	}
 }
 

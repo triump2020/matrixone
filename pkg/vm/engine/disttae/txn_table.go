@@ -710,16 +710,11 @@ func (tbl *txnTable) EnhanceDelete(bat *batch.Batch, name string) error {
 
 // CN Block Compaction
 func (tbl *txnTable) compaction() error {
+	var err error
 	mp := make(map[int][]int64)
-	s3writer := &colexec.S3Writer{}
-	batchNums := 0
-	name, err := s3writer.GenerateWriter(tbl.db.txn.proc)
-	if err != nil {
-		return err
-	}
 
-	var deletedIDs []*types.Blockid
-	defer tbl.db.txn.deletedBlocks.removeBlockDeletedInfos(deletedIDs)
+	var deletedIDs []types.Blockid
+
 	tbl.db.txn.deletedBlocks.iter(func(id *types.Blockid, deleteOffsets []int64) bool {
 		pos := tbl.db.txn.cnBlkId_Pos[*id]
 		// just do compaction for current txnTable
@@ -728,11 +723,14 @@ func (tbl *txnTable) compaction() error {
 			return true
 		}
 		delete(tbl.db.txn.cnBlkId_Pos, *id)
-		deletedIDs = append(deletedIDs, id)
+		deletedIDs = append(deletedIDs, *id)
 		if len(deleteOffsets) == 0 {
 			return true
 		}
 		mp[pos.idx] = append(mp[pos.idx], pos.offset)
+		if tbl.db.txn.writes[pos.idx].bat == nil {
+			fmt.Printf("compaction get a empty blockId %s\n", (*id).String())
+		}
 		// start compaction
 		metaLoc := tbl.db.txn.writes[pos.idx].bat.GetVector(0).GetStringAt(int(pos.offset))
 		location, e := blockio.EncodeLocationFromString(metaLoc)
@@ -762,33 +760,20 @@ func (tbl *txnTable) compaction() error {
 		if bat.Length() == 0 {
 			return true
 		}
-		// ToDo: Optimize this logic, we need to control blocks num in one file
-		// and make sure one block has as close as possible to 8192 rows
-		// if the batch is little we should not flush, improve this in next pr.
-		s3writer.WriteBlock(bat)
-		batchNums++
+		// write it to txn_writes
+		cols := tbl.tableDef.Cols
+		attrs := make([]string, 0, len(cols))
+		for _, idx := range tbl.seqnums {
+			attrs = append(attrs, cols[idx].Name)
+		}
+		bat.SetAttributes(attrs)
+		tbl.Write(tbl.db.txn.proc.Ctx, bat)
 		return true
 	})
 	if err != nil {
 		return err
 	}
-
-	if batchNums > 0 {
-		metaLocs, err := s3writer.WriteEndBlocks(tbl.db.txn.proc)
-		if err != nil {
-			return err
-		}
-		new_bat := batch.New(false, []string{catalog.BlockMeta_MetaLoc})
-		new_bat.SetVector(0, vector.NewVec(types.T_text.ToType()))
-		for _, metaLoc := range metaLocs {
-			vector.AppendBytes(new_bat.GetVector(0), []byte(metaLoc), false, tbl.db.txn.proc.GetMPool())
-		}
-		new_bat.SetZs(len(metaLocs), tbl.db.txn.proc.GetMPool())
-		err = tbl.db.txn.WriteFile(INSERT, tbl.db.databaseId, tbl.tableId, tbl.db.databaseName, tbl.tableName, name.String(), new_bat, tbl.db.txn.dnStores[0])
-		if err != nil {
-			return err
-		}
-	}
+	defer tbl.db.txn.deletedBlocks.removeBlockDeletedInfos(deletedIDs)
 	remove_batch := make(map[*batch.Batch]bool)
 	// delete old block info
 	for idx, offsets := range mp {
