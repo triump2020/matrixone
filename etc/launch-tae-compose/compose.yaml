@@ -36,6 +36,11 @@ services:
       - AWS_SECRET_ACCESS_KEY=minio123
     networks:
       monet:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 2048M
 
   cn-1:
     container_name: cn-1
@@ -54,7 +59,11 @@ services:
       - AWS_SECRET_ACCESS_KEY=minio123
     networks:
       monet:
-
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 2048M
   dn:
     container_name: dn
     <<: *mo-common
@@ -71,6 +80,11 @@ services:
       - AWS_SECRET_ACCESS_KEY=minio123
     networks:
       monet:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 2048M
 
   logservice:
     container_name: logservice
@@ -90,6 +104,11 @@ services:
       - AWS_SECRET_ACCESS_KEY=minio123
     networks:
       monet:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 1024M
 
   minio:
     image: minio/minio:latest
