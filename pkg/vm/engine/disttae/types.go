@@ -16,7 +16,6 @@ package disttae
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"sync"
 	"time"
@@ -27,6 +26,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/container/types"
 	"github.com/matrixorigin/matrixone/pkg/container/vector"
 	"github.com/matrixorigin/matrixone/pkg/fileservice"
+	"github.com/matrixorigin/matrixone/pkg/logutil"
 	"github.com/matrixorigin/matrixone/pkg/pb/metadata"
 	"github.com/matrixorigin/matrixone/pkg/pb/plan"
 	"github.com/matrixorigin/matrixone/pkg/pb/timestamp"
@@ -181,7 +181,7 @@ func (b *deletedBlocks) removeBlockDeletedInfos(ids []types.Blockid) {
 	defer b.Unlock()
 	for _, id := range ids {
 		delete(b.offsets, id)
-		fmt.Printf("delete blockId for deletedBlocks %s\n", (id).String())
+		logutil.Infof("delete blockId for deletedBlocks %s\n", (id).String())
 	}
 }
 
