@@ -315,4 +315,7 @@ commit;
 select count(*) from t;
 count(*)
 0
+select count(*) from t;
+count(*)
+0
 drop database if exists test;
