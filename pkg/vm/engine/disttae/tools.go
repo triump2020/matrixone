@@ -20,7 +20,9 @@ import (
 	"time"
 
 	"github.com/matrixorigin/matrixone/pkg/fileservice"
+	"github.com/matrixorigin/matrixone/pkg/logutil"
 	"github.com/matrixorigin/matrixone/pkg/pb/timestamp"
+	"github.com/matrixorigin/matrixone/pkg/testutil"
 
 	"github.com/matrixorigin/matrixone/pkg/catalog"
 	"github.com/matrixorigin/matrixone/pkg/common/moerr"
@@ -739,6 +741,8 @@ func genWriteReqs(ctx context.Context, writes []Entry) ([]txn.TxnRequest, error)
 			e.pkChkByDN = v.(int8)
 		}
 		pe, err := toPBEntry(e)
+		logutil.Debugf("commit entry type is: [%d] ,databaseName: [%s] ,tableName: [%s] ,fileName: [%s] ", e.typ, e.databaseName, e.tableName, e.fileName)
+		logutil.Debug(testutil.OperatorCatchBatch("commit entry bat: ", e.bat))
 		if err != nil {
 			return nil, err
 		}
@@ -748,6 +752,7 @@ func genWriteReqs(ctx context.Context, writes []Entry) ([]txn.TxnRequest, error)
 		}
 	}
 	reqs := make([]txn.TxnRequest, 0, len(mp))
+	// for each dn shards
 	for k := range mp {
 		payload, err := types.Encode(&api.PrecommitWriteCmd{EntryList: mp[k]})
 		if err != nil {
