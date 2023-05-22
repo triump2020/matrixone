@@ -787,9 +787,7 @@ func (h *Handle) HandleWrite(
 	if err != nil {
 		return
 	}
-	if req.PkCheck == db.PKCheckDisable {
-		txn.SetPKDedupSkip(txnif.PKDedupSkipWorkSpace)
-	}
+	txn.SetPKDedupSkip(txnif.PKDedupSkipSnapshot)
 	common.DoIfDebugEnabled(func() {
 		logutil.Debugf("[precommit] handle write typ: %v, %d-%s, %d-%s\n txn: %s\n",
 			req.Type, req.TableID,

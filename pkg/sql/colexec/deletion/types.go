@@ -168,6 +168,7 @@ func (arg *Argument) SplitBatch(proc *process.Process, bat *batch.Batch) error {
 		if offsetFlag {
 			continue
 		}
+		//FIXME:: rowid + hidePK + ??
 		arg.ctr.batch_size += 24
 	}
 	// we will flush all

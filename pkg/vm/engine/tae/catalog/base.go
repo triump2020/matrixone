@@ -189,6 +189,14 @@ func (be *BaseEntryImpl[T]) HasDropCommitted() bool {
 	return be.HasDropCommittedLocked()
 }
 
+func (be *BaseEntryImpl[T]) CommittedAndBeforeLocked(ts types.TS) bool {
+	n := be.GetLatestNodeLocked()
+	if n.IsNil() {
+		return false
+	}
+	return n.IsCommitted() && n.GetEnd().LessEq(ts)
+}
+
 func (be *BaseEntryImpl[T]) HasDropCommittedLocked() bool {
 	un := be.GetLatestCommittedNode()
 	if un == nil {

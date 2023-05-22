@@ -1103,7 +1103,9 @@ func (tbl *txnTable) DoPrecommitDedupByPK(pks containers.Vector, zm index.ZM) (e
 				}
 				{
 					blk.RLock()
-					shouldSkip = blk.HasDropCommittedLocked() || blk.IsCreatingOrAborted()
+					shouldSkip = blk.HasDropCommittedLocked() ||
+						blk.IsCreatingOrAborted() ||
+						blk.CommittedAndBeforeLocked(tbl.store.txn.GetStartTS())
 					blk.RUnlock()
 					if shouldSkip {
 						blkIt.Next()
@@ -1189,7 +1191,9 @@ func (tbl *txnTable) DoPrecommitDedupByNode(node InsertNode) (err error) {
 			blk := blkIt.Get().GetPayload()
 			{
 				blk.RLock()
-				shouldSkip = blk.HasDropCommittedLocked() || blk.IsCreatingOrAborted()
+				shouldSkip = blk.HasDropCommittedLocked() ||
+					blk.IsCreatingOrAborted() ||
+					blk.CommittedAndBeforeLocked(tbl.store.txn.GetStartTS())
 				blk.RUnlock()
 				if shouldSkip {
 					blkIt.Next()
