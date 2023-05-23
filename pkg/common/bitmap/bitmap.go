@@ -59,7 +59,7 @@ var rightmost_one_pos_8 = [256]uint8{
 
 func (n *Bitmap) InitWith(other *Bitmap) {
 	n.len = other.len
-	n.emptyFlag = other.emptyFlag
+	n.emptyFlag.Store(other.emptyFlag.Load())
 	n.data = append([]uint64(nil), other.data...)
 }
 
@@ -309,6 +309,17 @@ func (n *Bitmap) And(m *Bitmap) {
 		n.data[i] = 0
 	}
 	n.emptyFlag.CompareAndSwap(kEmptyFlagNotEmpty, kEmptyFlagUnknown)
+}
+
+func (n *Bitmap) Negate() {
+	nBlock, nTail := int(n.len)/64, int(n.len)%64
+	for i := 0; i < nBlock; i++ {
+		n.data[i] = ^n.data[i]
+	}
+	if nTail > 0 {
+		mask := (uint64(1) << nTail) - 1
+		n.data[nBlock] ^= mask
+	}
 }
 
 func (n *Bitmap) TryExpand(m *Bitmap) {
