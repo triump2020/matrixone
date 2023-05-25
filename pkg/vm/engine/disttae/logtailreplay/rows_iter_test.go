@@ -233,3 +233,36 @@ func TestPartitionStateRowsIter(t *testing.T) {
 	}
 
 }
+
+func TestPartitionStateDirtyRowsIter(t *testing.T) {
+	state := NewPartitionState(false)
+	ctx := context.Background()
+	pool := mpool.MustNewZero()
+	packer := types.NewPacker(pool)
+	defer packer.FreeMem()
+
+	sid := objectio.NewSegmentid()
+	buildBlkID := func(i int) types.Blockid {
+		blk := objectio.NewBlockid(sid, uint16(i), 0)
+		return *blk
+	}
+
+	const num = 10
+	//insert  non-appendable block without delta location
+	blkIDVec := vector.NewVec(types.T_Blockid.ToType())
+	cTimeVec := vector.NewVec(types.T_TS.ToType())
+	eStateVec := vector.NewVec(types.T_bool.ToType())
+	for i := 0; i < num; i++ {
+		vector.AppendFixed(blkIDVec, buildBlkID(i+1), false, pool)
+		vector.AppendFixed(cTimeVec, types.BuildTS(int64(i), 0), false, pool)
+		vector.AppendFixed(eStateVec, false, false, pool)
+	}
+	state.HandleMetadataInsert(ctx, &api.Batch{
+		Attrs: []string{"blockid", "ctime", "estate"},
+	})
+
+	//delete rows in non-appendable block
+
+	//insert non-appendable block  with dela location
+
+}
