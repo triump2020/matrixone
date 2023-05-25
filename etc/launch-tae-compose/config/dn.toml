@@ -51,7 +51,7 @@ fileservice = "SHARED"
 log-backend = "logservice"
 
 [dn.Ckp]
-flush-interval = "60s"
+flush-interval = "6s"
 min-count = 100
 scan-interval = "5s"
 incremental-interval = "180s"
