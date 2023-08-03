@@ -16,6 +16,7 @@ package txnbase
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -325,6 +326,10 @@ func (mgr *TxnManager) onPrePrepare(op *OpTxn) {
 	common.DoIfDebugEnabled(func() {
 		logutil.Debug("[PrePrepare]", TxnField(op.Txn), common.DurationField(time.Since(now)))
 	})
+	if time.Since(now) > time.Millisecond*300 {
+		fmt.Printf("Prepare with long latency, duration:%f, txn:%s.\n",
+			time.Since(now).Seconds(), hex.EncodeToString(op.Txn.GetCtx()))
+	}
 }
 
 func (mgr *TxnManager) onPreparCommit(txn txnif.AsyncTxn) {
@@ -516,6 +521,10 @@ func (mgr *TxnManager) dequeuePreparing(items ...any) {
 			common.DurationField(time.Since(now)),
 			common.CountField(len(items)))
 	})
+	if time.Since(now) > time.Millisecond*300 {
+		fmt.Printf("DequeuePreparing with long latency, "+
+			"duration:%f.\n", time.Since(now).Seconds())
+	}
 }
 
 func (mgr *TxnManager) onPrepareWAL(items ...any) {
@@ -546,6 +555,10 @@ func (mgr *TxnManager) onPrepareWAL(items ...any) {
 			common.DurationField(time.Since(now)),
 			common.CountField(len(items)))
 	})
+	if time.Since(now) > time.Millisecond*300 {
+		fmt.Printf("Prepare wal with long latency, duration:%f.\n",
+			time.Since(now).Seconds())
+	}
 }
 
 // 1PC and 2PC
@@ -572,6 +585,10 @@ func (mgr *TxnManager) dequeuePrepared(items ...any) {
 			common.CountField(len(items)),
 			common.DurationField(time.Since(now)))
 	})
+	if time.Since(now) > time.Millisecond*300 {
+		fmt.Printf("DequeuePrepared with long latency, "+
+			"duration:%f.\n", time.Since(now).Seconds())
+	}
 }
 
 func (mgr *TxnManager) OnException(new error) {

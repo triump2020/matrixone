@@ -16,6 +16,7 @@ package txnimpl
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -494,11 +495,17 @@ func (db *txnDB) PrePrepare(ctx context.Context) (err error) {
 			return
 		}
 	}
+	start := time.Now()
 	for _, table := range db.tables {
 		if err = table.PrePrepareDedup(ctx); err != nil {
 			return
 		}
 	}
+	if time.Since(start) > time.Millisecond*200 {
+		fmt.Printf("PrepareDedup with long latency, duration:%f.\n",
+			time.Since(start).Seconds())
+	}
+
 	for _, table := range db.tables {
 		if err = table.PrePrepare(); err != nil {
 			return

@@ -16,6 +16,9 @@ package txnbase
 
 import (
 	"context"
+	"encoding/hex"
+	"fmt"
+	"time"
 
 	"github.com/matrixorigin/matrixone/pkg/common/moerr"
 	"github.com/matrixorigin/matrixone/pkg/logutil"
@@ -57,12 +60,25 @@ func (txn *Txn) commit1PC(ctx context.Context, _ bool) (err error) {
 		return moerr.NewTAECommitNoCtx("invalid txn state %s", txnif.TxnStrState(state))
 	}
 	txn.Add(1)
+	start := time.Now()
 	if err = txn.Freeze(); err == nil {
+		if time.Since(start) > time.Millisecond*300 {
+			fmt.Printf("Freeze with long latency, duration:%f, debug:%s.\n",
+				time.Since(start).Seconds(),
+				hex.EncodeToString(txn.GetCtx()))
+		}
+		start = time.Now()
 		err = txn.Mgr.OnOpTxn(&OpTxn{
 			ctx: ctx,
 			Txn: txn,
 			Op:  OpCommit,
 		})
+		if time.Since(start) > time.Millisecond*300 {
+			fmt.Printf("Enqueue preparing queue with long latency, duration:%f, debug:%s.\n",
+				time.Since(start).Seconds(),
+				hex.EncodeToString(txn.GetCtx()))
+		}
+
 	}
 
 	// TxnManager is closed
