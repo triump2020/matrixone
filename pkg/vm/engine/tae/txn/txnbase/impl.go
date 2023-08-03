@@ -62,23 +62,22 @@ func (txn *Txn) commit1PC(ctx context.Context, _ bool) (err error) {
 	txn.Add(1)
 	start := time.Now()
 	if err = txn.Freeze(); err == nil {
-		if time.Since(start) > time.Millisecond*300 {
+		if time.Since(start) > time.Millisecond*100 {
 			fmt.Printf("Freeze with long latency, duration:%f, debug:%s.\n",
 				time.Since(start).Seconds(),
 				hex.EncodeToString(txn.GetCtx()))
 		}
-		start = time.Now()
+		start1 := time.Now()
 		err = txn.Mgr.OnOpTxn(&OpTxn{
 			ctx: ctx,
 			Txn: txn,
 			Op:  OpCommit,
 		})
-		if time.Since(start) > time.Millisecond*300 {
+		if time.Since(start1) > time.Millisecond*100 {
 			fmt.Printf("Enqueue preparing queue with long latency, duration:%f, debug:%s.\n",
-				time.Since(start).Seconds(),
+				time.Since(start1).Seconds(),
 				hex.EncodeToString(txn.GetCtx()))
 		}
-
 	}
 
 	// TxnManager is closed
@@ -98,6 +97,12 @@ func (txn *Txn) commit1PC(ctx context.Context, _ bool) (err error) {
 	if err = txn.Mgr.DeleteTxn(txn.GetID()); err != nil {
 		return
 	}
+	if time.Since(start) > time.Millisecond*200 {
+		fmt.Printf("Commit1PC with long latency, duration:%f, debug:%s.\n",
+			time.Since(start).Seconds(),
+			hex.EncodeToString(txn.GetCtx()))
+	}
+
 	return txn.GetError()
 }
 

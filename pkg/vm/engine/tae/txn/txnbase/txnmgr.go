@@ -568,11 +568,18 @@ func (mgr *TxnManager) dequeuePrepared(items ...any) {
 	for _, item := range items {
 		op := item.(*OpTxn)
 		//Notice that WaitPrepared do nothing when op is OpRollback
+		start := time.Now()
 		if err = op.Txn.WaitPrepared(op.ctx); err != nil {
 			// v0.6 TODO: Error handling
 			panic(err)
 		}
-
+		if time.Since(start) > time.Millisecond*100 {
+			fmt.Printf("DequeuePrepared: wait txn's WAL  with long latency, "+
+				"duration:%f, txn:%s.\n",
+				time.Since(start).Seconds(),
+				hex.EncodeToString(op.Txn.GetCtx()),
+			)
+		}
 		if op.Is2PC() {
 			mgr.on2PCPrepared(op)
 		} else {
@@ -586,8 +593,10 @@ func (mgr *TxnManager) dequeuePrepared(items ...any) {
 			common.DurationField(time.Since(now)))
 	})
 	if time.Since(now) > time.Millisecond*300 {
-		fmt.Printf("DequeuePrepared with long latency, "+
-			"duration:%f.\n", time.Since(now).Seconds())
+		fmt.Printf("DequeuePrepared: wait %d txns's WAL  with long latency, "+
+			"duration:%f.\n",
+			len(items),
+			time.Since(now).Seconds())
 	}
 }
 

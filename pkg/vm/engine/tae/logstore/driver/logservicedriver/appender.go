@@ -16,6 +16,7 @@ package logservicedriver
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -113,7 +114,8 @@ func logSlowAppend() func() {
 	return func() {
 		elapsed := time.Since(start)
 		if elapsed >= slowAppend {
-			logutil.Warnf("append to logservice took %s", elapsed)
+			//logutil.Warnf("append to logservice took %s", elapsed)
+			fmt.Printf("append to logservice took %s.\n", elapsed)
 		}
 	}
 }
