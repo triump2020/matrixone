@@ -479,6 +479,7 @@ func (mgr *TxnManager) on2PCPrepared(op *OpTxn) {
 func (mgr *TxnManager) dequeuePreparing(items ...any) {
 	now := time.Now()
 	for _, item := range items {
+		start := time.Now()
 		op := item.(*OpTxn)
 
 		// Idempotent check
@@ -514,6 +515,11 @@ func (mgr *TxnManager) dequeuePreparing(items ...any) {
 		if err := mgr.EnqueueFlushing(op); err != nil {
 			panic(err)
 		}
+		if time.Since(start) > time.Millisecond*100 {
+			fmt.Printf("DequeuePreparing one txn with long latency, "+
+				"duration:%f, txn:%s.\n", time.Since(start).Seconds(),
+				hex.EncodeToString(op.Txn.GetCtx()))
+		}
 	}
 	common.DoIfDebugEnabled(func() {
 		logutil.Debug("[dequeuePreparing]",
@@ -523,13 +529,14 @@ func (mgr *TxnManager) dequeuePreparing(items ...any) {
 	})
 	if time.Since(now) > time.Millisecond*300 {
 		fmt.Printf("DequeuePreparing with long latency, "+
-			"duration:%f.\n", time.Since(now).Seconds())
+			"total duration:%f.\n", time.Since(now).Seconds())
 	}
 }
 
 func (mgr *TxnManager) onPrepareWAL(items ...any) {
 	now := time.Now()
 	for _, item := range items {
+		start := time.Now()
 		op := item.(*OpTxn)
 		if op.Txn.GetError() == nil && op.Op == OpCommit || op.Op == OpPrepare {
 			if err := op.Txn.PrepareWAL(); err != nil {
@@ -548,6 +555,13 @@ func (mgr *TxnManager) onPrepareWAL(items ...any) {
 		if _, err := mgr.FlushQueue.Enqueue(op); err != nil {
 			panic(err)
 		}
+		if time.Since(start) > time.Millisecond*100 {
+			fmt.Printf("Prepare one txn's wal with long latency, "+
+				"duration:%f, txn:%s.\n",
+				time.Since(start).Seconds(),
+				hex.EncodeToString(op.Txn.GetCtx()),
+			)
+		}
 	}
 	common.DoIfDebugEnabled(func() {
 		logutil.Debug("[prepareWAL]",
@@ -556,7 +570,7 @@ func (mgr *TxnManager) onPrepareWAL(items ...any) {
 			common.CountField(len(items)))
 	})
 	if time.Since(now) > time.Millisecond*300 {
-		fmt.Printf("Prepare wal with long latency, duration:%f.\n",
+		fmt.Printf("Prepare all the wals with long latency, total duration:%f.\n",
 			time.Since(now).Seconds())
 	}
 }
@@ -574,7 +588,7 @@ func (mgr *TxnManager) dequeuePrepared(items ...any) {
 			panic(err)
 		}
 		if time.Since(start) > time.Millisecond*100 {
-			fmt.Printf("DequeuePrepared: wait txn's WAL  with long latency, "+
+			fmt.Printf("DequeuePrepared: wait txn's WAL flushed with long latency, "+
 				"duration:%f, txn:%s.\n",
 				time.Since(start).Seconds(),
 				hex.EncodeToString(op.Txn.GetCtx()),
@@ -593,8 +607,8 @@ func (mgr *TxnManager) dequeuePrepared(items ...any) {
 			common.DurationField(time.Since(now)))
 	})
 	if time.Since(now) > time.Millisecond*300 {
-		fmt.Printf("DequeuePrepared: wait %d txns's WAL  with long latency, "+
-			"duration:%f.\n",
+		fmt.Printf("DequeuePrepared: wait %d txns's WAL flushed with long latency, "+
+			"total duration:%f.\n",
 			len(items),
 			time.Since(now).Seconds())
 	}
