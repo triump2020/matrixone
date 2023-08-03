@@ -587,17 +587,17 @@ func (mgr *TxnManager) dequeuePrepared(items ...any) {
 			// v0.6 TODO: Error handling
 			panic(err)
 		}
+		if op.Is2PC() {
+			mgr.on2PCPrepared(op)
+		} else {
+			mgr.on1PCPrepared(op)
+		}
 		if time.Since(start) > time.Millisecond*100 {
 			fmt.Printf("DequeuePrepared: wait txn's WAL flushed with long latency, "+
 				"duration:%f, txn:%s.\n",
 				time.Since(start).Seconds(),
 				hex.EncodeToString(op.Txn.GetCtx()),
 			)
-		}
-		if op.Is2PC() {
-			mgr.on2PCPrepared(op)
-		} else {
-			mgr.on1PCPrepared(op)
 		}
 	}
 	common.DoIfDebugEnabled(func() {
