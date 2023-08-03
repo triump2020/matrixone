@@ -527,7 +527,7 @@ func (mgr *TxnManager) dequeuePreparing(items ...any) {
 			common.DurationField(time.Since(now)),
 			common.CountField(len(items)))
 	})
-	if time.Since(now) > time.Millisecond*300 {
+	if time.Since(now) > time.Millisecond*100 {
 		fmt.Printf("DequeuePreparing with long latency, "+
 			"total duration:%f.\n", time.Since(now).Seconds())
 	}
@@ -569,7 +569,7 @@ func (mgr *TxnManager) onPrepareWAL(items ...any) {
 			common.DurationField(time.Since(now)),
 			common.CountField(len(items)))
 	})
-	if time.Since(now) > time.Millisecond*300 {
+	if time.Since(now) > time.Millisecond*100 {
 		fmt.Printf("Prepare all the wals with long latency, total duration:%f.\n",
 			time.Since(now).Seconds())
 	}
@@ -606,7 +606,7 @@ func (mgr *TxnManager) dequeuePrepared(items ...any) {
 			common.CountField(len(items)),
 			common.DurationField(time.Since(now)))
 	})
-	if time.Since(now) > time.Millisecond*300 {
+	if time.Since(now) > time.Millisecond*100 {
 		fmt.Printf("DequeuePrepared: wait %d txns's WAL flushed with long latency, "+
 			"total duration:%f.\n",
 			len(items),
