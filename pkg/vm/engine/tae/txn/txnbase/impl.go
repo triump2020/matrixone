@@ -101,7 +101,7 @@ func (txn *Txn) commit1PC(ctx context.Context, _ bool) (err error) {
 	if time.Since(now) > time.Millisecond*200 {
 		fmt.Printf("Commit1PC: wait txn commit done with long latency,"+
 			" duration:%f, debug:%s.\n",
-			time.Since(start).Seconds(),
+			time.Since(now).Seconds(),
 			hex.EncodeToString(txn.GetCtx()))
 	}
 
