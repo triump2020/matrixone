@@ -67,15 +67,14 @@ func (txn *Txn) commit1PC(ctx context.Context, _ bool) (err error) {
 				time.Since(start).Seconds(),
 				hex.EncodeToString(txn.GetCtx()))
 		}
-		start1 := time.Now()
 		err = txn.Mgr.OnOpTxn(&OpTxn{
 			ctx: ctx,
 			Txn: txn,
 			Op:  OpCommit,
 		})
-		if time.Since(start1) > time.Millisecond*100 {
+		if time.Since(start) > time.Millisecond*100 {
 			fmt.Printf("Enqueue preparing queue with long latency, duration:%f, debug:%s.\n",
-				time.Since(start1).Seconds(),
+				time.Since(start).Seconds(),
 				hex.EncodeToString(txn.GetCtx()))
 		}
 	}
@@ -90,6 +89,8 @@ func (txn *Txn) commit1PC(ctx context.Context, _ bool) (err error) {
 		_ = txn.ApplyRollback()
 		txn.DoneWithErr(err, true)
 	}
+
+	now := time.Now()
 	txn.Wait()
 	//if txn.Err == nil {
 	//txn.Status = txnif.TxnStatusCommitted
@@ -97,8 +98,9 @@ func (txn *Txn) commit1PC(ctx context.Context, _ bool) (err error) {
 	if err = txn.Mgr.DeleteTxn(txn.GetID()); err != nil {
 		return
 	}
-	if time.Since(start) > time.Millisecond*200 {
-		fmt.Printf("Commit1PC with long latency, duration:%f, debug:%s.\n",
+	if time.Since(now) > time.Millisecond*200 {
+		fmt.Printf("Commit1PC: wait txn commit done with long latency,"+
+			" duration:%f, debug:%s.\n",
 			time.Since(start).Seconds(),
 			hex.EncodeToString(txn.GetCtx()))
 	}
