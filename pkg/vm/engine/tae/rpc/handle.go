@@ -548,10 +548,11 @@ func (h *Handle) EvaluateTxnRequest(
 						return
 					}
 				} else if r.Type == db.EntryInsert {
-					err = h.prefetchMetadata(ctx, r)
-					if err != nil {
-						return
-					}
+					//FIXME:: remove it for test.
+					//err = h.prefetchMetadata(ctx, r)
+					//if err != nil {
+					//	return
+					//}
 
 				}
 			}
