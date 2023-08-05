@@ -104,7 +104,6 @@ func (txn *Txn) commit1PC(ctx context.Context, _ bool) (err error) {
 			time.Since(now).Seconds(),
 			hex.EncodeToString(txn.GetCtx()))
 	}
-
 	return txn.GetError()
 }
 
