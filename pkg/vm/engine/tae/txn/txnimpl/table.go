@@ -593,6 +593,7 @@ func (tbl *txnTable) Append(ctx context.Context, data *containers.Batch) (err er
 	if tbl.schema.HasPK() {
 		dedupType := tbl.store.txn.GetDedupType()
 		if dedupType == txnif.FullDedup {
+			fmt.Printf("FullDeDup\n")
 			//do PK deduplication check against txn's work space.
 			if err = tbl.DedupWorkSpace(
 				data.Vecs[tbl.schema.GetSingleSortKeyIdx()]); err != nil {
@@ -605,6 +606,7 @@ func (tbl *txnTable) Append(ctx context.Context, data *containers.Batch) (err er
 				return
 			}
 		} else if dedupType == txnif.FullSkipWorkSpaceDedup {
+			fmt.Printf("FullSkipWorkSpaceDedup.\n")
 			if err = tbl.DedupSnapByPK(
 				ctx,
 				data.Vecs[tbl.schema.GetSingleSortKeyIdx()], false); err != nil {
@@ -634,6 +636,7 @@ func (tbl *txnTable) AddBlksWithMetaLoc(ctx context.Context, metaLocs []objectio
 	if tbl.schema.HasPK() {
 		dedupType := tbl.store.txn.GetDedupType()
 		if dedupType == txnif.FullDedup {
+			fmt.Printf("FullDeDup\n")
 			//TODO::parallel load pk.
 			for _, loc := range metaLocs {
 				bat, err := blockio.LoadColumns(
@@ -661,15 +664,17 @@ func (tbl *txnTable) AddBlksWithMetaLoc(ctx context.Context, metaLocs []objectio
 				}
 			}
 		} else if dedupType == txnif.FullSkipWorkSpaceDedup {
+			fmt.Printf("FullSkipWorkSpaceDedup.\n")
 			//do PK deduplication check against txn's snapshot data.
 			if err = tbl.DedupSnapByMetaLocs(ctx, metaLocs, false); err != nil {
 				return
 			}
 		} else if dedupType == txnif.IncrementalDedup {
 			//do PK deduplication check against txn's snapshot data.
-			if err = tbl.DedupSnapByMetaLocs(ctx, metaLocs, true); err != nil {
-				return
-			}
+			//FIXME::in pessimistic txn, remove it for test
+			//if err = tbl.DedupSnapByMetaLocs(ctx, metaLocs, true); err != nil {
+			//	return
+			//}
 		}
 	}
 	if tbl.localSegment == nil {
