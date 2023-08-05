@@ -16,6 +16,7 @@ package txnimpl
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"runtime/trace"
 	"time"
@@ -1063,6 +1064,9 @@ func (tbl *txnTable) DedupSnapByPK(ctx context.Context, keys containers.Vector, 
 		}
 		location := blk.FastGetMetaLoc()
 		if len(location) > 0 {
+			fmt.Printf("DedupSnapByPK: location is not empty, "+
+				"dedupAfterSnap :%v, txn:%s.\n", dedupAfterSnapshotTS,
+				hex.EncodeToString(tbl.store.txn.GetCtx()))
 			var skip bool
 			if skip, err = tbl.quickSkipThisBlock(ctx, keysZM, blk); err != nil {
 				return
