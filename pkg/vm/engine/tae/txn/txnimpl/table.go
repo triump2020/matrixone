@@ -16,7 +16,6 @@ package txnimpl
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"runtime/trace"
 	"time"
@@ -671,10 +670,9 @@ func (tbl *txnTable) AddBlksWithMetaLoc(ctx context.Context, metaLocs []objectio
 			}
 		} else if dedupType == txnif.IncrementalDedup {
 			//do PK deduplication check against txn's snapshot data.
-			//FIXME::in pessimistic txn, remove it for test
-			//if err = tbl.DedupSnapByMetaLocs(ctx, metaLocs, true); err != nil {
-			//	return
-			//}
+			if err = tbl.DedupSnapByMetaLocs(ctx, metaLocs, true); err != nil {
+				return
+			}
 		}
 	}
 	if tbl.localSegment == nil {
@@ -1069,9 +1067,6 @@ func (tbl *txnTable) DedupSnapByPK(ctx context.Context, keys containers.Vector, 
 		}
 		location := blk.FastGetMetaLoc()
 		if len(location) > 0 {
-			fmt.Printf("DedupSnapByPK: location is not empty, "+
-				"dedupAfterSnap :%v, txn:%s.\n", dedupAfterSnapshotTS,
-				hex.EncodeToString(tbl.store.txn.GetCtx()))
 			var skip bool
 			if skip, err = tbl.quickSkipThisBlock(ctx, keysZM, blk); err != nil {
 				return

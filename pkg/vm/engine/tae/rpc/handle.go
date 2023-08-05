@@ -548,11 +548,10 @@ func (h *Handle) EvaluateTxnRequest(
 						return
 					}
 				} else if r.Type == db.EntryInsert {
-					//FIXME:: remove it for test.
-					//err = h.prefetchMetadata(ctx, r)
-					//if err != nil {
-					//	return
-					//}
+					err = h.prefetchMetadata(ctx, r)
+					if err != nil {
+						return
+					}
 
 				}
 			}
@@ -905,11 +904,9 @@ func (h *Handle) HandleWrite(
 	if req.Type == db.EntryInsert {
 		//Add blocks which had been bulk-loaded into S3 into table.
 		if req.FileName != "" {
-
 			fmt.Printf("append %s table by metaloc, txn:%s\n",
 				req.TableName,
 				hex.EncodeToString(txn.GetCtx()))
-
 			locations := make([]objectio.Location, 0)
 			for _, metLoc := range req.MetaLocs {
 				location, err := blockio.EncodeLocationFromString(metLoc)

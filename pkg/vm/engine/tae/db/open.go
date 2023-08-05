@@ -131,18 +131,12 @@ func Open(ctx context.Context, dirname string, opts *options.Options) (db *DB, e
 		db.Catalog,
 		logtail.NewDirtyCollector(db.LogtailMgr, db.Opts.Clock, db.Catalog, new(catalog.LoopProcessor)),
 		db.Wal,
-		//checkpoint.WithFlushInterval(opts.CheckpointCfg.FlushInterval),
-		checkpoint.WithFlushInterval(time.Second*10000),
-		//checkpoint.WithCollectInterval(opts.CheckpointCfg.ScanInterval),
-		checkpoint.WithCollectInterval(time.Second*10000),
-		//checkpoint.WithMinCount(int(opts.CheckpointCfg.MinCount)),
-		checkpoint.WithMinCount(10000),
-		//checkpoint.WithMinIncrementalInterval(opts.CheckpointCfg.IncrementalInterval),
-		checkpoint.WithMinIncrementalInterval(time.Second*10000),
-		//checkpoint.WithGlobalMinCount(int(opts.CheckpointCfg.GlobalMinCount)),
-		checkpoint.WithGlobalMinCount(10000),
-		//checkpoint.WithGlobalVersionInterval(opts.CheckpointCfg.GlobalVersionInterval))
-		checkpoint.WithGlobalVersionInterval(time.Second*10000))
+		checkpoint.WithFlushInterval(opts.CheckpointCfg.FlushInterval),
+		checkpoint.WithCollectInterval(opts.CheckpointCfg.ScanInterval),
+		checkpoint.WithMinCount(int(opts.CheckpointCfg.MinCount)),
+		checkpoint.WithMinIncrementalInterval(opts.CheckpointCfg.IncrementalInterval),
+		checkpoint.WithGlobalMinCount(int(opts.CheckpointCfg.GlobalMinCount)),
+		checkpoint.WithGlobalVersionInterval(opts.CheckpointCfg.GlobalVersionInterval))
 
 	now := time.Now()
 	checkpointed, err := db.BGCheckpointRunner.Replay(dataFactory)
@@ -188,8 +182,7 @@ func Open(ctx context.Context, dirname string, opts *options.Options) (db *DB, e
 	db.GCManager = gc.NewManager(
 		gc.WithCronJob(
 			"clean-transfer-table",
-			//opts.CheckpointCfg.FlushInterval,
-			60*time.Second,
+			opts.CheckpointCfg.FlushInterval,
 			func(_ context.Context) (err error) {
 				db.Runtime.PrintVectorPoolUsage()
 				transferTable.RunTTL(time.Now())
@@ -198,16 +191,14 @@ func Open(ctx context.Context, dirname string, opts *options.Options) (db *DB, e
 
 		gc.WithCronJob(
 			"disk-gc",
-			//opts.GCCfg.ScanGCInterval,
-			10000*time.Second,
+			opts.GCCfg.ScanGCInterval,
 			func(ctx context.Context) (err error) {
 				db.DiskCleaner.GC(ctx)
 				return
 			}),
 		gc.WithCronJob(
 			"checkpoint-gc",
-			//opts.CheckpointCfg.GCCheckpointInterval,
-			10000*time.Second,
+			opts.CheckpointCfg.GCCheckpointInterval,
 			func(ctx context.Context) error {
 				if opts.CheckpointCfg.DisableGCCheckpoint {
 					return nil
@@ -220,8 +211,7 @@ func Open(ctx context.Context, dirname string, opts *options.Options) (db *DB, e
 			}),
 		gc.WithCronJob(
 			"catalog-gc",
-			//opts.CatalogCfg.GCInterval,
-			10000*time.Second,
+			opts.CatalogCfg.GCInterval,
 			func(ctx context.Context) error {
 				if opts.CatalogCfg.DisableGC {
 					return nil
