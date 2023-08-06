@@ -950,9 +950,9 @@ func (h *Handle) HandleWrite(
 
 	//handle delete
 	if req.FileName != "" {
-		fmt.Printf("delete %s rows by deltaloc, txn:%s\n",
-			req.TableName,
-			hex.EncodeToString(txn.GetCtx()))
+		//fmt.Printf("delete %s rows by deltaloc, txn:%s\n",
+		//	req.TableName,
+		//	hex.EncodeToString(txn.GetCtx()))
 		//wait for loading deleted row-id done.
 		nctx := context.Background()
 		if deadline, ok := ctx.Deadline(); ok {

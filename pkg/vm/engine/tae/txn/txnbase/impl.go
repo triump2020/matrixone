@@ -187,6 +187,7 @@ func (txn *Txn) commit1PC(ctx context.Context, _ bool) (err error) {
 		return moerr.NewTAECommitNoCtx("invalid txn state %s", txnif.TxnStrState(state))
 	}
 	txn.Add(1)
+
 	start := time.Now()
 	if err = txn.Freeze(); err == nil {
 		if time.Since(start) > time.Millisecond*100 {
@@ -194,14 +195,19 @@ func (txn *Txn) commit1PC(ctx context.Context, _ bool) (err error) {
 				time.Since(start).Seconds(),
 				hex.EncodeToString(txn.GetCtx()))
 		}
+
+		now := time.Now()
+		txn.SetEnqueuePrepTime(now)
+
 		err = txn.Mgr.OnOpTxn(&OpTxn{
 			ctx: ctx,
 			Txn: txn,
 			Op:  OpCommit,
 		})
-		if time.Since(start) > time.Millisecond*100 {
+
+		if time.Since(now) > time.Millisecond*100 {
 			fmt.Printf("Enqueue preparing queue with long latency, duration:%f, debug:%s.\n",
-				time.Since(start).Seconds(),
+				time.Since(now).Seconds(),
 				hex.EncodeToString(txn.GetCtx()))
 		}
 	}
@@ -225,12 +231,18 @@ func (txn *Txn) commit1PC(ctx context.Context, _ bool) (err error) {
 	if err = txn.Mgr.DeleteTxn(txn.GetID()); err != nil {
 		return
 	}
-	if time.Since(now) > time.Millisecond*200 {
+	if time.Since(now) > time.Millisecond*1000 {
 		fmt.Printf("Commit1PC: wait txn commit done with long latency,"+
-			" duration:%f, debug:%s, curGroutineID : %d.\n",
+			" duration:%f, txnid:%s, curGroutineID : %d, "+
+			"DequeuePrepTime - EnquePrepTime = %f,"+
+			"DequeuePrepWalTime - EnqueuePrepWalTime = %f,"+
+			"DequeueFlushTime - EnqueueFlushTime = %f. \n",
 			time.Since(now).Seconds(),
 			hex.EncodeToString(txn.GetCtx()),
-			curGoroutineID())
+			curGoroutineID(),
+			txn.GetDequeuePrepTime().Sub(txn.GetEnqueuePrepTime()).Seconds(),
+			txn.GetDequeuePrepWalTime().Sub(txn.GetEnqueuePrepWalTime()).Seconds(),
+			txn.GetDequeueFlushTime().Sub(txn.GetEnqueueFlushTime()).Seconds())
 	}
 	return txn.GetError()
 }

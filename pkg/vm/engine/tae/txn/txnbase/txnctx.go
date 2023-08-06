@@ -17,6 +17,7 @@ package txnbase
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/matrixorigin/matrixone/pkg/common/moerr"
 	"github.com/matrixorigin/matrixone/pkg/container/types"
@@ -41,6 +42,15 @@ type TxnCtx struct {
 	ID                           string
 	IDCtx                        []byte
 	StartTS, CommitTS, PrepareTS types.TS
+	//just for test.
+	EnqueuePrepTime time.Time
+	DequeuePrepTime time.Time
+
+	EnqueuePrepWalTime time.Time
+	DequeuePrepWalTime time.Time
+
+	EnqueueFlushTime time.Time
+	DequeueFlushTime time.Time
 
 	// SnapshotTS is the specified snapshot timestamp used by this txn
 	SnapshotTS types.TS
@@ -130,6 +140,25 @@ func (ctx *TxnCtx) GetCommitTS() types.TS {
 	defer ctx.RUnlock()
 	return ctx.CommitTS
 }
+
+// just for test
+func (ctx *TxnCtx) GetEnqueuePrepTime() time.Time { return ctx.EnqueuePrepTime }
+func (ctx *TxnCtx) GetDequeuePrepTime() time.Time { return ctx.DequeuePrepTime }
+
+func (ctx *TxnCtx) GetEnqueuePrepWalTime() time.Time { return ctx.EnqueuePrepWalTime }
+func (ctx *TxnCtx) GetDequeuePrepWalTime() time.Time { return ctx.DequeuePrepWalTime }
+
+func (ctx *TxnCtx) GetEnqueueFlushTime() time.Time { return ctx.EnqueueFlushTime }
+func (ctx *TxnCtx) GetDequeueFlushTime() time.Time { return ctx.DequeueFlushTime }
+
+func (ctx *TxnCtx) SetEnqueuePrepTime(t time.Time) { ctx.EnqueuePrepTime = t }
+func (ctx *TxnCtx) SetDequeuePrepTime(t time.Time) { ctx.DequeuePrepTime = t }
+
+func (ctx *TxnCtx) SetEnqueuePrepWalTime(t time.Time) { ctx.EnqueuePrepWalTime = t }
+func (ctx *TxnCtx) SetDequeuePrepWalTime(t time.Time) { ctx.DequeuePrepWalTime = t }
+
+func (ctx *TxnCtx) SetEnqueueFlushTime(t time.Time) { ctx.EnqueueFlushTime = t }
+func (ctx *TxnCtx) SetDequeueFlushTime(t time.Time) { ctx.DequeueFlushTime = t }
 
 // test only
 // Note: unsafe

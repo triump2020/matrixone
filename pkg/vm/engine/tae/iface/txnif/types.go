@@ -18,6 +18,7 @@ import (
 	"context"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/matrixorigin/matrixone/pkg/objectio"
 
@@ -60,6 +61,14 @@ type TxnReader interface {
 	GetStartTS() types.TS
 	GetCommitTS() types.TS
 	GetContext() context.Context
+
+	//just for test
+	GetEnqueuePrepTime() time.Time
+	GetDequeuePrepTime() time.Time
+	GetEnqueuePrepWalTime() time.Time
+	GetDequeuePrepWalTime() time.Time
+	GetEnqueueFlushTime() time.Time
+	GetDequeueFlushTime() time.Time
 
 	GetPrepareTS() types.TS
 	GetParticipants() []uint64
@@ -113,6 +122,14 @@ type TxnChanger interface {
 	Commit(ctx context.Context) error
 	Rollback(ctx context.Context) error
 	SetCommitTS(cts types.TS) error
+	//just for test
+	SetEnqueuePrepTime(t time.Time)
+	SetDequeuePrepTime(t time.Time)
+	SetEnqueuePrepWalTime(t time.Time)
+	SetDequeuePrepWalTime(t time.Time)
+	SetEnqueueFlushTime(t time.Time)
+	SetDequeueFlushTime(t time.Time)
+
 	SetDedupType(skip DedupType)
 	SetParticipants(ids []uint64) error
 	SetError(error)

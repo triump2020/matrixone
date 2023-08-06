@@ -481,6 +481,7 @@ func (mgr *TxnManager) dequeuePreparing(items ...any) {
 	for _, item := range items {
 		start := time.Now()
 		op := item.(*OpTxn)
+		op.Txn.SetDequeuePrepTime(start)
 
 		// Idempotent check
 		if state := op.Txn.GetTxnState(false); state != txnif.TxnStateActive {
@@ -512,6 +513,8 @@ func (mgr *TxnManager) dequeuePreparing(items ...any) {
 			mgr.prevPrepareTSInPreparing = op.Txn.GetPrepareTS()
 		}
 
+		op.Txn.SetEnqueuePrepWalTime(time.Now())
+
 		if err := mgr.EnqueueFlushing(op); err != nil {
 			panic(err)
 		}
@@ -538,6 +541,8 @@ func (mgr *TxnManager) onPrepareWAL(items ...any) {
 	for _, item := range items {
 		start := time.Now()
 		op := item.(*OpTxn)
+		op.Txn.SetDequeuePrepWalTime(start)
+
 		if op.Txn.GetError() == nil && op.Op == OpCommit || op.Op == OpPrepare {
 			if err := op.Txn.PrepareWAL(); err != nil {
 				panic(err)
@@ -552,6 +557,9 @@ func (mgr *TxnManager) onPrepareWAL(items ...any) {
 			}
 			mgr.CommitListener.OnEndPrepareWAL(op.Txn)
 		}
+
+		op.Txn.SetEnqueueFlushTime(time.Now())
+
 		if _, err := mgr.FlushQueue.Enqueue(op); err != nil {
 			panic(err)
 		}
@@ -583,6 +591,8 @@ func (mgr *TxnManager) dequeuePrepared(items ...any) {
 		op := item.(*OpTxn)
 		//Notice that WaitPrepared do nothing when op is OpRollback
 		start := time.Now()
+		op.Txn.SetDequeueFlushTime(start)
+
 		if err = op.Txn.WaitPrepared(op.ctx); err != nil {
 			// v0.6 TODO: Error handling
 			panic(err)
@@ -607,7 +617,7 @@ func (mgr *TxnManager) dequeuePrepared(items ...any) {
 			common.DurationField(time.Since(now)))
 	})
 	if time.Since(now) > time.Millisecond*100 {
-		fmt.Printf("DequeuePrepared: wait %d txns's WAL flushed with long latency, "+
+		fmt.Printf("DequeuePrepared: wait all %d txns's WAL flushed with long latency, "+
 			"total duration:%f.\n",
 			len(items),
 			time.Since(now).Seconds())
