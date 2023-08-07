@@ -51,7 +51,7 @@ type TxnCtx struct {
 
 	EnqueueFlushTime time.Time
 	DequeueFlushTime time.Time
-	HandleFlushTime  time.Time
+	DurationInFlush  time.Duration
 	SeqNum           uint64
 
 	// SnapshotTS is the specified snapshot timestamp used by this txn
@@ -152,6 +152,11 @@ func (ctx *TxnCtx) GetDequeuePrepWalTime() time.Time { return ctx.DequeuePrepWal
 
 func (ctx *TxnCtx) GetEnqueueFlushTime() time.Time { return ctx.EnqueueFlushTime }
 func (ctx *TxnCtx) GetDequeueFlushTime() time.Time { return ctx.DequeueFlushTime }
+func (ctx *TxnCtx) GetDurationInFlush() time.Duration {
+	return ctx.DurationInFlush
+}
+
+func (ctx *TxnCtx) GetSeqNum() uint64 { return ctx.SeqNum }
 
 func (ctx *TxnCtx) SetEnqueuePrepTime(t time.Time) { ctx.EnqueuePrepTime = t }
 func (ctx *TxnCtx) SetDequeuePrepTime(t time.Time) { ctx.DequeuePrepTime = t }
@@ -161,6 +166,10 @@ func (ctx *TxnCtx) SetDequeuePrepWalTime(t time.Time) { ctx.DequeuePrepWalTime =
 
 func (ctx *TxnCtx) SetEnqueueFlushTime(t time.Time) { ctx.EnqueueFlushTime = t }
 func (ctx *TxnCtx) SetDequeueFlushTime(t time.Time) { ctx.DequeueFlushTime = t }
+func (ctx *TxnCtx) SetDurationInFlush(t time.Duration) {
+	ctx.DurationInFlush = t
+}
+func (ctx *TxnCtx) SetSeqNum(seq uint64) { ctx.SeqNum = seq }
 
 // test only
 // Note: unsafe

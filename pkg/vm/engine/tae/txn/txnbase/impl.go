@@ -57,6 +57,7 @@ func (txn *Txn) rollback1PC(ctx context.Context) (err error) {
 	return txn.Err
 }
 
+// for get current goroutine id
 // Return the first number n such that n*base >= 1<<64.
 func cutoff64(base int) uint64 {
 	if base < 2 {
@@ -180,6 +181,8 @@ func curGoroutineID() uint64 {
 	return n
 }
 
+// end for getting current goroutine id
+
 func (txn *Txn) commit1PC(ctx context.Context, _ bool) (err error) {
 	state := txn.GetTxnState(false)
 	if state != txnif.TxnStateActive {
@@ -232,17 +235,22 @@ func (txn *Txn) commit1PC(ctx context.Context, _ bool) (err error) {
 		return
 	}
 	if time.Since(now) > time.Millisecond*1000 {
+		//num, total := txn.Mgr.TotalDurationInFlushBefore(txn.GetSeqNum())
 		fmt.Printf("Commit1PC: wait txn commit done with long latency,"+
 			" duration:%f, txnid:%s, curGroutineID : %d, "+
 			"DequeuePrepTime - EnquePrepTime = %f,"+
 			"DequeuePrepWalTime - EnqueuePrepWalTime = %f,"+
-			"DequeueFlushTime - EnqueueFlushTime = %f. \n",
+			"DequeueFlushTime - EnqueueFlushTime = %f.\n",
+			//"total number of txns before current = %d, "+
+			//"total duration in flush queue before current = %f. \n",
 			time.Since(now).Seconds(),
 			hex.EncodeToString(txn.GetCtx()),
 			curGoroutineID(),
 			txn.GetDequeuePrepTime().Sub(txn.GetEnqueuePrepTime()).Seconds(),
 			txn.GetDequeuePrepWalTime().Sub(txn.GetEnqueuePrepWalTime()).Seconds(),
 			txn.GetDequeueFlushTime().Sub(txn.GetEnqueueFlushTime()).Seconds())
+		//num,
+		//total.Seconds())
 	}
 	return txn.GetError()
 }

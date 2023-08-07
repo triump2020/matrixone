@@ -95,6 +95,7 @@ type TxnManager struct {
 	wg              sync.WaitGroup
 	//just for test
 	SeqAlloc *common.IdAlloctor
+	TxnMap   map[string]txnif.AsyncTxn
 
 	// for debug
 	prevPrepareTS             types.TS
@@ -111,6 +112,7 @@ func NewTxnManager(txnStoreFactory TxnStoreFactory, txnFactory TxnFactory, clock
 		IdAlloc: common.NewTxnIDAllocator(),
 		//just for test
 		SeqAlloc:        common.NewIdAlloctor(1),
+		TxnMap:          make(map[string]txnif.AsyncTxn),
 		TsAlloc:         types.NewTsAlloctor(clock),
 		TxnStoreFactory: txnStoreFactory,
 		TxnFactory:      txnFactory,
@@ -241,6 +243,23 @@ func (mgr *TxnManager) GetOrCreateTxnWithMeta(
 		store.BindTxn(txn)
 		mgr.IDMap[string(id)] = txn
 	}
+	return
+}
+
+// just for test
+func (mgr *TxnManager) TotalDurationInFlushBefore(seq uint64) (count int, dur time.Duration) {
+	mgr.Lock()
+	defer mgr.Unlock()
+	for _, txn := range mgr.TxnMap {
+		id := txn.GetID()
+		if txn.GetSeqNum() < seq {
+			count++
+			dur += txn.GetDurationInFlush()
+			delete(mgr.TxnMap, id)
+		}
+	}
+	//clear mgr.TxnMap
+	//mgr.TxnMap = make(map[string]txnif.AsyncTxn)
 	return
 }
 
@@ -562,11 +581,17 @@ func (mgr *TxnManager) onPrepareWAL(items ...any) {
 			mgr.CommitListener.OnEndPrepareWAL(op.Txn)
 		}
 
+		//just for test
 		op.Txn.SetEnqueueFlushTime(time.Now())
+		//op.Txn.SetSeqNum(mgr.SeqAlloc.Alloc())
+		//mgr.Lock()
+		//mgr.TxnMap[op.Txn.GetID()] = op.Txn
+		//mgr.Unlock()
 
 		if _, err := mgr.FlushQueue.Enqueue(op); err != nil {
 			panic(err)
 		}
+
 		if time.Since(start) > time.Millisecond*100 {
 			fmt.Printf("Prepare one txn's wal with long latency, "+
 				"duration:%f, txn:%s.\n",
@@ -574,6 +599,7 @@ func (mgr *TxnManager) onPrepareWAL(items ...any) {
 				hex.EncodeToString(op.Txn.GetCtx()),
 			)
 		}
+
 	}
 	common.DoIfDebugEnabled(func() {
 		logutil.Debug("[prepareWAL]",
@@ -593,10 +619,11 @@ func (mgr *TxnManager) dequeuePrepared(items ...any) {
 	now := time.Now()
 	for _, item := range items {
 		op := item.(*OpTxn)
-		//Notice that WaitPrepared do nothing when op is OpRollback
+
 		start := time.Now()
 		op.Txn.SetDequeueFlushTime(start)
 
+		//Notice that WaitPrepared do nothing when op is OpRollback
 		if err = op.Txn.WaitPrepared(op.ctx); err != nil {
 			// v0.6 TODO: Error handling
 			panic(err)
@@ -606,13 +633,18 @@ func (mgr *TxnManager) dequeuePrepared(items ...any) {
 		} else {
 			mgr.on1PCPrepared(op)
 		}
-		if time.Since(start) > time.Millisecond*100 {
+
+		duration := time.Since(start)
+		op.Txn.SetDurationInFlush(duration)
+
+		if duration > time.Millisecond*100 {
 			fmt.Printf("DequeuePrepared: wait txn's WAL flushed with long latency, "+
 				"duration:%f, txn:%s.\n",
-				time.Since(start).Seconds(),
+				duration.Seconds(),
 				hex.EncodeToString(op.Txn.GetCtx()),
 			)
 		}
+
 	}
 	common.DoIfDebugEnabled(func() {
 		logutil.Debug("[dequeuePrepared]",

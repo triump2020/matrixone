@@ -69,6 +69,8 @@ type TxnReader interface {
 	GetDequeuePrepWalTime() time.Time
 	GetEnqueueFlushTime() time.Time
 	GetDequeueFlushTime() time.Time
+	GetDurationInFlush() time.Duration
+	GetSeqNum() uint64
 
 	GetPrepareTS() types.TS
 	GetParticipants() []uint64
@@ -129,6 +131,8 @@ type TxnChanger interface {
 	SetDequeuePrepWalTime(t time.Time)
 	SetEnqueueFlushTime(t time.Time)
 	SetDequeueFlushTime(t time.Time)
+	SetDurationInFlush(d time.Duration)
+	SetSeqNum(seq uint64)
 
 	SetDedupType(skip DedupType)
 	SetParticipants(ids []uint64) error

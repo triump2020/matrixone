@@ -17,6 +17,7 @@ package logtail
 import (
 	"context"
 	"fmt"
+	"runtime/trace"
 	"sort"
 
 	"github.com/RoaringBitmap/roaring"
@@ -210,6 +211,7 @@ func (b *TxnLogtailRespBuilder) visitDelete(ctx context.Context, vnode txnif.Del
 		commitTSVec.Append(b.txn.GetPrepareTS(), false)
 		dels.Add(uint64(del))
 	}
+	r := trace.StartRegion(ctx, "visitDelete.BlockData.Foreach")
 	_ = meta.GetBlockData().Foreach(
 		ctx,
 		schema,
@@ -220,6 +222,7 @@ func (b *TxnLogtailRespBuilder) visitDelete(ctx context.Context, vnode txnif.Del
 		},
 		&dels,
 	)
+	r.End()
 }
 
 func (b *TxnLogtailRespBuilder) visitTable(itbl any) {
