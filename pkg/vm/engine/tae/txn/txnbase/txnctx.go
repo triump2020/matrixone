@@ -51,6 +51,8 @@ type TxnCtx struct {
 
 	EnqueueFlushTime time.Time
 	DequeueFlushTime time.Time
+	HandleFlushTime  time.Time
+	SeqNum           uint64
 
 	// SnapshotTS is the specified snapshot timestamp used by this txn
 	SnapshotTS types.TS

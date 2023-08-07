@@ -636,7 +636,11 @@ func (store *txnStore) WaitPrepared(ctx context.Context) (err error) {
 			e.Free()
 		}
 	})
+
+	r1 := trace.StartRegion(ctx, "WaitPrepared.WaitGroup")
 	store.wg.Wait()
+	r1.End()
+
 	return
 }
 

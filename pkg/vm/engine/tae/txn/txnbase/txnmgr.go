@@ -93,6 +93,8 @@ type TxnManager struct {
 	ctx             context.Context
 	cancel          context.CancelFunc
 	wg              sync.WaitGroup
+	//just for test
+	SeqAlloc *common.IdAlloctor
 
 	// for debug
 	prevPrepareTS             types.TS
@@ -105,8 +107,10 @@ func NewTxnManager(txnStoreFactory TxnStoreFactory, txnFactory TxnFactory, clock
 		txnFactory = DefaultTxnFactory
 	}
 	mgr := &TxnManager{
-		IDMap:           make(map[string]txnif.AsyncTxn),
-		IdAlloc:         common.NewTxnIDAllocator(),
+		IDMap:   make(map[string]txnif.AsyncTxn),
+		IdAlloc: common.NewTxnIDAllocator(),
+		//just for test
+		SeqAlloc:        common.NewIdAlloctor(1),
 		TsAlloc:         types.NewTsAlloctor(clock),
 		TxnStoreFactory: txnStoreFactory,
 		TxnFactory:      txnFactory,
