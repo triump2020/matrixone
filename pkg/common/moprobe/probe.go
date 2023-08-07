@@ -66,6 +66,7 @@ const (
 	SubscriptionPullLogTail
 	RPCStreamReceive
 	TxnStoreWaitWALFlush
+	TxnTablesWaitWaLFlush
 	TxnTableDoPrecommitDedupByPK
 	RegionTypeMax
 )

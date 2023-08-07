@@ -1107,6 +1107,8 @@ func (tbl *txnTable) DedupSnapByPK(ctx context.Context, keys containers.Vector, 
 // which are visible and not dropped at txn's snapshot timestamp.
 // 2. It is called when appending blocks into this table.
 func (tbl *txnTable) DedupSnapByMetaLocs(ctx context.Context, metaLocs []objectio.Location, dedupAfterSnapshotTS bool) (err error) {
+	r := trace.StartRegion(ctx, "DedupSnapByMetaLocs")
+	defer r.End()
 	loaded := make(map[int]containers.Vector)
 	maxSegmentHint := uint64(0)
 	maxBlockID := &types.Blockid{}
@@ -1275,6 +1277,8 @@ func (tbl *txnTable) DoPrecommitDedupByPK(pks containers.Vector, pksZM index.ZM)
 }
 
 func (tbl *txnTable) DoPrecommitDedupByNode(ctx context.Context, node InsertNode) (err error) {
+	r := trace.StartRegion(ctx, "DoPrecommitDedupByNode")
+	defer r.End()
 	segIt := tbl.entry.MakeSegmentIt(false)
 	var pks containers.Vector
 	//loaded := false
