@@ -17,6 +17,7 @@ package logtail
 import (
 	"context"
 	"fmt"
+	trace2 "runtime/trace"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -116,6 +117,7 @@ func (mgr *Manager) onCollectTxnLogtails(items ...any) {
 		if txn.IsReplay() {
 			continue
 		}
+		r := trace2.StartRegion(context.Background(), "onCollectTxnLogtails")
 		builder := NewTxnLogtailRespBuilder(mgr.rt)
 		entries, closeCB := builder.CollectLogtail(txn)
 		txn.GetStore().DoneWaitEvent(1)
@@ -125,6 +127,7 @@ func (mgr *Manager) onCollectTxnLogtails(items ...any) {
 			closeCB: closeCB,
 		}
 		mgr.waitCommitQueue.Enqueue(txnWithLogtails)
+		r.End()
 	}
 }
 func (mgr *Manager) onWaitTxnCommit(items ...any) {
