@@ -17,6 +17,7 @@ package rpc
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"sync"
@@ -967,6 +968,9 @@ func (h *Handle) HandleWrite(
 	}
 	rowIDVec := containers.ToDNVector(req.Batch.GetVector(0))
 	defer rowIDVec.Close()
+	if len(req.Batch.Vecs) != 2 {
+		panic(fmt.Sprintf("delete batch should have 2 columns, but get %d columns", len(req.Batch.Vecs)))
+	}
 	pkVec := containers.ToDNVector(req.Batch.GetVector(1))
 	//defer pkVec.Close()
 	err = tb.DeleteByPhyAddrKeys(rowIDVec, pkVec)
