@@ -96,6 +96,7 @@ type TxnManager struct {
 	//just for test
 	SeqAlloc *common.IdAlloctor
 	TxnMap   map[string]txnif.AsyncTxn
+	//Pool     *ants.Pool
 
 	// for debug
 	prevPrepareTS             types.TS
@@ -120,6 +121,12 @@ func NewTxnManager(txnStoreFactory TxnStoreFactory, txnFactory TxnFactory, clock
 		CommitListener:  newBatchCommitListener(),
 		wg:              sync.WaitGroup{},
 	}
+	//pool, err := ants.NewPool(50)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//mgr.Pool = pool
+
 	mgr.initMaxCommittedTS()
 	pqueue := sm.NewSafeQueue(20000, 1000, mgr.dequeuePreparing)
 	prepareWALQueue := sm.NewSafeQueue(20000, 1000, mgr.onPrepareWAL)
