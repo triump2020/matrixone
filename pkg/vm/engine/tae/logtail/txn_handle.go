@@ -17,7 +17,6 @@ package logtail
 import (
 	"context"
 	"fmt"
-	"runtime/trace"
 	"sort"
 
 	"github.com/RoaringBitmap/roaring"

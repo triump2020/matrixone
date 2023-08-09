@@ -149,15 +149,15 @@ func (h *Handle) HandleCommit(
 			delete(h.mu.txnCtxs, string(meta.GetID()))
 			h.mu.Unlock()
 		}
-		common.DoIfInfoEnabled(func() {
-			if time.Since(start) > MAX_ALLOWED_TXN_LATENCY {
-				logutil.Info("Commit with long latency",
-					zap.Duration("duration", time.Since(start)),
-					zap.String("debug", meta.DebugString()))
-			}
-		})
+		//common.DoIfInfoEnabled(func() {
+		//	if time.Since(start) > MAX_ALLOWED_TXN_LATENCY {
+		//		logutil.Info("Commit with long latency",
+		//			zap.Duration("duration", time.Since(start)),
+		//			zap.String("debug", meta.DebugString()))
+		//	}
+		//})
 		if time.Since(start) > MAX_ALLOWED_TXN_LATENCY {
-			fmt.Printf("Handle commit request with long latency, duration:%f, debug:%s.\n",
+			fmt.Printf("Handle commit request with long latency, duration:%f,txn:%s.\n",
 				time.Since(start).Seconds(),
 				meta.DebugString())
 
@@ -214,7 +214,7 @@ func (h *Handle) HandleCommit(
 			cts = txn.GetCommitTS().ToTimestamp()
 			if !moerr.IsMoErrCode(err, moerr.ErrTAENeedRetry) {
 				if time.Since(start) > MAX_ALLOWED_TXN_LATENCY {
-					fmt.Printf("Retry commit with long latency, duration:%f, debug:%s.\n",
+					fmt.Printf("Retry commit with long latency, duration:%f,txn:%s.\n",
 						time.Since(start).Seconds(),
 						meta.DebugString())
 				}
@@ -223,7 +223,7 @@ func (h *Handle) HandleCommit(
 		}
 	}
 	if time.Since(startCommit) > MAX_ALLOWED_TXN_LATENCY {
-		fmt.Printf("Commit with long latency, duration:%f, debug:%s.\n",
+		fmt.Printf("Commit with long latency, duration:%f,txn:%s.\n",
 			time.Since(startCommit).Seconds(),
 			meta.DebugString())
 	}
