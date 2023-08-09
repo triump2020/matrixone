@@ -17,7 +17,6 @@ package tables
 import (
 	"context"
 	"fmt"
-	"runtime/trace"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -113,9 +112,7 @@ func (blk *baseBlock) Foreach(ctx context.Context, readSchema any, colIdx int, o
 		defer blk.RUnlock()
 		return node.MustMNode().Foreach(schema, colIdx, op, sels)
 	} else {
-		r := trace.StartRegion(ctx, "PersistedBlock.Foreach")
 		err := node.MustPNode().Foreach(ctx, schema, colIdx, op, sels)
-		r.End()
 		return err
 	}
 }
