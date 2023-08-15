@@ -22,6 +22,7 @@ import (
 	"math"
 	"net"
 	"runtime"
+	gotrace "runtime/trace"
 	"sort"
 	"strings"
 	"sync"
@@ -175,6 +176,8 @@ func (c *Compile) SetTempEngine(ctx context.Context, te engine.Engine) {
 // Compile is the entrance of the compute-execute-layer.
 // It generates a scope (logic pipeline) for a query plan.
 func (c *Compile) Compile(ctx context.Context, pn *plan.Plan, u any, fill func(any, *batch.Batch) error) (err error) {
+	_, task := gotrace.NewTask(context.TODO(), "pipeline.Compile")
+	defer task.End()
 	defer func() {
 		if e := recover(); e != nil {
 			err = moerr.ConvertPanicError(ctx, e)
@@ -324,6 +327,8 @@ func (c *Compile) run(s *Scope) error {
 
 // Run is an important function of the compute-layer, it executes a single sql according to its scope
 func (c *Compile) Run(_ uint64) error {
+	_, task := gotrace.NewTask(context.TODO(), "pipeline.Run")
+	defer task.End()
 	defer func() {
 		if c.anal != nil {
 			for i := range c.anal.analInfos {
@@ -956,20 +961,15 @@ func (c *Compile) compilePlanScope(ctx context.Context, step int32, curNodeIdx i
 		if err != nil {
 			return nil, err
 		}
-		rs := c.newMergeScope(ss)
-		rs.Magic = Merge
-		c.setAnalyzeCurrent([]*Scope{rs}, c.anal.curr)
-		onDuplicateKeyArg, err := constructOnduplicateKey(n, c.e)
-		if err != nil {
-			return nil, err
-		}
-		rs.Instructions = append(rs.Instructions, vm.Instruction{
-			Op:  vm.OnDuplicateKey,
-			Arg: onDuplicateKeyArg,
-		})
-		ss = []*Scope{rs}
 		c.setAnalyzeCurrent(ss, curr)
-		return ss, nil
+
+		rs := c.newMergeScope(ss)
+		rs.Instructions[0] = vm.Instruction{
+			Op:  vm.OnDuplicateKey,
+			Idx: c.anal.curr,
+			Arg: constructOnduplicateKey(n, c.e),
+		}
+		return []*Scope{rs}, nil
 	case plan.Node_PRE_INSERT_UK:
 		curr := c.anal.curr
 		ss, err := c.compilePlanScope(ctx, step, n.Children[0], ns)
@@ -1556,10 +1556,11 @@ func (c *Compile) compileTableScanWithNode(n *plan.Node, node engine.Node, filte
 					ColId: attr.Attr.ID,
 					Name:  attr.Attr.Name,
 					Typ: &plan.Type{
-						Id:       int32(attr.Attr.Type.Oid),
-						Width:    attr.Attr.Type.Width,
-						Scale:    attr.Attr.Type.Scale,
-						AutoIncr: attr.Attr.AutoIncrement,
+						Id:         int32(attr.Attr.Type.Oid),
+						Width:      attr.Attr.Type.Width,
+						Scale:      attr.Attr.Type.Scale,
+						AutoIncr:   attr.Attr.AutoIncrement,
+						Enumvalues: attr.Attr.EnumVlaues,
 					},
 					Primary:   attr.Attr.Primary,
 					Default:   attr.Attr.Default,
@@ -3089,6 +3090,7 @@ func shuffleBlocksByHash(c *Compile, ranges [][]byte, nodes engine.Nodes) {
 }
 
 func shuffleBlocksByRange(c *Compile, ranges [][]byte, n *plan.Node, nodes engine.Nodes) error {
+	var objDataMeta objectio.ObjectDataMeta
 	var objMeta objectio.ObjectMeta
 
 	for i, blk := range ranges {
@@ -3098,12 +3100,13 @@ func shuffleBlocksByRange(c *Compile, ranges [][]byte, n *plan.Node, nodes engin
 		if err != nil {
 			return err
 		}
-		if !objectio.IsSameObjectLocVsMeta(location, objMeta) {
-			if objMeta, err = objectio.FastLoadObjectMeta(c.ctx, &location, fs); err != nil {
+		if !objectio.IsSameObjectLocVsMeta(location, objDataMeta) {
+			if objMeta, err = objectio.FastLoadObjectMeta(c.ctx, &location, false, fs); err != nil {
 				return err
 			}
+			objDataMeta = objMeta.MustDataMeta()
 		}
-		blkMeta := objMeta.GetBlockMeta(uint32(location.ID()))
+		blkMeta := objDataMeta.GetBlockMeta(uint32(location.ID()))
 		zm := blkMeta.MustGetColumn(uint16(n.Stats.HashmapStats.ShuffleColIdx)).ZoneMap()
 		index := plan2.GetRangeShuffleIndexForZM(n.Stats.HashmapStats.ShuffleColMin, n.Stats.HashmapStats.ShuffleColMax, zm, uint64(len(c.cnList)))
 		nodes[index].Data = append(nodes[index].Data, blk)
