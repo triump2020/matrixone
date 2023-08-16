@@ -16,6 +16,7 @@ package txnimpl
 
 import (
 	"context"
+	"fmt"
 	"runtime/trace"
 	"sync"
 	"sync/atomic"
@@ -683,6 +684,7 @@ func (store *txnStore) PrepareCommit() (err error) {
 	if store.warChecker != nil {
 		if err = store.warChecker.checkAll(
 			store.txn.GetPrepareTS()); err != nil {
+			fmt.Printf(err.Error())
 			return err
 		}
 	}
