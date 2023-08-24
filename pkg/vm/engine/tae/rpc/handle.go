@@ -968,7 +968,17 @@ func (h *Handle) HandleWrite(
 		return
 	}
 	if len(req.Batch.Vecs) != 2 {
-		panic(fmt.Sprintf("req.Batch.Vecs length is %d, should be 2", len(req.Batch.Vecs)))
+		panic(fmt.Sprintf("req.Batch.Vecs's length is %d, should be 2, "+
+			"one is rowid vector, and the other is pk vector"+
+			"handle write type: %v, %d-%s, %d-%s txn: %s, wirte batch: %s",
+			len(req.Batch.Vecs),
+			req.Type,
+			req.TableID,
+			req.TableName,
+			req.DatabaseId,
+			req.DatabaseName,
+			txn.String(),
+			common.MoBatchToString(req.Batch, 5)))
 	}
 	rowIDVec := containers.ToDNVector(req.Batch.GetVector(0))
 	defer rowIDVec.Close()
