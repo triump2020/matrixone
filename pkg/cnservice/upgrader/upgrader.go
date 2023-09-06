@@ -179,20 +179,25 @@ func (u *Upgrader) GenerateUpgradeSQL(diff table.SchemaDiff) (string, error) {
 }
 
 func (u *Upgrader) Upgrade(ctx context.Context) error {
+	fmt.Println("xxxx> upgrade 1")
 	allTenants, err := u.GetAllTenantInfo(ctx)
 	if err != nil {
+		fmt.Println("xxxx> upgrade 2",err)
 		return err
 	}
 
 	if err = u.UpgradeNewTableColumn(ctx); err != nil {
+		fmt.Println("xxxx> upgrade 3",err)
 		return err
 	}
 
 	if err = u.UpgradeNewTable(ctx, allTenants); err != nil {
+		fmt.Println("xxxx> upgrade 4",err)
 		return err
 	}
 
 	if err = u.UpgradeNewView(ctx, allTenants); err != nil {
+		fmt.Println("xxxx> upgrade 5",err)
 		return err
 	}
 	return nil
@@ -206,13 +211,16 @@ func (u *Upgrader) UpgradeNewTableColumn(ctx context.Context) error {
 	}
 
 	for _, tbl := range registeredTable {
+		fmt.Println("xxxx> upgrade 9",tbl.Account, tbl.Database, tbl.Table)
 		currentSchema, err := u.GetCurrentSchema(ctx, exec, tbl.Database, tbl.Table)
 		if err != nil {
+			fmt.Println("xxxx> upgrade 10",err)
 			return err
 		}
 
 		diff, err := u.GenerateDiff(currentSchema, tbl)
 		if err != nil {
+			fmt.Println("xxxx> upgrade 11",err)
 			return err
 		} else if len(diff.AddedColumns) == 0 {
 			continue
@@ -220,11 +228,13 @@ func (u *Upgrader) UpgradeNewTableColumn(ctx context.Context) error {
 
 		upgradeSQL, err := u.GenerateUpgradeSQL(diff)
 		if err != nil {
+			fmt.Println("xxxx> upgrade 12",err)
 			return err
 		}
 
 		// Execute upgrade SQL
 		if err = exec.Exec(ctx, upgradeSQL, ie.NewOptsBuilder().Finish()); err != nil {
+			fmt.Println("xxxx> upgrade 13",err,upgradeSQL)
 			return err
 		}
 	}
@@ -233,12 +243,15 @@ func (u *Upgrader) UpgradeNewTableColumn(ctx context.Context) error {
 
 // Upgrade system tables, add system tables
 func (u *Upgrader) UpgradeNewTable(ctx context.Context, tenants []*frontend.TenantInfo) error {
+		fmt.Println("xxxx> upgrade 6")
 	exec := u.IEFactory()
 	if exec == nil {
 		return nil
 	}
 
+		fmt.Println("xxxx> upgrade 7")
 	for _, tbl := range needUpgradNewTable {
+		fmt.Println("xxxx> upgrade 8",tbl.Account, tbl.Database, tbl.Table)
 		if tbl.Account == table.AccountAll {
 			for _, tenant := range tenants {
 				if err := u.upgradeFunc(ctx, tbl, false, tenant, exec); err != nil {

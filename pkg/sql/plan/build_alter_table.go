@@ -528,7 +528,7 @@ func buildAlterTable(stmt *tree.AlterTable, ctx CompilerContext) (*Plan, error) 
 	}
 
 	if tableDef.ClusterBy != nil {
-		return nil, moerr.NewNotSupported(ctx.GetContext(), "alter table for cluster table")
+		return nil, moerr.NewNotSupported(ctx.GetContext(), "alter table for cluster by")
 	}
 
 	if tableDef.ViewSql != nil {
