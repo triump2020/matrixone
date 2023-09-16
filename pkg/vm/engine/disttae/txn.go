@@ -85,7 +85,7 @@ func (txn *Transaction) WriteBatch(
 	databaseName string,
 	tableName string,
 	bat *batch.Batch,
-	tnStore DNStore,
+	tnStore TNStore,
 	primaryIdx int, // pass -1 to indicate no primary key or disable primary key checking
 	insertBatchHasRowId bool,
 	truncate bool) error {
@@ -145,6 +145,7 @@ func (txn *Transaction) dumpBatchLocked(offset int) error {
 
 	txn.hasS3Op.Store(true)
 	mp := make(map[[2]string][]*batch.Batch)
+	toFree := make(map[[2]string][]*batch.Batch)
 	for i := offset; i < len(txn.writes); i++ {
 		if txn.writes[i].tableId == catalog.MO_DATABASE_ID ||
 			txn.writes[i].tableId == catalog.MO_TABLES_ID ||
@@ -158,19 +159,18 @@ func (txn *Transaction) dumpBatchLocked(offset int) error {
 			key := [2]string{txn.writes[i].databaseName, txn.writes[i].tableName}
 			bat := txn.writes[i].bat
 			size += uint64(bat.Size())
+
 			// skip rowid
 			//it's dangerous.
 			//bat.Attrs = bat.Attrs[1:]
 			//bat.Vecs = bat.Vecs[1:]
 			//mp[key] = append(mp[key], bat)
-
 			newBat := batch.NewWithSize(len(bat.Vecs) - 1)
 			newBat.SetAttributes(bat.Attrs[1:])
 			newBat.Vecs = bat.Vecs[1:]
 			newBat.SetRowCount(bat.Vecs[0].Length())
 			mp[key] = append(mp[key], newBat)
 			txn.toFreeBatches[key] = append(txn.toFreeBatches[key], bat)
-
 			// DON'T MODIFY THE IDX OF AN ENTRY IN LOG
 			// THIS IS VERY IMPORTANT FOR CN BLOCK COMPACTION
 			// maybe this will cause that the log increments unlimitedly
@@ -227,7 +227,8 @@ func (txn *Transaction) dumpBatchLocked(offset int) error {
 			return err
 		}
 	}
-	if offset == 0 {
+
+ if offset == 0 {
 		txn.workspaceSize = 0
 		writes := txn.writes[:0]
 		for i, write := range txn.writes {
@@ -285,7 +286,7 @@ func (txn *Transaction) WriteFileLocked(
 	tableName string,
 	fileName string,
 	bat *batch.Batch,
-	tnStore DNStore) error {
+	tnStore TNStore) error {
 	txn.hasS3Op.Store(true)
 	newBat := bat
 	if typ == INSERT {
@@ -302,6 +303,7 @@ func (txn *Transaction) WriteFileLocked(
 				false,
 				txn.proc.Mp())
 		}
+		//FIXME:: memory leak since bat is not been clean?
 		newBat.SetRowCount(bat.Vecs[0].Length())
 	}
 	txn.readOnly.Store(false)
@@ -343,7 +345,7 @@ func (txn *Transaction) WriteFile(
 	tableName string,
 	fileName string,
 	bat *batch.Batch,
-	tnStore DNStore) error {
+	tnStore TNStore) error {
 	txn.Lock()
 	defer txn.Unlock()
 	return txn.WriteFileLocked(
@@ -626,6 +628,10 @@ func (txn *Transaction) getTableWrites(databaseId uint64, tableId uint64, writes
 		if entry.tableId != tableId {
 			continue
 		}
+		if entry.bat == nil || entry.bat.IsEmpty() {
+			continue
+		}
+		entry.bat.AddCnt(1)
 		writes = append(writes, entry)
 	}
 	return writes
