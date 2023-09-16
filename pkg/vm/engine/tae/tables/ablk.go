@@ -265,6 +265,9 @@ func (blk *ablock) BatchDedup(
 		if moerr.IsMoErrCode(err, moerr.ErrDuplicateEntry) {
 			logutil.Debugf("BatchDedup BLK-%s: %v", blk.meta.ID.String(), err)
 		}
+		if moerr.IsMoErrCode(err, moerr.ErrTxnWWConflict) {
+			logutil.Debugf("BatchDedup BLK-%s: %v", blk.meta.ID.String(), err)
+		}
 	}()
 	node := blk.PinNode()
 	defer node.Unref()

@@ -56,6 +56,8 @@ type DeleteNode struct {
 	nt       NodeType
 	id       *common.ID
 	dt       handle.DeleteType
+	//for test
+	TxnID string
 }
 
 func NewMergedNode(commitTs types.TS) *DeleteNode {
@@ -225,6 +227,8 @@ func (node *DeleteNode) IsPersistedDeletedNode() bool {
 func (node *DeleteNode) ApplyCommit() (err error) {
 	node.chain.Load().mvcc.Lock()
 	defer node.chain.Load().mvcc.Unlock()
+	//for test
+	node.TxnID = node.TxnMVCCNode.Txn.GetID()
 	_, err = node.TxnMVCCNode.ApplyCommit()
 	if err != nil {
 		return

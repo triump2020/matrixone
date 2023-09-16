@@ -639,6 +639,11 @@ func (tbl *txnTable) rangesOnePart(
 		deleteBlks, createBlks := state.GetChangedBlocksBetween(types.TimestampToTS(tbl.lastTS),
 			types.TimestampToTS(tbl.db.txn.meta.SnapshotTS))
 		if len(deleteBlks) > 0 {
+			logutil.Infof("rangesOnePart: has delete blocks between %s and %s, txn:%x",
+				tbl.lastTS.DebugString(),
+				tbl.db.txn.meta.SnapshotTS.DebugString(),
+				tbl.db.txn.meta.ID)
+
 			if err := tbl.updateDeleteInfo(deleteBlks, createBlks, committedblocks); err != nil {
 				return err
 			}

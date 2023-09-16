@@ -133,10 +133,31 @@ func (chain *DeleteChain) hasOverLap(start, end uint64) bool {
 	}
 	var yes bool
 	for i := start; i < end+1; i++ {
-		if chain.mask.Contains(i) || chain.persistedMask.Contains(i) {
+		//if chain.mask.Contains(i) || chain.persistedMask.Contains(i) {
+		//	yes = true
+		//	break
+		//}
+		if chain.mask.Contains(i) {
+			node := chain.GetDeleteNodeByRow(uint32(i))
+			if node.GetTxn() != nil {
+				logutil.Infof("w-w conflict with txn %v", node.GetTxn().Repr())
+			} else {
+				logutil.Infof("w-w conflict with committed txn %X , maybe the rowid is wrong", node.TxnID)
+			}
 			yes = true
 			break
 		}
+		if chain.persistedMask.Contains(i) {
+			node := chain.GetDeleteNodeByRow(uint32(i))
+			if node.GetTxn() != nil {
+				logutil.Infof("w-w conflict with txn %v", node.GetTxn().Repr())
+			} else {
+				logutil.Infof("w-w conflict with committed txn %X , maybe the rowid is wrong", node.TxnID)
+			}
+			yes = true
+			break
+		}
+
 	}
 	return yes
 }

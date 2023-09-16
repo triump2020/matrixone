@@ -220,14 +220,14 @@ func (entry *flushTableTailEntry) PrepareRollback() (err error) {
 
 // ApplyCommit Gc in memory deletes and update table compact status
 func (entry *flushTableTailEntry) ApplyCommit() (err error) {
-	for i, blk := range entry.ablksMetas {
-		_ = blk.GetBlockData().TryUpgrade()
-		blk.GetBlockData().GCInMemeoryDeletesByTS(entry.ablksHandles[i].GetDeltaPersistedTS())
-	}
+	//for i, blk := range entry.ablksMetas {
+	//	_ = blk.GetBlockData().TryUpgrade()
+	//	blk.GetBlockData().GCInMemeoryDeletesByTS(entry.ablksHandles[i].GetDeltaPersistedTS())
+	//}
 
-	for i, blk := range entry.delSrcMetas {
-		blk.GetBlockData().GCInMemeoryDeletesByTS(entry.delSrcHandles[i].GetDeltaPersistedTS())
-	}
+	//for i, blk := range entry.delSrcMetas {
+	//	blk.GetBlockData().GCInMemeoryDeletesByTS(entry.delSrcHandles[i].GetDeltaPersistedTS())
+	//}
 
 	tbl := entry.tableEntry
 	tbl.Stats.Lock()

@@ -440,6 +440,17 @@ func doLock(
 	// if has no conflict, lockedTS means the latest commit ts of this table
 	lockedTS := result.Timestamp
 
+	logutil.Infof("[id: %x, snapshotts: %s, isolation : %v, tableid: %d] lock result:(HasConflict-%v, Timestamp-%s, HasPrevCommit-%v),retry-%v",
+		txn.ID,
+		snapshotTS.DebugString(),
+		txnOp.Txn().Isolation,
+		tableID,
+		result.HasConflict,
+		lockedTS.DebugString(),
+		result.HasPrevCommit,
+		txnOp.IsRetry(),
+	)
+
 	// if no conflict, maybe data has been updated in [snapshotTS, lockedTS]. So wen need check here
 	if !result.HasConflict &&
 		snapshotTS.LessEq(lockedTS) && // only retry when snapshotTS <= lockedTS, means lost some update in rc mode.
@@ -463,6 +474,9 @@ func doLock(
 			return false, false, timestamp.Timestamp{}, err
 		}
 		if changed {
+			logutil.Infof("update %x 's snapshot ts by %s",
+				txn.ID,
+				newSnapshotTS.DebugString())
 			if err := txnOp.UpdateSnapshot(ctx, newSnapshotTS); err != nil {
 				return false, false, timestamp.Timestamp{}, err
 			}
@@ -470,7 +484,7 @@ func doLock(
 		}
 	}
 
-	// no conflict or has conflict, but all prev txn all aborted
+	// no conflict or has conflict, but all prev txn all aborted.
 	// current txn can read and write normally
 	if !result.HasConflict ||
 		!result.HasPrevCommit {

@@ -17,10 +17,8 @@ package txnimpl
 import (
 	"context"
 	"fmt"
-	"runtime/trace"
-	"time"
-
 	"github.com/matrixorigin/matrixone/pkg/perfcounter"
+	"runtime/trace"
 
 	"github.com/RoaringBitmap/roaring"
 
@@ -134,40 +132,40 @@ func (tbl *txnTable) PrePreareTransfer(phase string, ts types.TS) (err error) {
 	return tbl.TransferDeletes(ts, phase)
 }
 
-func (tbl *txnTable) TransferDeleteIntent(
-	id *common.ID,
-	row uint32) (changed bool, nid *common.ID, nrow uint32, err error) {
-	pinned, err := tbl.store.rt.TransferTable.Pin(*id)
-	if err != nil {
-		err = nil
-		return
-	}
-	defer pinned.Close()
-	entry, err := tbl.store.warChecker.CacheGet(
-		tbl.entry.GetDB().ID,
-		id.TableID,
-		id.SegmentID(),
-		&id.BlockID)
-	if err != nil {
-		panic(err)
-	}
-	ts := types.BuildTS(time.Now().UTC().UnixNano(), 0)
-	if err = readWriteConfilictCheck(entry.BaseEntryImpl, ts); err == nil {
-		return
-	}
-	err = nil
-	nid = &common.ID{
-		TableID: id.TableID,
-	}
-	rowID, ok := pinned.Item().Transfer(row)
-	if !ok {
-		err = moerr.NewTxnWWConflictNoCtx()
-		return
-	}
-	changed = true
-	nid.BlockID, nrow = rowID.Decode()
-	return
-}
+//func (tbl *txnTable) TransferDeleteIntent(
+//	id *common.ID,
+//	row uint32) (changed bool, nid *common.ID, nrow uint32, err error) {
+//	pinned, err := tbl.store.rt.TransferTable.Pin(*id)
+//	if err != nil {
+//		err = nil
+//		return
+//	}
+//	defer pinned.Close()
+//	entry, err := tbl.store.warChecker.CacheGet(
+//		tbl.entry.GetDB().ID,
+//		id.TableID,
+//		id.SegmentID(),
+//		&id.BlockID)
+//	if err != nil {
+//		panic(err)
+//	}
+//	ts := types.BuildTS(time.Now().UTC().UnixNano(), 0)
+//	if err = readWriteConfilictCheck(entry.BaseEntryImpl, ts); err == nil {
+//		return
+//	}
+//	err = nil
+//	nid = &common.ID{
+//		TableID: id.TableID,
+//	}
+//	rowID, ok := pinned.Item().Transfer(row)
+//	if !ok {
+//		err = moerr.NewTxnWWConflictNoCtx()
+//		return
+//	}
+//	changed = true
+//	nid.BlockID, nrow = rowID.Decode()
+//	return
+//}
 
 func (tbl *txnTable) TransferDeletes(ts types.TS, phase string) (err error) {
 	if tbl.store.rt.TransferTable == nil {
@@ -218,11 +216,12 @@ func (tbl *txnTable) recurTransferDelete(
 	rowID, ok := page.Transfer(row)
 	if !ok {
 		err := moerr.NewTxnWWConflictNoCtx()
-		msg := fmt.Sprintf("table-%d blk-%d delete row-%d depth-%d",
+		msg := fmt.Sprintf("table-%d blk-%d delete row-%d depth-%d err-%v",
 			id.TableID,
 			id.BlockID,
 			row,
-			depth)
+			depth,
+			err)
 		logutil.Warnf("[ts=%s]TransferDeleteNode: %v",
 			tbl.store.txn.GetStartTS().ToString(),
 			msg)
@@ -725,7 +724,8 @@ func (tbl *txnTable) RangeDelete(
 		// }
 		// This err also captured by txn's write conflict check.
 		if err != nil {
-			logutil.Debugf("[ts=%s]: table-%d blk-%s delete rows from %d to %d %v",
+			logutil.Infof("[txn=%s, ts=%s]: table-%d blk-%s delete rows from %d to %d %v",
+				tbl.store.txn.String(),
 				tbl.store.txn.GetStartTS().ToString(),
 				id.TableID,
 				id.BlockID.String(),

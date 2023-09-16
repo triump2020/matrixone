@@ -126,6 +126,13 @@ func (blk *block) BatchDedup(
 		if moerr.IsMoErrCode(err, moerr.ErrDuplicateEntry) {
 			logutil.Infof("BatchDedup %s (%v)BLK-%s: %v", blk.meta.GetSegment().GetTable().GetLastestSchema().Name, blk.IsAppendable(), blk.meta.ID.String(), err)
 		}
+		if moerr.IsMoErrCode(err, moerr.ErrTxnWWConflict) {
+			logutil.Infof("BatchDedup %s (%v)BLK-%s: %v",
+				blk.meta.GetSegment().GetTable().GetLastestSchema().Name,
+				blk.IsAppendable(),
+				blk.meta.ID.String(),
+				err)
+		}
 	}()
 	return blk.PersistedBatchDedup(
 		ctx,

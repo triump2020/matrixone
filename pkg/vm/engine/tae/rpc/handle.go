@@ -177,6 +177,12 @@ func (h *Handle) HandleCommit(
 	err = txn.Commit(ctx)
 	cts = txn.GetCommitTS().ToTimestamp()
 
+	if err != nil {
+		logutil.Infof("Commit error : txnid-%X, err-%v",
+			string(meta.GetID()),
+			err)
+	}
+
 	if moerr.IsMoErrCode(err, moerr.ErrTAENeedRetry) {
 		for {
 			txn, err = h.db.StartTxnWithStartTSAndSnapshotTS(nil,
@@ -251,6 +257,7 @@ func (h *Handle) handleRequests(
 				req,
 				&db.WriteResp{},
 			)
+
 			if moerr.IsMoErrCode(err, moerr.ErrDuplicateEntry) && (strings.HasPrefix(req.TableName, "bmsql") || strings.HasPrefix(req.TableName, "sbtest")) {
 				for _, rreq := range txnCtx.reqs {
 					if crreq, ok := rreq.(*db.WriteReq); ok {
@@ -262,6 +269,19 @@ func (h *Handle) handleRequests(
 					}
 				}
 			}
+
+			if err != nil && moerr.IsMoErrCode(err, moerr.ErrTxnWWConflict) {
+				for _, rreq := range txnCtx.reqs {
+					if crreq, ok := rreq.(*db.WriteReq); ok {
+						logutil.Infof("[precommit] ww handle write typ: %v, %d-%s, %s txn: %s",
+							crreq.Type, crreq.TableID,
+							crreq.TableName, common.MoBatchToString(crreq.Batch, 3),
+							txn.String(),
+						)
+					}
+				}
+			}
+
 		default:
 			panic(moerr.NewNYI(ctx, "Pls implement me"))
 		}
@@ -881,9 +901,26 @@ func (h *Handle) HandleWrite(
 		common.DoIfDebugEnabled(func() {
 			logutil.Debugf("[precommit] handle write end txn: %s", txn.String())
 		})
-		if err != nil && moerr.IsMoErrCode(err, moerr.ErrDuplicateEntry) && (strings.HasPrefix(req.TableName, "bmsql") || strings.HasPrefix(req.TableName, "sbtest")) {
-			logutil.Infof("[precommit] dup handle catalog on dup %s ", tb.GetMeta().(*catalog2.TableEntry).PPString(common.PPL1, 0, ""))
+
+		if err != nil && moerr.IsMoErrCode(err, moerr.ErrDuplicateEntry) &&
+			(strings.HasPrefix(req.TableName, "bmsql") || strings.HasPrefix(req.TableName, "sbtest")) {
+			logutil.Infof("[precommit] dup handle catalog on dup %s ",
+				tb.GetMeta().(*catalog2.TableEntry).PPString(common.PPL1, 0, ""))
 		}
+
+		if err != nil {
+			logutil.Infof("[precommit] handle write typ: %v, %d-%s, %d-%s txn: %s, "+
+				"pkcheck: %d, filename: %s, err: %v",
+				req.Type, req.TableID,
+				req.TableName, req.DatabaseId, req.DatabaseName,
+				txn.String(),
+				req.PkCheck,
+				req.FileName,
+				err,
+			)
+			logutil.Infof("[precommit] write batch: %s", common.MoBatchToString(req.Batch, 3))
+		}
+
 	}()
 
 	dbase, err = txn.GetDatabaseByID(req.DatabaseId)

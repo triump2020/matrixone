@@ -371,8 +371,9 @@ func (c *Compile) Run(_ uint64) (*util2.RunResult, error) {
 
 	if strings.Contains(sql, "select bmsql_district.d_tax, bmsql_district.d_next_o_id from bmsql_district") {
 		f := c.fill
-		msg := fmt.Sprintf("%x run sql: %s(%s)",
+		msg := fmt.Sprintf("%x %s run sql: %s(%s)",
 			c.proc.TxnOperator.Txn().ID,
+			c.proc.TxnOperator.Txn().SnapshotTS.DebugString(),
 			sql,
 			c.proc.GetPrepareParams())
 		c.fill = func(a any, b *batch.Batch) error {
@@ -388,8 +389,9 @@ func (c *Compile) Run(_ uint64) (*util2.RunResult, error) {
 	}
 
 	if strings.Contains(sql, "bmsql_") {
-		logutil.Infof("%x run sql: %s, %s\n",
+		logutil.Infof("%x %s run sql: %s, %s\n",
 			c.proc.TxnOperator.Txn().ID,
+			c.proc.TxnOperator.Txn().SnapshotTS.DebugString(),
 			sql,
 			c.proc.GetPrepareParams())
 	}
