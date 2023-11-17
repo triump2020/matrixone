@@ -430,8 +430,8 @@ func (tbl *txnTable) GetColumMetadataScanInfo(ctx context.Context, name string) 
 				ZoneMap:      colMeta.ZoneMap(),
 			})
 			if tbl.tableName == "t" {
-				logutil.Infof("xxxx table metadata scan: colName: %s, originSize: %d",
-					col.Name, colMeta.Location().OriginSize())
+				logutil.Infof("xxxx table metadata scan: objectName : %s, colName: %s, originSize: %d",
+					objName, col.Name, colMeta.Location().OriginSize())
 			}
 		}
 		return nil
