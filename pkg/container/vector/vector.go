@@ -17,6 +17,7 @@ package vector
 import (
 	"bytes"
 	"fmt"
+	"github.com/matrixorigin/matrixone/pkg/logutil"
 	"unsafe"
 
 	"github.com/matrixorigin/matrixone/pkg/common/moerr"
@@ -423,6 +424,7 @@ func (v *Vector) MarshalBinaryWithBuffer(buf *bytes.Buffer) error {
 	} else if v.IsConstNull() {
 		dataLen = 0
 	}
+	logutil.Infof("xxxx vector's dataLen is %d", dataLen)
 	buf.Write(types.EncodeUint32(&dataLen))
 	if dataLen > 0 {
 		buf.Write(v.data[:dataLen])
@@ -431,6 +433,7 @@ func (v *Vector) MarshalBinaryWithBuffer(buf *bytes.Buffer) error {
 	// write areaLen, area
 	areaLen := uint32(len(v.area))
 	buf.Write(types.EncodeUint32(&areaLen))
+	logutil.Infof("xxxx vector's areaLen is %d", areaLen)
 	if areaLen > 0 {
 		buf.Write(v.area)
 	}
@@ -442,6 +445,7 @@ func (v *Vector) MarshalBinaryWithBuffer(buf *bytes.Buffer) error {
 	}
 	nspLen := uint32(len(nspData))
 	buf.Write(types.EncodeUint32(&nspLen))
+	logutil.Infof("xxxx vector's nspLen is %d", nspLen)
 	if nspLen > 0 {
 		buf.Write(nspData)
 	}
