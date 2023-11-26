@@ -593,8 +593,8 @@ func (w *objectWriterV1) addBlock(blocks *[]blockData, blockMeta BlockObject, ba
 		if data, ext, err = w.WriteWithCompress(0, buf.Bytes()); err != nil {
 			return 0, err
 		}
-		logutil.Infof("yyy file name = %s, column originSize = %d, len(vec) = %d",
-			w.fileName, len(buf.Bytes()), len(bat.Vecs))
+		//logutil.Infof("yyy file name = %s, column originSize = %d, len(vec) = %d",
+		//	w.fileName, len(buf.Bytes()), len(bat.Vecs))
 		size += len(data)
 		block.data = append(block.data, data)
 		blockMeta.ColumnMeta(seqnums.Seqs[i]).setLocation(ext)

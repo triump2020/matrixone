@@ -157,6 +157,22 @@ func (tbl *txnTable) Rows(ctx context.Context) (rows int64, err error) {
 	return rows, nil
 }
 
+func (tbl *txnTable) ForeachDataObject(
+	state *logtailreplay.PartitionState,
+	fn func(obj logtailreplay.ObjectEntry) error,
+) (err error) {
+	//ts := types.TimestampToTS(tbl.db.txn.op.SnapshotTS())
+	iter := state.NewObjsIter()
+	for iter.Next() {
+		entry := iter.Entry()
+		if err = fn(entry); err != nil {
+			break
+		}
+	}
+	iter.Close()
+	return
+}
+
 func (tbl *txnTable) ForeachVisibleDataObject(
 	state *logtailreplay.PartitionState,
 	fn func(obj logtailreplay.ObjectEntry) error,
@@ -430,11 +446,26 @@ func (tbl *txnTable) GetColumMetadataScanInfo(ctx context.Context, name string) 
 				ZoneMap:      colMeta.ZoneMap(),
 			})
 			if tbl.tableName == "t" {
-				logutil.Infof("xxxx table metadata scan: objectName : %s, colName: %s, originSize: %d",
+				logutil.Infof("xxxx table metadata scan: snapshot ts : %s, "+
+					"objectName : %s, colName: %s, originSize: %d",
+					types.TimestampToTS(tbl.db.txn.op.SnapshotTS()).ToString(),
 					objName, col.Name, colMeta.Location().OriginSize())
 			}
 		}
 		return nil
+	}
+
+	//log all the data objects
+	if tbl.tableName == "t" {
+		tbl.ForeachDataObject(state, func(obj logtailreplay.ObjectEntry) error {
+			location := obj.Location()
+			objName := location.Name().String()
+			logutil.Infof("object entry: objName=%s, createTS=%s, deleteTS=%s, entryState=%v",
+				objName, obj.CreateTime.ToString(), obj.DeleteTime.ToString(), obj.EntryState,
+			)
+			return nil
+		})
+
 	}
 
 	if err = tbl.ForeachVisibleDataObject(state, onObjFn); err != nil {

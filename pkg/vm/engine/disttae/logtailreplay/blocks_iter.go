@@ -34,6 +34,44 @@ type objectsIter struct {
 	firstCalled bool
 }
 
+type objsIter struct {
+	iter        btree.IterG[ObjectIndexByCreateTSEntry]
+	firstCalled bool
+}
+
+func (p *PartitionState) NewObjsIter() *objsIter {
+	iter := p.dataObjectsByCreateTS.Copy().Iter()
+	ret := &objsIter{
+		iter: iter,
+	}
+	return ret
+}
+
+func (b *objsIter) Next() bool {
+	if !b.firstCalled {
+		if !b.iter.First() {
+			return false
+		}
+		b.firstCalled = true
+		return true
+	}
+	return b.iter.Next()
+}
+
+func (b *objsIter) Entry() ObjectEntry {
+	return ObjectEntry{
+		ShortObjName: b.iter.Item().ShortObjName,
+		ObjectInfo:   b.iter.Item().ObjectInfo,
+	}
+}
+
+func (b *objsIter) Close() error {
+	b.iter.Release()
+	return nil
+}
+
+var _ ObjectsIter = new(objsIter)
+
 // not accurate!  only used by stats
 func (p *PartitionState) ApproxObjectsNum() int {
 	return p.dataObjects.Len()
