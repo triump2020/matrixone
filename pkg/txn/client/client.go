@@ -227,7 +227,7 @@ func (client *txnClient) New(
 	txnMeta := txn.TxnMeta{}
 	txnMeta.ID = client.generator.Generate()
 	txnMeta.SnapshotTS = ts
-	logutil.Infof("xxxx txnID:%s, snapshotTS:%s, minTS",
+	logutil.Infof("xxxx txnID:%s, snapshotTS:%s, minTS:%s",
 		txnMeta.ID,
 		txnMeta.SnapshotTS.DebugString(),
 		minTS.DebugString())
