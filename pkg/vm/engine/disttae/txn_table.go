@@ -446,9 +446,9 @@ func (tbl *txnTable) GetColumMetadataScanInfo(ctx context.Context, name string) 
 				ZoneMap:      colMeta.ZoneMap(),
 			})
 			if tbl.tableName == "t" {
-				logutil.Infof("xxxx table metadata scan: snapshot ts : %s, "+
+				logutil.Infof("xxxx table metadata scan: txnInfo: %s, "+
 					"objectName : %s, colName: %s, originSize: %d",
-					types.TimestampToTS(tbl.db.txn.op.SnapshotTS()).ToString(),
+					tbl.db.txn.op.Txn().DebugString(),
 					objName, col.Name, colMeta.Location().OriginSize())
 			}
 		}
@@ -460,7 +460,7 @@ func (tbl *txnTable) GetColumMetadataScanInfo(ctx context.Context, name string) 
 		tbl.ForeachDataObject(state, func(obj logtailreplay.ObjectEntry) error {
 			location := obj.Location()
 			objName := location.Name().String()
-			logutil.Infof("object entry: objName=%s, createTS=%s, deleteTS=%s, entryState=%v",
+			logutil.Infof("xxxx object entry: objName=%s, createTS=%s, deleteTS=%s, entryState=%v",
 				objName, obj.CreateTime.ToString(), obj.DeleteTime.ToString(), obj.EntryState,
 			)
 			return nil
