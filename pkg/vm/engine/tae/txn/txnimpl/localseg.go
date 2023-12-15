@@ -17,6 +17,8 @@ package txnimpl
 import (
 	"context"
 	"fmt"
+	"github.com/matrixorigin/matrixone/pkg/logutil"
+	"time"
 
 	"github.com/matrixorigin/matrixone/pkg/container/types"
 	"github.com/matrixorigin/matrixone/pkg/objectio"
@@ -320,6 +322,12 @@ func (seg *localSegment) Append(data *containers.Batch) (err error) {
 	offset := uint32(0)
 	length := uint32(data.Length())
 	schema := seg.table.GetLocalSchema()
+	var append time.Duration
+	defer func() {
+		if append > 10*time.Millisecond {
+			logutil.Infof("localSegment.append appends %d rows takes %v", length, append)
+		}
+	}()
 	for {
 		h := seg.appendable
 		space := h.GetSpace()
@@ -327,10 +335,13 @@ func (seg *localSegment) Append(data *containers.Batch) (err error) {
 			seg.registerANode()
 			h = seg.appendable
 		}
+		startAppend := time.Now()
 		appended, err = h.Append(data, offset)
 		if err != nil {
 			return
 		}
+		append += time.Since(startAppend)
+
 		dedupType := seg.table.store.txn.GetDedupType()
 		if schema.HasPK() && dedupType == txnif.FullDedup {
 			if err = seg.index.BatchInsert(

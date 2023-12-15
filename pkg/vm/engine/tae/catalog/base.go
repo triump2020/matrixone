@@ -16,6 +16,9 @@ package catalog
 
 import (
 	"fmt"
+	"github.com/matrixorigin/matrixone/pkg/logutil"
+	"time"
+
 	// "io"
 	"sync"
 
@@ -216,11 +219,16 @@ func (be *BaseEntryImpl[T]) GetVisibilityLocked(txn txnif.TxnReader) (visible, d
 }
 
 func (be *BaseEntryImpl[T]) IsVisible(txn txnif.TxnReader, mu *sync.RWMutex) (ok bool, err error) {
+	start := time.Now()
 	needWait, txnToWait := be.NeedWaitCommitting(txn.GetStartTS())
 	if needWait {
 		mu.RUnlock()
 		txnToWait.GetTxnState(true)
 		mu.RLock()
+	}
+	if time.Since(start) > 100*time.Millisecond {
+		logutil.Infof("IsVisible: waited for %v, needWait:%v",
+			time.Since(start), needWait)
 	}
 	ok = be.ensureVisibleAndNotDropped(txn)
 	return

@@ -135,6 +135,10 @@ func (h *Handle) HandleCommit(
 	h.mu.RLock()
 	txnCtx, ok := h.mu.txnCtxs[string(meta.GetID())]
 	h.mu.RUnlock()
+
+	if time.Since(start).Milliseconds() > 20 {
+		logutil.Infof("HandleCommit get txn context lock takes %v", time.Since(start))
+	}
 	common.DoIfDebugEnabled(func() {
 		logutil.Debugf("HandleCommit start : %X",
 			string(meta.GetID()))
@@ -159,10 +163,14 @@ func (h *Handle) HandleCommit(
 	var txn txnif.AsyncTxn
 	if ok {
 		//Handle precommit-write command for 1PC
+		startCreateTxn := time.Now()
 		txn, err = h.db.GetOrCreateTxnWithMeta(nil, meta.GetID(),
 			types.TimestampToTS(meta.GetSnapshotTS()))
 		if err != nil {
 			return
+		}
+		if time.Since(startCreateTxn).Milliseconds() > 20 {
+			logutil.Infof("HandleCommit create txn takes %v", time.Since(startCreateTxn))
 		}
 		err = h.handleRequests(ctx, txn, txnCtx)
 		if err != nil {
@@ -174,15 +182,26 @@ func (h *Handle) HandleCommit(
 	if enable && activeDuration > threshold && txn.GetContext() != nil {
 		txn.GetStore().SetContext(context.WithValue(txn.GetContext(), common.ActiveHandleCommit, &common.DurationRecords{Duration: activeDuration}))
 	}
+
+	startGetTxn := time.Now()
 	txn, err = h.db.GetTxnByID(meta.GetID())
 	if err != nil {
 		return
 	}
+	if time.Since(startGetTxn).Milliseconds() > 20 {
+		logutil.Infof("HandleCommit get txn takes %v", time.Since(startGetTxn))
+	}
+
 	//if txn is 2PC ,need to set commit timestamp passed by coordinator.
 	if txn.Is2PC() {
 		txn.SetCommitTS(types.TimestampToTS(meta.GetCommitTS()))
 	}
 
+	if time.Since(start).Milliseconds() > 100 {
+		logutil.Infof("HandleCommit handle before txn commit spends %v, txn:%X",
+			time.Since(start),
+			txn.GetID())
+	}
 	v2.TxnBeforeCommitDurationHistogram.Observe(time.Since(start).Seconds())
 
 	err = txn.Commit(ctx)
@@ -291,6 +310,19 @@ func (h *Handle) handleRequests(
 	var createDB, createRelation, dropDB, dropRelation, alterTable, write int
 	defer func() {
 		handleRequestDuration := time.Since(t0)
+
+		if handleRequestDuration > 100*time.Millisecond {
+			logutil.Infof("handleRequests takes much time %v, txn:%s, count:[%v, %v, %v, %v, %v, %v]",
+				handleRequestDuration,
+				txn.String(),
+				createDB,
+				createRelation,
+				dropDB,
+				dropRelation,
+				alterTable,
+				write)
+		}
+
 		_, enable, threshold := trace.IsMOCtledSpan(trace.SpanKindTNRPCHandle)
 		if enable && handleRequestDuration > threshold && txn.GetContext() != nil {
 			txn.GetStore().SetContext(context.WithValue(
@@ -979,6 +1011,7 @@ func (h *Handle) HandleWrite(
 	txn txnif.AsyncTxn,
 	req *db.WriteReq,
 	resp *db.WriteResp) (err error) {
+	start := time.Now()
 	defer func() {
 		if req.Cancel != nil {
 			req.Cancel()
@@ -1021,6 +1054,12 @@ func (h *Handle) HandleWrite(
 		return
 	}
 
+	if time.Since(start) > 20*time.Millisecond {
+		logutil.Infof("Before HandleWrite takes:%v, txn:%s",
+			time.Since(start),
+			txn.String())
+	}
+
 	if req.Type == db.EntryInsert {
 		//Add blocks which had been bulk-loaded into S3 into table.
 		if req.FileName != "" {
@@ -1043,7 +1082,15 @@ func (h *Handle) HandleWrite(
 				err = moerr.NewInternalError(ctx, "object stats doesn't match meta locations")
 				return
 			}
+
+			start := time.Now()
 			err = tb.AddBlksWithMetaLoc(ctx, statsVec)
+			if time.Since(start) > 20*time.Millisecond {
+				logutil.Infof("HandleWrite: AddBlksWithMetaLoc takes:%v, txn:%s",
+					time.Since(start),
+					txn.String())
+			}
+
 			return
 		}
 		//check the input batch passed by cn is valid.
@@ -1073,12 +1120,19 @@ func (h *Handle) HandleWrite(
 			}
 		}
 		//Appends a batch of data into table.
+		start := time.Now()
 		err = AppendDataToTable(ctx, tb, req.Batch)
+		if time.Since(start) > 20*time.Millisecond {
+			logutil.Infof("HandleWrite: AppendDataToTable takes:%v, txn:%s",
+				time.Since(start),
+				txn.String())
+		}
 		return
 	}
 
 	//handle delete
 	if req.FileName != "" {
+		start := time.Now()
 		//wait for loading deleted row-id done.
 		nctx := context.Background()
 		if deadline, ok := ctx.Deadline(); ok {
@@ -1086,6 +1140,7 @@ func (h *Handle) HandleWrite(
 		}
 		rowidIdx := 0
 		pkIdx := 1
+		var totalLoadDels time.Duration
 		for _, key := range req.DeltaLocs {
 			var location objectio.Location
 			location, err = blockio.EncodeLocationFromString(key)
@@ -1094,6 +1149,7 @@ func (h *Handle) HandleWrite(
 			}
 			var ok bool
 			var bat *batch.Batch
+			startLoadDels := time.Now()
 			bat, err = blockio.LoadTombstoneColumns(
 				ctx,
 				[]uint16{uint16(rowidIdx), uint16(pkIdx)},
@@ -1105,6 +1161,8 @@ func (h *Handle) HandleWrite(
 			if err != nil {
 				return
 			}
+			totalLoadDels += time.Since(startLoadDels)
+
 			blkids := getBlkIDsFromRowids(bat.Vecs[0])
 			id := tb.GetMeta().(*catalog2.TableEntry).AsCommonID()
 			if len(blkids) == 1 {
@@ -1130,11 +1188,25 @@ func (h *Handle) HandleWrite(
 				return
 			}
 		}
+
+		if totalLoadDels > 50*time.Millisecond {
+			logutil.Infof("HandleWrite: load tombstone takes:%v, txn:%s, delta location cnt:%v",
+				totalLoadDels,
+				txn.String(),
+				len(req.DeltaLocs))
+		}
+		if time.Since(start) > 50*time.Millisecond {
+			logutil.Infof("HandleWrite: handle S3 delete takes:%v, txn:%s, delta location cnt: %v",
+				time.Since(start),
+				txn.String(),
+				len(req.DeltaLocs))
+		}
 		return
 	}
 	if len(req.Batch.Vecs) != 2 {
 		panic(fmt.Sprintf("req.Batch.Vecs length is %d, should be 2", len(req.Batch.Vecs)))
 	}
+
 	rowIDVec := containers.ToTNVector(req.Batch.GetVector(0), common.WorkspaceAllocator)
 	defer rowIDVec.Close()
 	pkVec := containers.ToTNVector(req.Batch.GetVector(1), common.WorkspaceAllocator)
@@ -1148,7 +1220,13 @@ func (h *Handle) HandleWrite(
 			logutil.Infof("op2 %v %v %v", txn.GetStartTS().ToString(), PrintTuple(pk), rowID.String())
 		}
 	}
+	start = time.Now()
 	err = tb.DeleteByPhyAddrKeys(rowIDVec, pkVec)
+	if time.Since(start) > 20*time.Millisecond {
+		logutil.Infof("HandleWrite: DeleteByPhyAddrKeys takes:%v, txn:%s",
+			time.Since(start),
+			txn.String())
+	}
 	return
 }
 

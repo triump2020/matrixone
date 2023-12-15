@@ -16,6 +16,7 @@ package tables
 
 import (
 	"context"
+	"time"
 
 	"github.com/RoaringBitmap/roaring"
 	"github.com/matrixorigin/matrixone/pkg/common/moerr"
@@ -385,15 +386,25 @@ func (node *memoryNode) BatchDedup(
 	bf objectio.BloomFilter,
 ) (err error) {
 	var dupRow uint32
+
+	startLock := time.Now()
 	node.block.RLock()
 	defer node.block.RUnlock()
+	if time.Since(startLock) > time.Millisecond*20 {
+		logutil.Infof("memoryNode.BatchDedup BLK-%s get lock takes %v, txn:%s",
+			node.block.meta.ID.String(), time.Since(startLock), txn.String())
+	}
+	start := time.Now()
 	_, err = node.doBatchDedup(
 		ctx,
 		keys,
 		keysZM,
 		node.checkConflictAndDupClosure(txn, isCommitting, &dupRow, rowmask),
 		bf)
-
+	if time.Since(start) > time.Millisecond*20 {
+		logutil.Infof("memoryNode.BatchDedup BLK-%s doBatchDedup takes %v, txn:%s",
+			node.block.meta.ID.String(), time.Since(start), txn.String())
+	}
 	// definitely no duplicate
 	if err == nil || !moerr.IsMoErrCode(err, moerr.OkExpectedDup) {
 		return
@@ -619,7 +630,12 @@ func (node *memoryNode) getInMemoryValue(
 }
 
 func (node *memoryNode) allRowsCommittedBefore(ts types.TS) bool {
+	startLock := time.Now()
 	node.block.RLock()
+	if time.Since(startLock) > time.Millisecond*10 {
+		logutil.Infof("memoryNode.allRowsCommittedBefore BLK-%s get lock takes %v",
+			node.block.meta.ID.String(), time.Since(startLock))
+	}
 	defer node.block.RUnlock()
 	return node.block.mvcc.AllAppendsCommittedBefore(ts)
 }

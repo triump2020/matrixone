@@ -15,6 +15,7 @@
 package txnimpl
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/matrixorigin/matrixone/pkg/fileservice"
@@ -651,10 +652,16 @@ func (tbl *txnTable) Append(ctx context.Context, data *containers.Batch) (err er
 			}
 		}
 	}
+	start := time.Now()
 	if tbl.localSegment == nil {
 		tbl.localSegment = newLocalSegment(tbl)
 	}
-	return tbl.localSegment.Append(data)
+	err = tbl.localSegment.Append(data)
+	if time.Since(start) > time.Millisecond*10 {
+		logutil.Infof("Append data to local segment takes %v, txn:%s, hasPK:%v",
+			time.Since(start), tbl.store.txn.String(), tbl.schema.HasPK())
+	}
+	return
 }
 func (tbl *txnTable) AddBlksWithMetaLoc(ctx context.Context, stats containers.Vector) (err error) {
 	return stats.Foreach(func(v any, isNull bool, row int) error {
@@ -1087,23 +1094,95 @@ func (tbl *txnTable) tryGetCurrentObjectBF(
 func (tbl *txnTable) DedupSnapByPK(ctx context.Context, keys containers.Vector, dedupAfterSnapshotTS bool) (err error) {
 	r := trace.StartRegion(ctx, "DedupSnapByPK")
 	defer r.End()
+
+	var tryGetBFAndZM time.Duration
+	var blkDataDeDup time.Duration
+	var coarseChk time.Duration
+	var newRelBlkIt time.Duration
+	var nextTotal time.Duration
+	var updateZM time.Duration
+	var getBlk time.Duration
+	var closeBlk time.Duration
+	var excuteFor time.Duration
+	var excuteValid time.Duration
+	var buf bytes.Buffer
+	start := time.Now()
+	defer func() {
+		if time.Since(start) > 20*time.Millisecond {
+			//logutil.Infof("DedupSnapByPK takes %v, txn:%s, "+
+			//	"excuteFor:%v, tryGetBFAndZM:%v, blkDataDeDup:%v, coarseChk:%v, "+
+			//	"newBlockIt:%v, nextTotal:%v, updateZM:%v, getBlock:%v, closeBlk:%v, excuteValid:%v",
+			//	time.Since(start),
+			//	tbl.store.txn.String(),
+			//	excuteFor,
+			//	tryGetBFAndZM,
+			//	blkDataDeDup,
+			//	coarseChk,
+			//	newRelBlkIt,
+			//	nextTotal,
+			//	updateZM,
+			//	getBlk,
+			//	closeBlk,
+			//	excuteValid)
+			buf.WriteString(fmt.Sprintf("DedupSnapByPK takes %v, txn:%s, "+
+				"excuteFor:%v, tryGetBFAndZM:%v, blkDataDeDup:%v, coarseChk:%v, "+
+				"newBlockIt:%v, nextTotal:%v, updateZM:%v, getBlock:%v, closeBlk:%v, excuteValid:%v.\n",
+				time.Since(start),
+				tbl.store.txn.String(),
+				excuteFor,
+				tryGetBFAndZM,
+				blkDataDeDup,
+				coarseChk,
+				newRelBlkIt,
+				nextTotal,
+				updateZM,
+				getBlk,
+				closeBlk,
+				excuteValid))
+			logutil.Infof(buf.String())
+		}
+	}()
 	h := newRelation(tbl)
+
+	startNewBlockIt := time.Now()
 	it := newRelationBlockItOnSnap(h)
+	newRelBlkIt += time.Since(startNewBlockIt)
+
 	maxSegmentHint := uint64(0)
 	pkType := keys.GetType()
+
+	startUpdateZM := time.Now()
 	keysZM := index.NewZM(pkType.Oid, pkType.Scale)
 	if err = index.BatchUpdateZM(keysZM, keys.GetDownstreamVector()); err != nil {
 		return
 	}
+	updateZM += time.Since(startUpdateZM)
+
 	var (
 		name objectio.ObjectNameShort
 		bf   objectio.BloomFilter
 	)
 	maxBlockID := &types.Blockid{}
-	for it.Valid() {
+
+	startFor := time.Now()
+	for {
+		startValid := time.Now()
+		res := it.Valid()
+		excuteValid += time.Since(startValid)
+		if !res {
+			break
+		}
+
+		startGetBlk := time.Now()
 		blkH := it.GetBlock()
+		getBlk += time.Since(startGetBlk)
+
 		blk := blkH.GetMeta().(*catalog.BlockEntry)
+
+		startCloseBlk := time.Now()
 		blkH.Close()
+		closeBlk += time.Since(startCloseBlk)
+
 		segmentHint := blk.GetSegment().SortHint
 		if segmentHint > maxSegmentHint {
 			maxSegmentHint = segmentHint
@@ -1112,15 +1191,43 @@ func (tbl *txnTable) DedupSnapByPK(ctx context.Context, keys containers.Vector, 
 		if blk.ID.Compare(*maxBlockID) > 0 {
 			maxBlockID = &blk.ID
 		}
+
 		blkData := blk.GetBlockData()
 		if blkData == nil {
+			start := time.Now()
 			it.Next()
+			nextTotal += time.Since(start)
 			continue
 		}
-		if dedupAfterSnapshotTS && blkData.CoarseCheckAllRowsCommittedBefore(tbl.store.txn.GetSnapshotTS()) {
-			it.Next()
-			continue
+		startChk := time.Now()
+		if dedupAfterSnapshotTS {
+			ret := blkData.CoarseCheckAllRowsCommittedBefore(tbl.store.txn.GetSnapshotTS())
+			coarseChk += time.Since(startChk)
+			if time.Since(startChk) > 10*time.Millisecond {
+				//logutil.Infof("DedupSnapByPK : coarse check one block:%s takes %v, txn:%s, "+
+				//	"block type is %v, chkRes:%v",
+				//	blk.ID.String(),
+				//	time.Since(startChk),
+				//	tbl.store.txn.String(),
+				//	blk.IsAppendable(),
+				//	ret)
+				buf.WriteString(fmt.Sprintf("DedupSnapByPK : coarse check one block:%s takes %v, txn:%s, "+
+					"block type is %v, chkRes:%v.\n",
+					blk.ID.String(),
+					time.Since(startChk),
+					tbl.store.txn.String(),
+					blk.IsAppendable(),
+					ret))
+			}
+			if ret {
+				startNext := time.Now()
+				it.Next()
+				nextTotal += time.Since(startNext)
+				continue
+			}
 		}
+
+		startTryGetBFAndZM := time.Now()
 		var rowmask *roaring.Bitmap
 		if len(tbl.deleteNodes) > 0 {
 			fp := blk.AsCommonID()
@@ -1135,7 +1242,9 @@ func (tbl *txnTable) DedupSnapByPK(ctx context.Context, keys containers.Vector, 
 			if skip, err = tbl.quickSkipThisBlock(ctx, keysZM, blk); err != nil {
 				return
 			} else if skip {
+				start := time.Now()
 				it.Next()
+				nextTotal += time.Since(start)
 				continue
 			}
 		}
@@ -1147,8 +1256,11 @@ func (tbl *txnTable) DedupSnapByPK(ctx context.Context, keys containers.Vector, 
 		); err != nil {
 			return
 		}
+		tryGetBFAndZM += time.Since(startTryGetBFAndZM)
+
 		name = *objectio.ToObjectNameShort(&blk.ID)
 
+		startDedup := time.Now()
 		if err = blkData.BatchDedup(
 			ctx,
 			tbl.store.txn,
@@ -1162,8 +1274,20 @@ func (tbl *txnTable) DedupSnapByPK(ctx context.Context, keys containers.Vector, 
 			// logutil.Infof("%s, %s, %v", blk.String(), rowmask, err)
 			return
 		}
+		blkDataDeDup += time.Since(startDedup)
+		if time.Since(startDedup) > 10*time.Millisecond {
+			logutil.Infof("DedupSnapByPK : dedup a block:%s takes %v, txn:%s, block type is %v",
+				blk.ID.String(),
+				time.Since(startDedup),
+				tbl.store.txn.String(),
+				blk.IsAppendable())
+		}
+		start := time.Now()
 		it.Next()
+		nextTotal += time.Since(start)
 	}
+	excuteFor += time.Since(startFor)
+
 	tbl.updateDedupedSegmentHintAndBlockID(maxSegmentHint, maxBlockID)
 	return
 }

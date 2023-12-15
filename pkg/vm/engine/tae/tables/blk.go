@@ -16,6 +16,7 @@ package tables
 
 import (
 	"context"
+	"time"
 
 	"github.com/RoaringBitmap/roaring"
 	"github.com/matrixorigin/matrixone/pkg/common/moerr"
@@ -111,7 +112,12 @@ func (blk *block) GetColumnDataById(
 	)
 }
 func (blk *block) CoarseCheckAllRowsCommittedBefore(ts types.TS) bool {
+	startLock := time.Now()
 	blk.meta.RLock()
+	if time.Since(startLock) > time.Millisecond*10 {
+		logutil.Infof("CoarseCheckAllRowsCommittedBefore non-appendable BLK-%s get lock takes: %v",
+			blk.meta.ID.String(), time.Since(startLock))
+	}
 	defer blk.meta.RUnlock()
 	return blk.meta.GetCreatedAtLocked().Less(ts)
 }

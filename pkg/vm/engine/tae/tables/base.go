@@ -18,8 +18,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/matrixorigin/matrixone/pkg/fileservice"
+	"github.com/matrixorigin/matrixone/pkg/logutil"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/RoaringBitmap/roaring"
 	"github.com/matrixorigin/matrixone/pkg/common/moerr"
@@ -498,6 +500,7 @@ func (blk *baseBlock) PersistedBatchDedup(
 	bf objectio.BloomFilter,
 	mp *mpool.MPool,
 ) (err error) {
+	startMake := time.Now()
 	pkIndex, err := MakeImmuIndex(
 		ctx,
 		blk.meta,
@@ -507,16 +510,42 @@ func (blk *baseBlock) PersistedBatchDedup(
 	if err != nil {
 		return
 	}
+	if time.Since(startMake) > 10*time.Millisecond {
+		logutil.Infof("PersistedBatchDedup BLK-%s: MakeImmuIndex takes %v, txn:%s, block type %v",
+			blk.meta.ID.String(),
+			time.Since(startMake),
+			txn.String(),
+			isAblk)
+	}
+	startDedupByIndex := time.Now()
 	sels, err := pkIndex.BatchDedup(
 		ctx,
 		keys,
 		keysZM,
 		blk.rt,
 	)
+	if time.Since(startDedupByIndex) > 10*time.Millisecond {
+		logutil.Infof("PersistedBatchDedup BLK-%s: BatchDedupByPKIndex takes %v, txn:%s, block type %v",
+			blk.meta.ID.String(),
+			time.Since(startDedupByIndex),
+			txn.String(),
+			isAblk)
+	}
+
 	if err == nil || !moerr.IsMoErrCode(err, moerr.OkExpectedPossibleDup) {
 		return
 	}
-	return blk.dedupWithLoad(ctx, txn, keys, sels, rowmask, isAblk, mp)
+
+	start := time.Now()
+	err = blk.dedupWithLoad(ctx, txn, keys, sels, rowmask, isAblk, mp)
+	if time.Since(start) > 10*time.Millisecond {
+		logutil.Infof("BLK-%s: dedupWithLoad takes %v, txn:%s, block type %v",
+			blk.meta.ID.String(),
+			time.Since(start),
+			txn.String(),
+			isAblk)
+	}
+	return
 }
 
 func (blk *baseBlock) getPersistedValue(
