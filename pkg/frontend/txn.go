@@ -157,7 +157,10 @@ func (th *TxnHandler) NewTxnOperator() (context.Context, TxnOperator, error) {
 		opts = append(opts,
 			client.WithUserTxn())
 	}
-	logutil.Infof("xxxx session 's last commit ts : %s", th.ses.getLastCommitTS().DebugString())
+	logutil.Infof("xxxx session[%s] running sql[%s] 's last commit ts : %s",
+		th.ses.GetDebugString(),
+		th.ses.GetSql(),
+		th.ses.getLastCommitTS().DebugString())
 	th.txnOperator, err = th.txnClient.New(
 		txnCtx,
 		th.ses.getLastCommitTS(),

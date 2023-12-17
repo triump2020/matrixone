@@ -16,6 +16,7 @@ package client
 
 import (
 	"context"
+	"encoding/hex"
 	"github.com/matrixorigin/matrixone/pkg/logutil"
 	"math"
 	gotrace "runtime/trace"
@@ -228,7 +229,7 @@ func (client *txnClient) New(
 	txnMeta.ID = client.generator.Generate()
 	txnMeta.SnapshotTS = ts
 	logutil.Infof("xxxx txnID:%s, snapshotTS:%s, minTS:%s",
-		txnMeta.ID,
+		hex.EncodeToString(txnMeta.ID),
 		txnMeta.SnapshotTS.DebugString(),
 		minTS.DebugString())
 	txnMeta.Mode = client.getTxnMode()
@@ -346,12 +347,14 @@ func (client *txnClient) determineTxnSnapshot(
 	}()
 
 	// always use the current ts as txn's snapshot ts is enableSacrificingFreshness
+	// enableScacrificingFreshness is default true
 	if !client.enableSacrificingFreshness {
 		// TODO: Consider how to handle clock offsets. If use Clock-SI, can use the current
 		// time minus the maximum clock offset as the transaction's snapshotTimestamp to avoid
 		// conflicts due to clock uncertainty.
 		now, _ := client.clock.Now()
 		minTS = now
+		// enableScacrificingFreshness is default false
 	} else if client.enableCNBasedConsistency {
 		minTS = client.adjustTimestamp(minTS)
 	}
