@@ -16,8 +16,6 @@ package client
 
 import (
 	"context"
-	"encoding/hex"
-	"github.com/matrixorigin/matrixone/pkg/logutil"
 	"math"
 	gotrace "runtime/trace"
 	"sync"
@@ -228,10 +226,10 @@ func (client *txnClient) New(
 	txnMeta := txn.TxnMeta{}
 	txnMeta.ID = client.generator.Generate()
 	txnMeta.SnapshotTS = ts
-	logutil.Infof("xxxx txnID:%s, snapshotTS:%s, minTS:%s",
-		hex.EncodeToString(txnMeta.ID),
-		txnMeta.SnapshotTS.DebugString(),
-		minTS.DebugString())
+	//logutil.Infof("xxxx txnID:%s, snapshotTS:%s, minTS:%s",
+	//	hex.EncodeToString(txnMeta.ID),
+	//	txnMeta.SnapshotTS.DebugString(),
+	//	minTS.DebugString())
 	txnMeta.Mode = client.getTxnMode()
 	txnMeta.Isolation = client.getTxnIsolation()
 	if client.lockService != nil {
@@ -355,7 +353,7 @@ func (client *txnClient) determineTxnSnapshot(
 		now, _ := client.clock.Now()
 		minTS = now
 		// enableScacrificingFreshness is default false
-	} else if client.enableCNBasedConsistency {
+	} else if true {
 		minTS = client.adjustTimestamp(minTS)
 	}
 
@@ -363,7 +361,7 @@ func (client *txnClient) determineTxnSnapshot(
 		return minTS, nil
 	}
 
-	logutil.Infof("xxxx minTS:%s", minTS.DebugString())
+	//logutil.Infof("xxxx minTS:%s", minTS.DebugString())
 	ts, err := client.timestampWaiter.GetTimestamp(ctx, minTS)
 	if err != nil {
 		return ts, err

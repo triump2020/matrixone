@@ -445,28 +445,28 @@ func (tbl *txnTable) GetColumMetadataScanInfo(ctx context.Context, name string) 
 				OriginSize:   int64(colMeta.Location().OriginSize()),
 				ZoneMap:      colMeta.ZoneMap(),
 			})
-			if tbl.tableName == "t" {
-				logutil.Infof("xxxx table metadata scan: txnInfo: %s, "+
-					"objectName : %s, colName: %s, originSize: %d",
-					tbl.db.txn.op.Txn().DebugString(),
-					objName, col.Name, colMeta.Location().OriginSize())
-			}
+			//if tbl.tableName == "t" {
+			//	logutil.Infof("xxxx table metadata scan: txnInfo: %s, "+
+			//		"objectName : %s, colName: %s, originSize: %d",
+			//		tbl.db.txn.op.Txn().DebugString(),
+			//		objName, col.Name, colMeta.Location().OriginSize())
+			//}
 		}
 		return nil
 	}
 
 	//log all the data objects
-	if tbl.tableName == "t" {
-		tbl.ForeachDataObject(state, func(obj logtailreplay.ObjectEntry) error {
-			location := obj.Location()
-			objName := location.Name().String()
-			logutil.Infof("xxxx object entry: objName=%s, createTS=%s, deleteTS=%s, entryState=%v",
-				objName, obj.CreateTime.ToString(), obj.DeleteTime.ToString(), obj.EntryState,
-			)
-			return nil
-		})
+	//if tbl.tableName == "t" {
+	//	tbl.ForeachDataObject(state, func(obj logtailreplay.ObjectEntry) error {
+	//		location := obj.Location()
+	//		objName := location.Name().String()
+	//		logutil.Infof("xxxx object entry: objName=%s, createTS=%s, deleteTS=%s, entryState=%v",
+	//			objName, obj.CreateTime.ToString(), obj.DeleteTime.ToString(), obj.EntryState,
+	//		)
+	//		return nil
+	//	})
 
-	}
+	//}
 
 	if err = tbl.ForeachVisibleDataObject(state, onObjFn); err != nil {
 		return nil, err
