@@ -54,7 +54,7 @@ func updatePartitionOfPull(
 	state, doneMutate := partition.MutateState()
 
 	for i := range logTails {
-		if err := consumeLogTailOfPull(primarySeqnum, tbl, ctx, engine, state, logTails[i]); err != nil {
+		if err := consumeLogTailOfPull(primarySeqnum, tbl, ctx, engine, state, logTails[i], tbl.tableName); err != nil {
 			logutil.Errorf("consume %d-%s logtail error: %v\n", tbl.tableId, tbl.tableName, err)
 			return err
 		}
@@ -90,6 +90,7 @@ func consumeLogTailOfPull(
 	engine *Engine,
 	state *logtailreplay.PartitionState,
 	logTail *api.SyncLogTailResp,
+	name string,
 ) (err error) {
 	logutil.Debugf("consumeLogTailOfPull table %d %s", tbl.tableId, tbl.tableName)
 	var entries []*api.Entry
@@ -115,14 +116,14 @@ func consumeLogTailOfPull(
 
 	for _, e := range entries {
 		if err = consumeEntry(ctx, primarySeqnum,
-			engine, state, e); err != nil {
+			engine, state, e, name); err != nil {
 			return
 		}
 	}
 
 	for i := 0; i < len(logTail.Commands); i++ {
 		if err = consumeEntry(ctx, primarySeqnum,
-			engine, state, logTail.Commands[i]); err != nil {
+			engine, state, logTail.Commands[i], name); err != nil {
 			return
 		}
 	}

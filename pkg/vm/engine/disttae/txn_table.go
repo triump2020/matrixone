@@ -605,6 +605,18 @@ func (tbl *txnTable) Ranges(ctx context.Context, exprs []*plan.Expr) (ranges [][
 		&ranges,
 		tbl.proc.Load(),
 	)
+
+	if tbl.tableName == "mo_increment_columns" {
+		for _, r := range ranges[1:] {
+			blk := catalog.DecodeBlockInfo(r)
+			logutil.Infof("xxxx txnTable.Ranges:txn:%s, blockId:%s, entryState:%v, shortObjName:%s",
+				tbl.db.txn.op.Txn().DebugString(),
+				blk.BlockID.String(),
+				blk.EntryState,
+				blk.MetaLocation().ShortName())
+		}
+	}
+
 	return
 }
 

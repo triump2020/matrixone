@@ -1271,6 +1271,7 @@ func updatePartitionOfPush(
 			e,
 			state,
 			tl,
+			key.Name,
 		)
 	} else {
 		err = consumeLogTailOfPushWithoutLazyLoad(ctx, key.PrimarySeqnum, e, state, tl, dbId, key.Id, key.Name)
@@ -1294,8 +1295,9 @@ func consumeLogTailOfPushWithLazyLoad(
 	engine *Engine,
 	state *logtailreplay.PartitionState,
 	lt *logtail.TableLogtail,
+	name string,
 ) error {
-	return hackConsumeLogtail(ctx, primarySeqnum, engine, state, lt)
+	return hackConsumeLogtail(ctx, primarySeqnum, engine, state, lt, name)
 }
 
 func consumeLogTailOfPushWithoutLazyLoad(
@@ -1324,11 +1326,11 @@ func consumeLogTailOfPushWithoutLazyLoad(
 	}()
 	for _, entry := range entries {
 		if err = consumeEntry(ctx, primarySeqnum,
-			engine, state, entry); err != nil {
+			engine, state, entry, tableName); err != nil {
 			return
 		}
 	}
-	return hackConsumeLogtail(ctx, primarySeqnum, engine, state, lt)
+	return hackConsumeLogtail(ctx, primarySeqnum, engine, state, lt, tableName)
 }
 
 func hackConsumeLogtail(
@@ -1336,7 +1338,8 @@ func hackConsumeLogtail(
 	primarySeqnum int,
 	engine *Engine,
 	state *logtailreplay.PartitionState,
-	lt *logtail.TableLogtail) error {
+	lt *logtail.TableLogtail,
+	name string) error {
 	var packer *types.Packer
 	put := engine.packerPool.Get(&packer)
 	defer put.Put()
@@ -1371,7 +1374,7 @@ func hackConsumeLogtail(
 				lt.Commands[i].EntryType = api.Entry_Delete
 			}
 			if err := consumeEntry(ctx, primarySeqnum,
-				engine, state, &lt.Commands[i]); err != nil {
+				engine, state, &lt.Commands[i], name); err != nil {
 				return err
 			}
 		}
@@ -1403,7 +1406,7 @@ func hackConsumeLogtail(
 				lt.Commands[i].EntryType = api.Entry_Delete
 			}
 			if err := consumeEntry(ctx, primarySeqnum,
-				engine, state, &lt.Commands[i]); err != nil {
+				engine, state, &lt.Commands[i], name); err != nil {
 				return err
 			}
 		}
@@ -1411,7 +1414,7 @@ func hackConsumeLogtail(
 	}
 	for i := 0; i < len(lt.Commands); i++ {
 		if err := consumeEntry(ctx, primarySeqnum,
-			engine, state, &lt.Commands[i]); err != nil {
+			engine, state, &lt.Commands[i], name); err != nil {
 			return err
 		}
 	}

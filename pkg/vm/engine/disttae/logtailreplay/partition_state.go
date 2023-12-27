@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/blockio"
+	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/common"
 	"net/http"
 	"runtime/trace"
 	"sync"
@@ -50,7 +51,7 @@ type PartitionState struct {
 
 	// data
 	rows *btree.BTreeG[RowEntry] // use value type to avoid locking on elements
-	//table data objects
+	//table data objects by short object name
 	dataObjects           *btree.BTreeG[ObjectEntry]
 	dataObjectsByCreateTS *btree.BTreeG[ObjectIndexByCreateTSEntry]
 	//TODO:: It's transient, should be removed in future PR.
@@ -348,30 +349,31 @@ func (p *PartitionState) HandleLogtailEntry(
 	entry *api.Entry,
 	primarySeqnum int,
 	packer *types.Packer,
+	name string,
 ) {
 	switch entry.EntryType {
 	case api.Entry_Insert:
 		if IsBlkTable(entry.TableName) {
-			p.HandleMetadataInsert(ctx, fs, entry.Bat)
+			p.HandleMetadataInsert(ctx, fs, entry.Bat, name)
 		} else if IsObjTable(entry.TableName) {
-			p.HandleObjectInsert(entry.Bat)
+			p.HandleObjectInsert(entry.Bat, name)
 		} else {
-			p.HandleRowsInsert(ctx, entry.Bat, primarySeqnum, packer)
+			p.HandleRowsInsert(ctx, entry.Bat, primarySeqnum, packer, name)
 		}
 	case api.Entry_Delete:
 		if IsBlkTable(entry.TableName) {
-			p.HandleMetadataDelete(ctx, entry.Bat)
+			p.HandleMetadataDelete(ctx, entry.Bat, name)
 		} else if IsObjTable(entry.TableName) {
-			p.HandleObjectDelete(entry.Bat)
+			p.HandleObjectDelete(entry.Bat, name)
 		} else {
-			p.HandleRowsDelete(ctx, entry.Bat, packer)
+			p.HandleRowsDelete(ctx, entry.Bat, packer, name)
 		}
 	default:
 		panic("unknown entry type")
 	}
 }
 
-func (p *PartitionState) HandleObjectDelete(bat *api.Batch) {
+func (p *PartitionState) HandleObjectDelete(bat *api.Batch, name string) {
 	statsVec := mustVectorFromProto(bat.Vecs[2])
 	stateCol := vector.MustFixedCol[bool](mustVectorFromProto(bat.Vecs[3]))
 	sortedCol := vector.MustFixedCol[bool](mustVectorFromProto(bat.Vecs[4]))
@@ -394,11 +396,11 @@ func (p *PartitionState) HandleObjectDelete(bat *api.Batch) {
 		objEntry.CommitTS = commitTSCol[idx]
 		objEntry.Sorted = sortedCol[idx]
 
-		p.objectDeleteHelper(objEntry, deleteTSCol[idx])
+		p.objectDeleteHelper(objEntry, deleteTSCol[idx], name)
 	}
 }
 
-func (p *PartitionState) HandleObjectInsert(bat *api.Batch) {
+func (p *PartitionState) HandleObjectInsert(bat *api.Batch, name string) {
 	statsVec := mustVectorFromProto(bat.Vecs[2])
 	stateCol := vector.MustFixedCol[bool](mustVectorFromProto(bat.Vecs[3]))
 	sortedCol := vector.MustFixedCol[bool](mustVectorFromProto(bat.Vecs[4]))
@@ -448,6 +450,7 @@ func (p *PartitionState) HandleRowsInsert(
 	input *api.Batch,
 	primarySeqnum int,
 	packer *types.Packer,
+	name string,
 ) (
 	primaryKeys [][]byte,
 ) {
@@ -469,6 +472,11 @@ func (p *PartitionState) HandleRowsInsert(
 		batch.Vecs[2+primarySeqnum],
 		packer,
 	)
+
+	if name == "mo_increment_columns" {
+		logutil.Infof("xxxx PartitionState.HandleRowsInsert: batch :%s",
+			common.MoBatchToString(batch, 5))
+	}
 
 	var numInserted int64
 	for i, rowID := range rowIDVector {
@@ -522,6 +530,7 @@ func (p *PartitionState) HandleRowsDelete(
 	ctx context.Context,
 	input *api.Batch,
 	packer *types.Packer,
+	name string,
 ) {
 	ctx, task := trace.NewTask(ctx, "PartitionState.HandleRowsDelete")
 	defer task.End()
@@ -536,6 +545,11 @@ func (p *PartitionState) HandleRowsDelete(
 	batch, err := batch.ProtoBatchToBatch(input)
 	if err != nil {
 		panic(err)
+	}
+
+	if name == "mo_increment_columns" {
+		logutil.Infof("xxxx PartitionState.HandleRowsDelete: batch :%s",
+			common.MoBatchToString(batch, 5))
 	}
 
 	var primaryKeys [][]byte
@@ -602,7 +616,8 @@ func (p *PartitionState) HandleRowsDelete(
 func (p *PartitionState) HandleMetadataInsert(
 	ctx context.Context,
 	fs fileservice.FileService,
-	input *api.Batch) {
+	input *api.Batch,
+	name string) {
 	ctx, task := trace.NewTask(ctx, "PartitionState.HandleMetadataInsert")
 	defer task.End()
 
@@ -620,6 +635,15 @@ func (p *PartitionState) HandleMetadataInsert(
 	commitTimeVector := vector.MustFixedCol[types.TS](mustVectorFromProto(input.Vecs[7]))
 	//segmentIDVector := vector.MustFixedCol[types.Uuid](mustVectorFromProto(input.Vecs[8]))
 	memTruncTSVector := vector.MustFixedCol[types.TS](mustVectorFromProto(input.Vecs[9]))
+
+	if name == "mo_increment_columns" {
+		batch, err := batch.ProtoBatchToBatch(input)
+		if err != nil {
+			panic(err)
+		}
+		logutil.Infof("xxxx PartitionState.HandleMetadataInsert: batch :%s",
+			common.MoBatchToString(batch, 20))
+	}
 
 	var numInserted, numDeleted int64
 	for i, blockID := range blockIDVector {
@@ -695,6 +719,17 @@ func (p *PartitionState) HandleMetadataInsert(
 							// delete the row
 							p.rows.Delete(entry)
 
+							if name == "mo_increment_columns" {
+								logutil.Infof("xxxx PartitionState.HandleMetadataInsert: "+
+									"delete entry from memory, rowid:%s, time:%s, deleted:%v, "+
+									"isAppendable:%v, isEmptyDelta:%v",
+									entry.RowID.String(),
+									entry.Time.ToString(),
+									entry.Deleted,
+									isAppendable,
+									isEmptyDelta)
+							}
+
 							// delete the row's primary index
 							if isAppendable && len(entry.PrimaryIndexBytes) > 0 {
 								p.primaryIndex.Delete(&PrimaryIndexEntry{
@@ -733,6 +768,12 @@ func (p *PartitionState) HandleMetadataInsert(
 					}
 					p.dataObjects.Set(objEntry)
 					p.dataObjectsByCreateTS.Set(ObjectIndexByCreateTSEntry(objEntry))
+
+					if name == "mo_increment_columns" {
+						logutil.Infof("xxxx PartitionState.HandleMetadataInsert: update objEntry :%s",
+							objEntry.String())
+					}
+
 					return
 				}
 				objEntry = objPivot
@@ -768,6 +809,11 @@ func (p *PartitionState) HandleMetadataInsert(
 					}
 					p.objectIndexByTS.Set(e)
 				}
+
+				if name == "mo_increment_columns" {
+					logutil.Infof("xxxx PartitionState.HandleMetadataInsert: insert objEntry :%s",
+						objEntry.String())
+				}
 			}
 
 		})
@@ -781,7 +827,7 @@ func (p *PartitionState) HandleMetadataInsert(
 	})
 }
 
-func (p *PartitionState) objectDeleteHelper(pivot ObjectEntry, deleteTime types.TS) {
+func (p *PartitionState) objectDeleteHelper(pivot ObjectEntry, deleteTime types.TS, name string) {
 	objEntry, ok := p.dataObjects.Get(pivot)
 	//TODO non-appendable block' delete maybe arrive before its insert?
 	if !ok {
@@ -804,6 +850,12 @@ func (p *PartitionState) objectDeleteHelper(pivot ObjectEntry, deleteTime types.
 			}
 			p.objectIndexByTS.Set(e)
 		}
+
+		if name == "mo_increment_columns" {
+			logutil.Infof("xxxx PartitionState.objectDeleteHelper: apply first delete :%s",
+				objEntry.String())
+		}
+
 	} else {
 		// update deletetime, if incoming delete ts is less
 		if objEntry.DeleteTime.Greater(deleteTime) {
@@ -827,6 +879,12 @@ func (p *PartitionState) objectDeleteHelper(pivot ObjectEntry, deleteTime types.
 				IsAppendable: objEntry.EntryState,
 			}
 			p.objectIndexByTS.Set(new)
+
+			if name == "mo_increment_columns" {
+				logutil.Infof("xxxx PartitionState.objectDeleteHelper: update object's delete time :%s",
+					objEntry.String())
+			}
+
 		} else if objEntry.DeleteTime.Equal(deleteTime) {
 			//FIXME:: should we do something here?
 			e := ObjectIndexByTSEntry{
@@ -837,11 +895,17 @@ func (p *PartitionState) objectDeleteHelper(pivot ObjectEntry, deleteTime types.
 				IsAppendable: objEntry.EntryState,
 			}
 			p.objectIndexByTS.Set(e)
+
+			if name == "mo_increment_columns" {
+				logutil.Infof("xxxx PartitionState.objectDeleteHelper: object:%s had already been deleted",
+					objEntry.String())
+			}
+
 		}
 	}
 }
 
-func (p *PartitionState) HandleMetadataDelete(ctx context.Context, input *api.Batch) {
+func (p *PartitionState) HandleMetadataDelete(ctx context.Context, input *api.Batch, name string) {
 	ctx, task := trace.NewTask(ctx, "PartitionState.HandleMetadataDelete")
 	defer task.End()
 
@@ -849,6 +913,14 @@ func (p *PartitionState) HandleMetadataDelete(ctx context.Context, input *api.Ba
 	defer func() {
 		partitionStateProfileHandler.AddSample(time.Since(t0))
 	}()
+	if name == "mo_increment_columns" {
+		batch, err := batch.ProtoBatchToBatch(input)
+		if err != nil {
+			panic(err)
+		}
+		logutil.Infof("xxxx PartitionState.HandleMetadataDelete: batch :%s",
+			common.MoBatchToString(batch, 20))
+	}
 
 	rowIDVector := vector.MustFixedCol[types.Rowid](mustVectorFromProto(input.Vecs[0]))
 	deleteTimeVector := vector.MustFixedCol[types.TS](mustVectorFromProto(input.Vecs[1]))
@@ -859,7 +931,7 @@ func (p *PartitionState) HandleMetadataDelete(ctx context.Context, input *api.Ba
 			pivot := ObjectEntry{}
 			objectio.SetObjectStatsShortName(&pivot.ObjectStats, objectio.ShortName(&blockID))
 
-			p.objectDeleteHelper(pivot, deleteTimeVector[i])
+			p.objectDeleteHelper(pivot, deleteTimeVector[i], name)
 		})
 	}
 

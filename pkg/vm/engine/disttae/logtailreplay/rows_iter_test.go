@@ -80,7 +80,7 @@ func TestPartitionStateRowsIter(t *testing.T) {
 				mustVectorToProto(tsVec),
 				mustVectorToProto(vec1),
 			},
-		}, 0, packer)
+		}, 0, packer, "")
 	}
 
 	// rows iter
@@ -133,7 +133,7 @@ func TestPartitionStateRowsIter(t *testing.T) {
 				mustVectorToProto(tsVec),
 				mustVectorToProto(vec1),
 			},
-		}, 0, packer)
+		}, 0, packer, "")
 	}
 
 	// rows iter
@@ -166,7 +166,7 @@ func TestPartitionStateRowsIter(t *testing.T) {
 				mustVectorToProto(rowIDVec),
 				mustVectorToProto(tsVec),
 			},
-		}, packer)
+		}, packer, "")
 	}
 
 	for i := 0; i < num; i++ {
@@ -241,7 +241,7 @@ func TestPartitionStateRowsIter(t *testing.T) {
 				mustVectorToProto(rowIDVec),
 				mustVectorToProto(tsVec),
 			},
-		}, packer)
+		}, packer, "")
 	}
 
 	for i := 0; i < num; i++ {
@@ -295,7 +295,7 @@ func TestInsertAndDeleteAtTheSameTimestamp(t *testing.T) {
 				mustVectorToProto(tsVec),
 				mustVectorToProto(vec1),
 			},
-		}, 0, packer)
+		}, 0, packer, "")
 	}
 
 	{
@@ -312,7 +312,7 @@ func TestInsertAndDeleteAtTheSameTimestamp(t *testing.T) {
 				mustVectorToProto(rowIDVec),
 				mustVectorToProto(tsVec),
 			},
-		}, packer)
+		}, packer, "")
 	}
 
 	{
@@ -384,7 +384,7 @@ func TestDeleteBeforeInsertAtTheSameTime(t *testing.T) {
 				mustVectorToProto(rowIDVec),
 				mustVectorToProto(tsVec),
 			},
-		}, packer)
+		}, packer, "")
 	}
 
 	{
@@ -404,7 +404,7 @@ func TestDeleteBeforeInsertAtTheSameTime(t *testing.T) {
 				mustVectorToProto(tsVec),
 				mustVectorToProto(vec1),
 			},
-		}, 0, packer)
+		}, 0, packer, "")
 	}
 
 	{
@@ -479,7 +479,7 @@ func TestPrimaryKeyModifiedWithDeleteOnly(t *testing.T) {
 				mustVectorToProto(tsVec),
 				mustVectorToProto(primaryKeyVec), // with primary key
 			},
-		}, packer)
+		}, packer, "")
 	}
 
 	// should be detectable

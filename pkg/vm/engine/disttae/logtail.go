@@ -30,13 +30,14 @@ func consumeEntry(
 	engine *Engine,
 	state *logtailreplay.PartitionState,
 	e *api.Entry,
+	name string,
 ) error {
 
 	var packer *types.Packer
 	put := engine.packerPool.Get(&packer)
 	defer put.Put()
 
-	state.HandleLogtailEntry(ctx, engine.fs, e, primarySeqnum, packer)
+	state.HandleLogtailEntry(ctx, engine.fs, e, primarySeqnum, packer, name)
 
 	if logtailreplay.IsMetaTable(e.TableName) {
 		return nil
