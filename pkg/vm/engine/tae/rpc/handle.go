@@ -152,6 +152,8 @@ func (h *Handle) HandleCommit(
 				logutil.Info("Commit with long latency", zap.Duration("duration", time.Since(start)), zap.String("debug", meta.DebugString()))
 			}
 		})
+		logutil.Infof("xxxx HandleCommit end, err:%v, cts:%s, txn:%s",
+			err, cts.DebugString(), meta.DebugString())
 	}()
 	var txn txnif.AsyncTxn
 	if ok {
@@ -911,14 +913,17 @@ func (h *Handle) HandleWrite(
 	case db.FullSkipWorkspaceDedup:
 		txn.SetDedupType(txnif.FullSkipWorkSpaceDedup)
 	}
-	common.DoIfDebugEnabled(func() {
-		logutil.Debugf("[precommit] handle write typ: %v, %d-%s, %d-%s txn: %s",
+	if req.TableName == "mo_increment_columns" {
+		logutil.Infof("xxxx [precommit] handle write typ: %v, %d-%s, %d-%s, txn: %s, fileName: %s",
 			req.Type, req.TableID,
 			req.TableName, req.DatabaseId, req.DatabaseName,
 			txn.String(),
+			req.FileName,
 		)
-		logutil.Debugf("[precommit] write batch: %s", common.DebugMoBatch(req.Batch))
-	})
+		logutil.Infof("xxxx [precommit] write batch: %s",
+			common.MoBatchToString(req.Batch, 5))
+	}
+
 	defer func() {
 		common.DoIfDebugEnabled(func() {
 			logutil.Debugf("[precommit] handle write end txn: %s", txn.String())
