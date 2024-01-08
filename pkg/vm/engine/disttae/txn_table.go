@@ -16,6 +16,7 @@ package disttae
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 	"unsafe"
@@ -145,6 +146,24 @@ func (tbl *txnTable) Rows(ctx context.Context) (rows int64, err error) {
 			&location,
 			false,
 			fs); err != nil {
+			if moerr.IsMoErrCode(err, moerr.ErrFileNotFound) {
+				aObjs := ""
+				iter := partition.NewObjectsIterForTest()
+				defer iter.Close()
+				for iter.Next() {
+					obj := iter.Entry()
+					segId := obj.Location().ShortName().Segmentid().ToString()
+					aObjs = fmt.Sprintf("%s, %s %v %v %s %s",
+						aObjs, segId, obj.EntryState, obj.HasDeltaLoc,
+						obj.CreateTime.ToTimestamp().DebugString(),
+						obj.DeleteTime.ToTimestamp().DebugString())
+				}
+				logutil.Fatalf("xxxx txnTable.Rows: err:%s, txn:%s, all objs in partition state:[%s]",
+					err.Error(),
+					tbl.db.txn.op.Txn().DebugString(),
+					aObjs)
+			}
+
 			return err
 		}
 		meta = objMeta.MustDataMeta()
@@ -212,6 +231,23 @@ func (tbl *txnTable) MaxAndMinValues(ctx context.Context) ([][2]any, []uint8, er
 		var err error
 		location := obj.Location()
 		if objMeta, err = objectio.FastLoadObjectMeta(ctx, &location, false, fs); err != nil {
+			if moerr.IsMoErrCode(err, moerr.ErrFileNotFound) {
+				aObjs := ""
+				iter := part.NewObjectsIterForTest()
+				defer iter.Close()
+				for iter.Next() {
+					obj := iter.Entry()
+					segId := obj.Location().ShortName().Segmentid().ToString()
+					aObjs = fmt.Sprintf("%s, %s %v %v %s %s",
+						aObjs, segId, obj.EntryState, obj.HasDeltaLoc,
+						obj.CreateTime.ToTimestamp().DebugString(),
+						obj.DeleteTime.ToTimestamp().DebugString())
+				}
+				logutil.Fatalf("xxxx txnTable.MaxAndMinValues: err:%s, txn:%s, all objs in partition state:[%s]",
+					err.Error(),
+					tbl.db.txn.op.Txn().DebugString(),
+					aObjs)
+			}
 			return err
 		}
 		meta = objMeta.MustDataMeta()
@@ -347,6 +383,24 @@ func (tbl *txnTable) Size(ctx context.Context, name string) (int64, error) {
 			&location,
 			false,
 			fs); err != nil {
+			if moerr.IsMoErrCode(err, moerr.ErrFileNotFound) {
+				aObjs := ""
+				iter := part.NewObjectsIterForTest()
+				defer iter.Close()
+				for iter.Next() {
+					obj := iter.Entry()
+					segId := obj.Location().ShortName().Segmentid().ToString()
+					aObjs = fmt.Sprintf("%s, %s %v %v %s %s",
+						aObjs, segId, obj.EntryState, obj.HasDeltaLoc,
+						obj.CreateTime.ToTimestamp().DebugString(),
+						obj.DeleteTime.ToTimestamp().DebugString())
+				}
+				logutil.Fatalf("xxxx txnTable.Size: err:%s, txn:%s, all objs in partition state:[%s]",
+					err.Error(),
+					tbl.db.txn.op.Txn().DebugString(),
+					aObjs)
+			}
+
 			return err
 		}
 		meta = objMeta.MustDataMeta()
@@ -402,6 +456,24 @@ func (tbl *txnTable) GetColumMetadataScanInfo(ctx context.Context, name string) 
 		objName := location.Name().String()
 		objMeta, err := objectio.FastLoadObjectMeta(ctx, &location, false, fs)
 		if err != nil {
+			if moerr.IsMoErrCode(err, moerr.ErrFileNotFound) {
+				aObjs := ""
+				iter := state.NewObjectsIterForTest()
+				defer iter.Close()
+				for iter.Next() {
+					obj := iter.Entry()
+					segId := obj.Location().ShortName().Segmentid().ToString()
+					aObjs = fmt.Sprintf("%s, %s %v %v %s %s",
+						aObjs, segId, obj.EntryState, obj.HasDeltaLoc,
+						obj.CreateTime.ToTimestamp().DebugString(),
+						obj.DeleteTime.ToTimestamp().DebugString())
+				}
+				logutil.Fatalf("xxxx txnTable.GetColMetadata: err:%s, txn:%s, all objs in partition state:[%s]",
+					err.Error(),
+					tbl.db.txn.op.Txn().DebugString(),
+					aObjs)
+			}
+
 			return err
 		}
 		meta := objMeta.MustDataMeta()
@@ -757,6 +829,24 @@ func (tbl *txnTable) rangesOnePart(
 			if !objectio.IsSameObjectLocVsMeta(location, objDataMeta) {
 				loaded++
 				if objMeta, err = objectio.FastLoadObjectMeta(ctx, &location, false, fs); err != nil {
+
+					if moerr.IsMoErrCode(err, moerr.ErrFileNotFound) {
+						aObjs := ""
+						iter := state.NewObjectsIterForTest()
+						defer iter.Close()
+						for iter.Next() {
+							obj := iter.Entry()
+							segId := obj.Location().ShortName().Segmentid().ToString()
+							aObjs = fmt.Sprintf("%s, %s %v %v %s %s",
+								aObjs, segId, obj.EntryState, obj.HasDeltaLoc,
+								obj.CreateTime.ToTimestamp().DebugString(),
+								obj.DeleteTime.ToTimestamp().DebugString())
+						}
+						logutil.Fatalf("xxxx txnTable.rangesOnePart: err:%s, txn:%s, all objs in partition state:[%s]",
+							err.Error(),
+							tbl.db.txn.op.Txn().DebugString(),
+							aObjs)
+					}
 					return
 				}
 				objDataMeta = objMeta.MustDataMeta()
@@ -829,6 +919,24 @@ func (tbl *txnTable) rangesOnePart(
 		if objMeta, err = objectio.FastLoadObjectMeta(
 			tbl.proc.Load().Ctx, &location, false, tbl.db.txn.engine.fs,
 		); err != nil {
+			if moerr.IsMoErrCode(err, moerr.ErrFileNotFound) {
+				aObjs := ""
+				iter := state.NewObjectsIterForTest()
+				defer iter.Close()
+				for iter.Next() {
+					obj := iter.Entry()
+					segId := obj.Location().ShortName().Segmentid().ToString()
+					aObjs = fmt.Sprintf("%s, %s %v %v %s %s",
+						aObjs, segId, obj.EntryState, obj.HasDeltaLoc,
+						obj.CreateTime.ToTimestamp().DebugString(),
+						obj.DeleteTime.ToTimestamp().DebugString())
+				}
+				logutil.Fatalf("xxxx txnTable.rangesOnePart: err:%s, txn:%s, all objs in partition state:[%s]",
+					err.Error(),
+					tbl.db.txn.op.Txn().DebugString(),
+					aObjs)
+			}
+
 			return
 		}
 		objDataMeta = objMeta.MustDataMeta()
@@ -947,6 +1055,23 @@ func (tbl *txnTable) tryFastRanges(
 			if objMeta, err = objectio.FastLoadObjectMeta(
 				tbl.proc.Load().Ctx, &location, false, tbl.db.txn.engine.fs,
 			); err != nil {
+				if moerr.IsMoErrCode(err, moerr.ErrFileNotFound) {
+					aObjs := ""
+					iter := state.NewObjectsIterForTest()
+					defer iter.Close()
+					for iter.Next() {
+						obj := iter.Entry()
+						segId := obj.Location().ShortName().Segmentid().ToString()
+						aObjs = fmt.Sprintf("%s, %s %v %v %s %s",
+							aObjs, segId, obj.EntryState, obj.HasDeltaLoc,
+							obj.CreateTime.ToTimestamp().DebugString(),
+							obj.DeleteTime.ToTimestamp().DebugString())
+					}
+					logutil.Fatalf("xxxx txnTable.tryFastRange: err:%s, txn:%s, all objs in partition state:[%s]",
+						err.Error(),
+						tbl.db.txn.op.Txn().DebugString(),
+						aObjs)
+				}
 				return
 			}
 
@@ -1032,6 +1157,23 @@ func (tbl *txnTable) tryFastRanges(
 		if objMeta, err = objectio.FastLoadObjectMeta(
 			tbl.proc.Load().Ctx, &location, false, tbl.db.txn.engine.fs,
 		); err != nil {
+			if moerr.IsMoErrCode(err, moerr.ErrFileNotFound) {
+				aObjs := ""
+				iter := state.NewObjectsIterForTest()
+				defer iter.Close()
+				for iter.Next() {
+					obj := iter.Entry()
+					segId := obj.Location().ShortName().Segmentid().ToString()
+					aObjs = fmt.Sprintf("%s, %s %v %v %s %s",
+						aObjs, segId, obj.EntryState, obj.HasDeltaLoc,
+						obj.CreateTime.ToTimestamp().DebugString(),
+						obj.DeleteTime.ToTimestamp().DebugString())
+				}
+				logutil.Fatalf("xxxx txnTable.tryFastRange: err:%s, txn:%s, all objs in partition state:[%s]",
+					err.Error(),
+					tbl.db.txn.op.Txn().DebugString(),
+					aObjs)
+			}
 			return
 		}
 		objDataMeta = objMeta.MustDataMeta()
@@ -1615,6 +1757,7 @@ func (tbl *txnTable) newBlockReader(
 		for i, blk := range blkInfos {
 			rds[i] = newBlockReader(
 				ctx,
+				tbl,
 				tableDef,
 				ts,
 				[]*catalog.BlockInfo{blk},
@@ -1638,6 +1781,7 @@ func (tbl *txnTable) newBlockReader(
 	}
 	blockReaders := newBlockReaders(
 		ctx,
+		tbl,
 		fs,
 		tableDef,
 		tbl.primarySeqnum,
@@ -1752,6 +1896,7 @@ func (tbl *txnTable) newReader(
 	//create readerNumber-1 blockReaders
 	blockReaders := newBlockReaders(
 		ctx,
+		tbl,
 		fs,
 		tbl.tableDef,
 		-1,
@@ -1907,6 +2052,24 @@ func (tbl *txnTable) updateDeleteInfo(
 					&location,
 					false,
 					fs); err != nil {
+					if moerr.IsMoErrCode(err, moerr.ErrFileNotFound) {
+						aObjs := ""
+						iter := state.NewObjectsIterForTest()
+						defer iter.Close()
+						for iter.Next() {
+							obj := iter.Entry()
+							segId := obj.Location().ShortName().Segmentid().ToString()
+							aObjs = fmt.Sprintf("%s, %s %v %v %s %s",
+								aObjs, segId, obj.EntryState, obj.HasDeltaLoc,
+								obj.CreateTime.ToTimestamp().DebugString(),
+								obj.DeleteTime.ToTimestamp().DebugString())
+						}
+						logutil.Fatalf("xxxx txnTable.updateDelInfo: err:%s, txn:%s, all objs in partition state:[%s]",
+							err.Error(),
+							tbl.db.txn.op.Txn().DebugString(),
+							aObjs)
+					}
+
 					return err
 				}
 				objDataMeta = objMeta.MustDataMeta()
@@ -1950,7 +2113,7 @@ func (tbl *txnTable) updateDeleteInfo(
 			for i, rowid := range rowids {
 				blkid, _ := rowid.Decode()
 				if _, ok := deleteObjsMap[*objectio.ShortName(&blkid)]; ok {
-					newId, ok, err := tbl.readNewRowid(pkVec, i, blks)
+					newId, ok, err := tbl.readNewRowid(ctx, pkVec, i, blks)
 					if err != nil {
 						return err
 					}
@@ -1964,7 +2127,7 @@ func (tbl *txnTable) updateDeleteInfo(
 	return nil
 }
 
-func (tbl *txnTable) readNewRowid(vec *vector.Vector, row int,
+func (tbl *txnTable) readNewRowid(ctx context.Context, vec *vector.Vector, row int,
 	blks []catalog.BlockInfo) (types.Rowid, bool, error) {
 	var auxIdCnt int32
 	var typ *plan.Type
@@ -1999,6 +2162,24 @@ func (tbl *txnTable) readNewRowid(vec *vector.Vector, row int,
 			if objMeta, err = objectio.FastLoadObjectMeta(
 				tbl.proc.Load().Ctx, &location, false, tbl.db.txn.engine.fs,
 			); err != nil {
+				if moerr.IsMoErrCode(err, moerr.ErrFileNotFound) {
+					state, _ := tbl.getPartitionState(ctx)
+					aObjs := ""
+					iter := state.NewObjectsIterForTest()
+					defer iter.Close()
+					for iter.Next() {
+						obj := iter.Entry()
+						segId := obj.Location().ShortName().Segmentid().ToString()
+						aObjs = fmt.Sprintf("%s, %s %v %v %s %s",
+							aObjs, segId, obj.EntryState, obj.HasDeltaLoc,
+							obj.CreateTime.ToTimestamp().DebugString(),
+							obj.DeleteTime.ToTimestamp().DebugString())
+					}
+					logutil.Fatalf("xxxx txnTable.readNewRowId: err:%s,txn:%s, all objs in partition state:[%s]",
+						err.Error(),
+						tbl.db.txn.op.Txn().DebugString(),
+						aObjs)
+				}
 				return rowid, false, err
 			}
 			hit = colexec.EvaluateFilterByZoneMap(tbl.proc.Load().Ctx, tbl.proc.Load(), filter,

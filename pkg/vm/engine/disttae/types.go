@@ -574,6 +574,7 @@ type blockReader struct {
 	//buffer for block's deletes
 	buffer      []int64
 	readerCount engine.ReaderCount
+	table       *txnTable
 }
 
 type blockMergeReader struct {
