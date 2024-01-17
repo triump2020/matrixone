@@ -52,7 +52,8 @@ snapshot的创建，查询，删除。
 
       如果用用户指定的snapshot:xxxx, 可能事务都看不见t1 表,除非t1是事务创建的表; 而且提交时,t1表可能已经存在，产生冲突?
    
-      multi statement 的场景 也需要事务在不同的start ts 之间切换.
+      显示事务，multi statement 的场景:既有普通的statement 也有 snapshot read 场景:
+	  事务需要在不同的start ts 之间切换, 且会出现 事务的start ts 变小的问题.
       <br> 
 
       MO 中事务的隔离级别和模式是全局的.
