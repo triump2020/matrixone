@@ -53,9 +53,9 @@ snapshot的创建，查询，删除。
 
 - 快照读事务的start ts 及隔离级别/模式 
 
-   1. 对于snapshot read 事务,应该是只读的，不允许update/insert , 事务的start ts 应为用户指定的snapshot id 所对应的timestamp.
+   1.对于snapshot read 事务,应该是只读的，不允许update/insert , 事务的start ts 应为用户指定的snapshot id 所对应的timestamp.
    <br>
-   2. snapshot read 事务应该运行在SI隔离级别, optimistic 模式.
+   2.snapshot read 事务应该运行在SI隔离级别, optimistic 模式.
     <br>
     
     注意：当前MO中事务的隔离级别和模式是全局的.
