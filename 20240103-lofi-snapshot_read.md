@@ -29,36 +29,36 @@ snapshot的创建，查询，删除。
 
 - 涉及到快照读语句的语法
   
-   1. 用户需要读取某个表的快照/历史数据 , 比如语义上类似:select * from t snapshot = xxxx, 读取表t的快照为xxxx 的数据. 
+    1.用户需要读取某个表的快照/历史数据, 读取表t的快照ID为xxxx 的数据. 
+
+   ```sql
+    BEGIN TRANSACTION ISOLATION LEVEL SI;
+    SET TRANSACTION SNAPSHOT 'xxxx';
+	select * from t;
+	COMMIT;
+   ```
+
    <br>
+     2.用户需要在某个snapshot 上导出/导入数据:
 
-   2. 用户需要dump数据，比如语义上类似:insert into t1 select * from t0 snapshot = xxxx
+	```sql
+    BEGIN TRANSACTION ISOLATION LEVEL SI;
+    SET TRANSACTION SNAPSHOT 'xxxx';
+    select * from db.t into outfile 'S3 file name';
+    load data infile 'S3 file' into table db.t;
+    COMMIT;
+	```
 
-      或者用特殊的命令将快照数据导入到 S3,然后再从S3 load 到表中: select * from db.t into outfile 'S3 file name',
-      load data infile 'S3 file' into table db.t
     <br> 
-
-   3. 是否支持multi statement  
-      一个事务内既可以执行read at snapshto 语句 又可以执行普通语句？ 这样一个事务可能就需要在多个start ts 之间切换. 
-
-    <br>  
 
 - 快照读事务的start ts 及隔离级别/模式 
 
-   1. 对于这种只读事务,读历史数据:select * from t snapshot = xxxx, 事务的start ts 可以为用户指定的snapshot:xxxx.
+   1. 对于snapshot read 事务,应该是只读的，不允许update/insert , 事务的start ts 应为用户指定的snapshot id 所对应的timestamp.
+   <br>
+   2. snapshot read 事务应该运行在SI隔离级别, optimistic 模式.
     <br>
-   2. 如果需求上需要支持类似语义的sql: insert into t1 select * from t0 snapshot = xxx,事务的start ts 怎么决定?
-      用系统最新的时间戳,还是用户指定的snapshot:xxxx?
-
-      如果用用户指定的snapshot:xxxx, 可能事务都看不见t1 表,除非t1是事务创建的表; 而且提交时,t1表可能已经存在，产生冲突?
-   
-      显示事务，multi statement 的场景:既有普通的statement 也有 snapshot read 场景:
-	  事务需要在不同的start ts 之间切换, 且会出现 事务的start ts 变小的问题.
-      <br> 
-
-      MO 中事务的隔离级别和模式是全局的.
-
-
+    
+    注意：当前MO中事务的隔离级别和模式是全局的.
 
 - 快照读事务获取旧的ckp 
 
