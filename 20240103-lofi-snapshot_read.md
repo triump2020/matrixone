@@ -55,6 +55,7 @@ snapshot的创建，查询，删除。
 
    1.对于snapshot read 事务,应该是只读的，不允许update/insert , 事务的start ts 应为用户指定的snapshot id 所对应的timestamp.
    <br>
+   
    2.snapshot read 事务应该运行在SI隔离级别, optimistic 模式.
     <br>
     
