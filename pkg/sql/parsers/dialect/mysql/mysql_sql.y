@@ -273,8 +273,8 @@ import (
 %left <str> ')'
 %nonassoc LOWER_THAN_STRING
 %nonassoc <str> ID AT_ID AT_AT_ID STRING VALUE_ARG LIST_ARG COMMENT COMMENT_KEYWORD QUOTE_ID STAGE CREDENTIALS STAGES
-%token <item> INTEGRAL HEX BIT_LITERAL FLOAT
-%token <str>  HEXNUM
+%token <item> INTEGRAL HEX FLOAT
+%token <str>  HEXNUM BIT_LITERAL
 %token <str> NULL TRUE FALSE
 %nonassoc LOWER_THAN_CHARSET
 %nonassoc <str> CHARSET
@@ -614,8 +614,9 @@ import (
 %type <expr> predicate
 %type <expr> bit_expr interval_expr
 %type <expr> simple_expr else_opt
-%type <expr> expression like_escape_opt boolean_primary col_tuple expression_opt
+%type <expr> expression value_expression like_escape_opt boolean_primary col_tuple expression_opt
 %type <exprs> expression_list_opt
+%type <exprs> value_expression_list
 %type <exprs> expression_list row_value window_partition_by window_partition_by_opt
 %type <expr> datetime_scale_opt datetime_scale
 %type <tuple> tuple_expression
@@ -6884,11 +6885,11 @@ values_opt:
         expr := tree.NewMaxValue()
         $$ = &tree.ValuesLessThan{ValueList: tree.Exprs{expr}}
     }
-|   VALUES LESS THAN '(' expression_list ')'
+|   VALUES LESS THAN '(' value_expression_list ')'
     {
         $$ = &tree.ValuesLessThan{ValueList: $5}
     }
-|   VALUES IN '(' expression_list ')'
+|   VALUES IN '(' value_expression_list ')'
     {
     $$ = &tree.ValuesIn{ValueList: $4}
     }
@@ -9171,6 +9172,16 @@ expression_list_opt:
         $$ = $1
     }
 
+value_expression_list:
+    value_expression
+    {
+        $$ = tree.Exprs{$1}
+    }
+|   value_expression_list ',' value_expression
+    {
+        $$ = append($1, $3)
+    }
+
 expression_list:
     expression
     {
@@ -9207,13 +9218,18 @@ expression:
     {
         $$ = tree.NewNotExpr($2)
     }
-|   MAXVALUE
-    {
-        $$ = tree.NewMaxValue()
-    }
 |   boolean_primary
     {
         $$ = $1
+    }
+
+value_expression:
+    expression {
+        $$ = $1
+    }
+|   MAXVALUE
+    {
+        $$ = tree.NewMaxValue()
     }
 
 boolean_primary:
@@ -9461,17 +9477,7 @@ literal:
     }
 |   BIT_LITERAL
     {
-        switch v := $1.(type) {
-        case uint64:
-            $$ = tree.NewNumValWithType(constant.MakeUint64(v), yylex.(*Lexer).scanner.LastToken, false, tree.P_uint64)
-        case int64:
-            $$ = tree.NewNumValWithType(constant.MakeInt64(v), yylex.(*Lexer).scanner.LastToken, false, tree.P_int64)
-        case string:
-            $$ = tree.NewNumValWithType(constant.MakeString(v), v, false, tree.P_bit)
-        default:
-            yylex.Error("parse integral fail")
-            return 1
-        }
+        $$ = tree.NewNumValWithType(constant.MakeString($1), $1, false, tree.P_bit)
     }
 |   VALUE_ARG
     {
@@ -10767,7 +10773,6 @@ non_reserved_keyword:
 |	COPY
 |	UNDEFINED
 |	MERGE
-|	UNDERSCORE_BINARY
 |	TEMPTABLE
 |	INVOKER
 |	SECURITY

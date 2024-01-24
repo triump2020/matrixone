@@ -17,7 +17,6 @@ package lockservice
 import (
 	"fmt"
 	"os"
-	"sync"
 	"testing"
 	"time"
 
@@ -125,15 +124,15 @@ func TestKeepaliveBind(t *testing.T) {
 		t,
 		interval,
 		func(a *lockTableAllocator) {
-			c, err := NewClient(morpc.Config{})
+			c, err := NewClient(morpc.Config{}, nil)
 			require.NoError(t, err)
 			defer func() {
 				assert.NoError(t, c.Close())
 			}()
 
 			bind := a.Get("s1", 1)
-			m := &sync.Map{}
-			m.Store(1,
+			m := &lockTableHolder{id: "s1", tables: map[uint64]lockTable{}}
+			m.set(1,
 				newRemoteLockTable(
 					"s1",
 					time.Second,
