@@ -933,11 +933,22 @@ func (txn *Transaction) getCachedTable(
 
 func (txn *Transaction) Commit(ctx context.Context) ([]txn.TxnRequest, error) {
 	logDebugf(txn.op.Txn(), "Transaction.Commit")
-	txn.IncrStatementID(ctx, true)
+	txn.Lock()
+	defer txn.Unlock()
+	//txn.IncrStatementID(ctx, true)
 	defer txn.delTransaction()
 	if txn.readOnly.Load() {
 		return nil, nil
 	}
+
+	//free batches
+	for key := range txn.toFreeBatches {
+		for _, bat := range txn.toFreeBatches[key] {
+			txn.proc.PutBatch(bat)
+		}
+		delete(txn.toFreeBatches, key)
+	}
+
 	if err := txn.mergeTxnWorkspaceLocked(); err != nil {
 		return nil, err
 	}
