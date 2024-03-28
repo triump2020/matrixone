@@ -101,17 +101,19 @@ func (p *PartitionReader) prepare() error {
 				//deletes in txn.Write maybe comes from PartitionState.Rows ,
 				// PartitionReader need to skip them.
 				vs := vector.MustFixedCol[types.Rowid](entry.bat.GetVector(0))
-				log := false
+				//log := false
 				for _, v := range vs {
 					deletes[v] = 0
 					if regexp.MustCompile(`.*sbtest.*`).MatchString(p.table.tableName) {
-						if !log {
-							logutil.Infof("xxxx txn:%s table:%s, partition reader: load delete batch:%s",
-								p.table.db.txn.op.Txn().DebugString(),
-								p.table.tableName,
-								common.MoBatchToString(entry.bat, 10))
-							log = true
-						}
+						//if !log {
+						logutil.Infof("xxxx txn:%s table:%s, "+
+							"partition reader load delete:%s batch:%s from workspace",
+							p.table.db.txn.op.Txn().DebugString(),
+							p.table.tableName,
+							v.String(),
+							common.MoBatchToString(entry.bat, 10))
+						//	log = true
+						//}
 					}
 				}
 			}
