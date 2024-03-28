@@ -16,6 +16,8 @@ package disttae
 
 import (
 	"context"
+	"fmt"
+	"regexp"
 	"sort"
 	"time"
 
@@ -662,6 +664,7 @@ func (r *blockMergeReader) loadDeletes(ctx context.Context, cols []string) error
 	}
 	ts := types.TimestampToTS(r.ts)
 
+	rowids := ""
 	if filter != nil && info.Sorted && len(r.encodedPrimaryKey) > 0 {
 		iter := state.NewPrimaryKeyDelIter(
 			ts,
@@ -675,6 +678,7 @@ func (r *blockMergeReader) loadDeletes(ctx context.Context, cols []string) error
 			}
 			_, offset := entry.RowID.Decode()
 			r.buffer = append(r.buffer, int64(offset))
+			rowids = fmt.Sprintf("%s[%s]", rowids, entry.RowID.String())
 		}
 		iter.Close()
 	} else {
@@ -684,12 +688,20 @@ func (r *blockMergeReader) loadDeletes(ctx context.Context, cols []string) error
 			entry := iter.Entry()
 			_, offset := entry.RowID.Decode()
 			r.buffer = append(r.buffer, int64(offset))
+			rowids = fmt.Sprintf("%s[%s]", rowids, entry.RowID.String())
 		}
 		v2.TaskLoadMemDeletesPerBlockHistogram.Observe(float64(len(r.buffer) - currlen))
 		iter.Close()
 	}
+	if regexp.MustCompile(`.*sbtest.*`).MatchString(r.table.tableName) && rowids != "" {
+		logutil.Infof("xxxx txn:%s table:%s, block merge reader load deletes form partiont state:%s",
+			r.table.db.txn.op.Txn().DebugString(),
+			r.table.tableName,
+			rowids)
+	}
 
 	//TODO:: if r.table.writes is a map , the time complexity could be O(1)
+	rowids1 := ""
 	//load deletes from txn.writes for the specified block
 	r.table.db.txn.forEachTableWrites(r.table.db.databaseId, r.table.tableId, r.table.db.txn.GetSnapshotWriteOffset(), func(entry Entry) {
 		if entry.isGeneratedByTruncate() {
@@ -701,10 +713,19 @@ func (r *blockMergeReader) loadDeletes(ctx context.Context, cols []string) error
 				id, offset := v.Decode()
 				if id == info.BlockID {
 					r.buffer = append(r.buffer, int64(offset))
+					rowids1 = fmt.Sprintf("%s[%s]", rowids1, v.String())
 				}
 			}
 		}
 	})
+
+	if regexp.MustCompile(`.*sbtest.*`).MatchString(r.table.tableName) && rowids1 != "" {
+		logutil.Infof("xxxx txn:%s table:%s, block merge reader load deletes form workspace:%s",
+			r.table.db.txn.op.Txn().DebugString(),
+			r.table.tableName,
+			rowids1)
+	}
+
 	//load deletes from txn.deletedBlocks.
 	txn := r.table.db.txn
 	txn.deletedBlocks.getDeletedOffsetsByBlock(&info.BlockID, &r.buffer)

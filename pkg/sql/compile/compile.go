@@ -436,6 +436,7 @@ func (c *Compile) Run(_ uint64) (result *util2.RunResult, err error) {
 			txnOp.ExitRunSql()
 		}
 	}()
+	fmt.Printf("%x run sql: %s\n", txnOp.Txn().ID, sql)
 
 	var writeOffset uint64
 

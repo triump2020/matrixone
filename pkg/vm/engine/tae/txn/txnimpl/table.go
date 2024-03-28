@@ -271,13 +271,15 @@ func (tbl *txnTable) recurTransferDelete(
 		return err
 	}
 	common.DoIfInfoEnabled(func() {
-		logutil.Infof("depth-%d %s transfer delete from blk-%s row-%d to blk-%s row-%d",
+		logutil.Infof("xxxx txn-%s depth-%d %s transfer delete from blk-%s row-%d to blk-%s row-%d pk-%s",
+			tbl.store.txn.GetStartTS().ToString(),
 			depth,
 			tbl.schema.Name,
 			id.BlockID.String(),
 			row,
 			blockID.String(),
-			offset)
+			offset,
+			common.MoVectorToString(pk.GetDownstreamVector(), 1))
 	})
 	return nil
 }
@@ -719,7 +721,7 @@ func (tbl *txnTable) RangeDelete(
 				err = moerr.NewTxnWWConflictNoCtx(id.TableID, pk.PPString(int(start-end+1)))
 			}
 
-			logutil.Debugf("[ts=%s]: table-%d blk-%s delete rows from %d to %d %v",
+			logutil.Infof("xxxx [ts=%s]: table-%d blk-%s delete rows from %d to %d %v",
 				tbl.store.txn.GetStartTS().ToString(),
 				id.TableID,
 				id.BlockID.String(),
@@ -727,7 +729,7 @@ func (tbl *txnTable) RangeDelete(
 				end,
 				err)
 			if tbl.store.rt.Options.IncrementalDedup && moerr.IsMoErrCode(err, moerr.ErrTxnWWConflict) {
-				logutil.Warnf("[txn%X,ts=%s]: table-%d blk-%s delete rows [%d,%d] pk %s",
+				logutil.Warnf("xxxx [txn%X,ts=%s]: table-%d blk-%s delete rows [%d,%d] pk %s",
 					tbl.store.txn.GetID(),
 					tbl.store.txn.GetStartTS().ToString(),
 					id.TableID,
