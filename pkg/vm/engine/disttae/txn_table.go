@@ -2349,6 +2349,7 @@ func (tbl *txnTable) PKPersistedBetween(
 			inExpr,
 			"pk",
 			tbl.proc.Load())
+		logutil.Infof("xxxx block type:%v, sorted:%v", blk.EntryState, blk.Sorted)
 		sels := filter(bat.Vecs)
 		if len(sels) > 0 {
 			return true, nil
