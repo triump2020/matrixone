@@ -875,9 +875,9 @@ func (p *PartitionState) HandleMetadataInsert(
 
 				p.dataObjects.Set(objEntry)
 
-				if !objEntry.CreateTime.IsEmpty() {
-					p.dataObjectsByCreateTS.Set(ObjectIndexByCreateTSEntry(objEntry))
-				}
+				//if !objEntry.CreateTime.IsEmpty() {
+				p.dataObjectsByCreateTS.Set(ObjectIndexByCreateTSEntry(objEntry))
+				//}
 
 				{
 					e := ObjectIndexByTSEntry{
