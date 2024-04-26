@@ -850,9 +850,9 @@ func (p *PartitionState) HandleMetadataInsert(
 				// objEntry.CreateTime is empty.
 				// and it's temporary.
 				// Related dataObjectsByCreateTS will be set in HandleObjectInsert.
-				if !objEntry.CreateTime.IsEmpty() {
-					p.dataObjectsByCreateTS.Set(ObjectIndexByCreateTSEntry(objEntry))
-				}
+				//if !objEntry.CreateTime.IsEmpty() {
+				p.dataObjectsByCreateTS.Set(ObjectIndexByCreateTSEntry(objEntry))
+				//}
 			} else {
 
 				objEntry = objPivot
