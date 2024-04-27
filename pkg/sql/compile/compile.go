@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"regexp"
 	"runtime"
 	gotrace "runtime/trace"
 	"sort"
@@ -3636,6 +3637,11 @@ func (c *Compile) expandRanges(n *plan.Node, rel engine.Relation, blockFilterLis
 	var err error
 	var db engine.Database
 	var ranges engine.Ranges
+
+	if regexp.MustCompile(`.*sbtest.*`).MatchString(rel.GetTableName()) {
+		logutil.Infof("xxxx table:%s call expand ranges.", rel.GetTableName())
+	}
+
 	ctx := c.ctx
 	if util.TableIsClusterTable(n.TableDef.GetTableType()) {
 		ctx = defines.AttachAccountId(ctx, catalog.System_Account)
