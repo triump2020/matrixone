@@ -17,6 +17,7 @@ package disttae
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"time"
@@ -693,6 +694,18 @@ func (tbl *txnTable) Ranges(ctx context.Context, exprs []*plan.Expr) (ranges eng
 		tbl.proc.Load(),
 	); err != nil {
 		return
+	}
+	if regexp.MustCompile(`.*sbtest.*`).MatchString(tbl.tableName) {
+		for i := 1; i < blocks.Len(); i++ {
+			blk := blocks.Get(i)
+			logutil.Infof("xxxx table:%s ranges return blks, "+
+				"txn:%s,blkid:%s, entry state:%v, can remote:%v",
+				tbl.tableName,
+				tbl.db.op.Txn().DebugString(),
+				blk.BlockID.String(),
+				blk.EntryState,
+				blk.CanRemote)
+		}
 	}
 
 	return
