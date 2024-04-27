@@ -3618,6 +3618,7 @@ func (c *Compile) fillAnalyzeInfo() {
 }
 
 func (c *Compile) determinExpandRanges(n *plan.Node, rel engine.Relation) bool {
+	return true
 	if n.TableDef.Partition != nil {
 		return true
 	}
