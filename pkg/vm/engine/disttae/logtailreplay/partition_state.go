@@ -256,9 +256,9 @@ type ObjectIndexByTSEntry struct {
 
 func (b ObjectIndexByTSEntry) Less(than ObjectIndexByTSEntry) bool {
 
-	if b.Time.IsEmpty() || than.Time.IsEmpty() {
-		return bytes.Compare(b.ShortObjName[:], than.ShortObjName[:]) < 0
-	}
+	//if b.Time.IsEmpty() || than.Time.IsEmpty() {
+	//	return bytes.Compare(b.ShortObjName[:], than.ShortObjName[:]) < 0
+	//}
 
 	// asc
 	if b.Time.Less(&than.Time) {
