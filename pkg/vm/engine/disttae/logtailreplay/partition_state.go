@@ -197,6 +197,10 @@ type ObjectIndexByCreateTSEntry struct {
 
 func (o ObjectIndexByCreateTSEntry) Less(than ObjectIndexByCreateTSEntry) bool {
 	//asc
+	if o.CreateTime.IsEmpty() || than.CreateTime.IsEmpty() {
+		return bytes.Compare((*o.ObjectShortName())[:], (*than.ObjectShortName())[:]) < 0
+	}
+
 	if o.CreateTime.Less(&than.CreateTime) {
 
 		return true
@@ -886,9 +890,9 @@ func (p *PartitionState) HandleMetadataInsert(
 					// objEntry.CreateTime is empty.
 					// and it's temporary.
 					// Related dataObjectsByCreateTS will be set in HandleObjectInsert.
-					if !objEntry.CreateTime.IsEmpty() {
-						p.dataObjectsByCreateTS.Set(ObjectIndexByCreateTSEntry(objEntry))
-					}
+					//if !objEntry.CreateTime.IsEmpty() {
+					p.dataObjectsByCreateTS.Set(ObjectIndexByCreateTSEntry(objEntry))
+					//}
 					return
 				}
 				objEntry = objPivot
@@ -911,9 +915,9 @@ func (p *PartitionState) HandleMetadataInsert(
 
 				p.dataObjects.Set(objEntry)
 
-				if !objEntry.CreateTime.IsEmpty() {
-					p.dataObjectsByCreateTS.Set(ObjectIndexByCreateTSEntry(objEntry))
-				}
+				//if !objEntry.CreateTime.IsEmpty() {
+				p.dataObjectsByCreateTS.Set(ObjectIndexByCreateTSEntry(objEntry))
+				//}
 
 				{
 					e := ObjectIndexByTSEntry{
