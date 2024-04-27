@@ -932,6 +932,12 @@ func (txn *Transaction) forEachTableHasDeletesLocked(f func(tbl *txnTable) error
 	tables := make(map[uint64]*txnTable)
 	for i := 0; i < len(txn.writes); i++ {
 		e := txn.writes[i]
+		if e.typ == DELETE && e.fileName != "" {
+			return moerr.NewInternalErrorNoCtx(
+				"Don't support transfer deletes persisted on S3 for db:%s, table:%s",
+				e.databaseName,
+				e.tableName)
+		}
 		if e.typ != DELETE || e.fileName != "" {
 			continue
 		}
