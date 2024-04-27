@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"sync/atomic"
 	"time"
 
 	"github.com/matrixorigin/matrixone/pkg/common/mpool"
@@ -42,7 +43,7 @@ type Node struct {
 	Header           objectio.InfoHeader
 	Data             []byte   `json:"payload"`
 	Rel              Relation // local relation
-	NeedExpandRanges bool
+	NeedExpandRanges atomic.Bool
 }
 
 // Attribute is a column

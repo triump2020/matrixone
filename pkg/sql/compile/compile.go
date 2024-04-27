@@ -3781,7 +3781,7 @@ func (c *Compile) generateNodes(n *plan.Node) (engine.Nodes, []any, []types.T, e
 			Rel:  rel,
 			Mcpu: c.generateCPUNumber(ncpu, int(n.Stats.BlockNum)),
 		})
-		nodes[0].NeedExpandRanges = true
+		nodes[0].NeedExpandRanges.Store(true)
 		return nodes, nil, nil, nil
 	}
 

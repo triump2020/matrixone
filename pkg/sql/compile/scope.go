@@ -346,7 +346,7 @@ func (s *Scope) handleRuntimeFilter(c *Compile) error {
 				case process.RuntimeFilter_DROP:
 					// FIXME: Should give an empty "Data" and then early return
 					s.NodeInfo.Data = nil
-					s.NodeInfo.NeedExpandRanges = false
+					s.NodeInfo.NeedExpandRanges.Store(false)
 					s.DataSource.FilterExpr = plan2.MakeFalseExpr()
 					return nil
 				case process.RuntimeFilter_IN:
@@ -393,7 +393,7 @@ func (s *Scope) handleRuntimeFilter(c *Compile) error {
 		}
 	}
 
-	if s.NodeInfo.NeedExpandRanges {
+	if s.NodeInfo.NeedExpandRanges.Load() {
 		if s.DataSource.node == nil {
 			panic("can not expand ranges on remote pipeline!")
 		}
@@ -406,7 +406,7 @@ func (s *Scope) handleRuntimeFilter(c *Compile) error {
 			return err
 		}
 		s.NodeInfo.Data = append(s.NodeInfo.Data, ranges.GetAllBytes()...)
-		s.NodeInfo.NeedExpandRanges = false
+		s.NodeInfo.NeedExpandRanges.Store(false)
 	} else if len(inExprList) > 0 {
 		s.NodeInfo.Data, err = ApplyRuntimeFilters(c.ctx, s.Proc, s.DataSource.TableDef, s.NodeInfo.Data, exprs, filters)
 		if err != nil {
