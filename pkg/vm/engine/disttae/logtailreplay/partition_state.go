@@ -199,6 +199,11 @@ type ObjectIndexByCreateTSEntry struct {
 
 func (o ObjectIndexByCreateTSEntry) Less(than ObjectIndexByCreateTSEntry) bool {
 	//asc
+
+	if o.CreateTime.IsEmpty() || than.CreateTime.IsEmpty() {
+		return bytes.Compare((*o.ObjectShortName())[:], (*than.ObjectShortName())[:]) < 0
+	}
+
 	if o.CreateTime.Less(&than.CreateTime) {
 
 		return true
