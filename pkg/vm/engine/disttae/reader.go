@@ -693,13 +693,13 @@ func (r *blockMergeReader) loadDeletes(ctx context.Context, cols []string) error
 		iter.Close()
 	}
 
-	if regexp.MustCompile(`.*sbtest.*`).MatchString(r.table.tableName) && rowids != "" {
-		logutil.Infof("xxxx txn:%s table:%s, "+
-			"block merge reader load deletes %s from partitionState.rows",
-			r.table.db.op.Txn().DebugString(),
-			r.table.tableName,
-			rowids)
-	}
+	//if regexp.MustCompile(`.*sbtest.*`).MatchString(r.table.tableName) && rowids != "" {
+	//	logutil.Infof("xxxx txn:%s table:%s, "+
+	//		"block merge reader load deletes %s from partitionState.rows",
+	//		r.table.db.op.Txn().DebugString(),
+	//		r.table.tableName,
+	//		rowids)
+	//}
 
 	rowids = ""
 	//TODO:: if r.table.writes is a map , the time complexity could be O(1)
