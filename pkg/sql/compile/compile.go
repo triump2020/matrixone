@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"math"
 	"net"
-	"regexp"
 	"runtime"
 	gotrace "runtime/trace"
 	"sort"
@@ -432,7 +431,7 @@ func (c *Compile) Run(_ uint64) (result *util2.RunResult, err error) {
 		c.proc.SetPrepareExprList(nil)
 	}()
 
-	fmt.Printf("%x run sql: %s\n", txnOp.Txn().ID, sql)
+	fmt.Printf("%x run sql: %s\n", txnOp.Txn().DebugString(), sql)
 
 	var writeOffset uint64
 
@@ -521,6 +520,10 @@ func (c *Compile) prepareRetry(defChanged bool) (*Compile, error) {
 	v2.TxnStatementRetryCounter.Inc()
 	c.proc.TxnOperator.ResetRetry(true)
 	c.proc.TxnOperator.GetWorkspace().IncrSQLCount()
+
+	fmt.Printf("%x prepare retry sql: %s\n",
+		c.proc.TxnOperator.Txn().DebugString(),
+		c.sql)
 
 	// clear the workspace of the failed statement
 	if e := c.proc.TxnOperator.GetWorkspace().RollbackLastStatement(c.ctx); e != nil {
@@ -3638,16 +3641,6 @@ func (c *Compile) expandRanges(n *plan.Node, rel engine.Relation, blockFilterLis
 	var err error
 	var db engine.Database
 	var ranges engine.Ranges
-
-	defer func() {
-		if regexp.MustCompile(`.*sbtest.*`).MatchString(rel.GetTableName()) {
-			logutil.Infof("xxxx txn:%s, table:%s call expand ranges,err:%v",
-				c.proc.TxnOperator.Txn().DebugString(),
-				rel.GetTableName(),
-				err)
-		}
-	}()
-
 	ctx := c.ctx
 	if util.TableIsClusterTable(n.TableDef.GetTableType()) {
 		ctx = defines.AttachAccountId(ctx, catalog.System_Account)
