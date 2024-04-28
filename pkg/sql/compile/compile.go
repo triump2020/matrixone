@@ -3641,10 +3641,10 @@ func (c *Compile) expandRanges(n *plan.Node, rel engine.Relation, blockFilterLis
 
 	defer func() {
 		if regexp.MustCompile(`.*sbtest.*`).MatchString(rel.GetTableName()) {
-			logutil.Infof("xxxx txn:%s, table:%s call expand ranges,err:%s",
+			logutil.Infof("xxxx txn:%s, table:%s call expand ranges,err:%v",
 				c.proc.TxnOperator.Txn().DebugString(),
 				rel.GetTableName(),
-				err.Error())
+				err)
 		}
 	}()
 
