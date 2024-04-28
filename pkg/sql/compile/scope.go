@@ -394,6 +394,7 @@ func (s *Scope) handleRuntimeFilter(c *Compile) error {
 	}
 
 	if s.NodeInfo.NeedExpandRanges.Load() {
+		logutil.Fatal("xxxx forbiden expand ranges for test")
 		if s.DataSource.node == nil {
 			panic("can not expand ranges on remote pipeline!")
 		}

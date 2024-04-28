@@ -732,10 +732,10 @@ func (tbl *txnTable) Ranges(ctx context.Context, exprs []*plan.Expr) (ranges eng
 func (tbl *txnTable) rangesOnePart(
 	ctx context.Context,
 	state *logtailreplay.PartitionState, // snapshot state of this transaction
-	tableDef *plan.TableDef, // table definition (schema)
-	exprs []*plan.Expr, // filter expression
-	outBlocks *objectio.BlockInfoSlice, // output marshaled block list after filtering
-	proc *process.Process, // process of this transaction
+	tableDef *plan.TableDef,             // table definition (schema)
+	exprs []*plan.Expr,                  // filter expression
+	outBlocks *objectio.BlockInfoSlice,  // output marshaled block list after filtering
+	proc *process.Process,               // process of this transaction
 ) (err error) {
 
 	uncommittedObjects := tbl.collectUnCommittedObjects()
