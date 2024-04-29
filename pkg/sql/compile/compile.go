@@ -431,7 +431,9 @@ func (c *Compile) Run(_ uint64) (result *util2.RunResult, err error) {
 		c.proc.SetPrepareExprList(nil)
 	}()
 
-	fmt.Printf("%x run sql: %s\n", txnOp.Txn().ID, sql)
+	if c.proc.SessionInfo.User != "mo_logger" {
+		fmt.Printf("%x run sql: %s\n", txnOp.Txn().ID, sql)
+	}
 
 	var writeOffset uint64
 
