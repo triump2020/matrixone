@@ -279,14 +279,14 @@ func (p *PartitionReader) Read(
 		}
 
 		result.SetRowCount(rows)
-		if regexp.MustCompile(`.*sbtest.*`).MatchString(p.table.tableName) {
-			logutil.Infof("xxxx partititonReader reads from partitionState.rows, "+
-				"txn:%s, table:%s, batch:%s, len:%d",
-				p.table.db.op.Txn().DebugString(),
-				p.table.tableName,
-				common.MoBatchToString(result, 10),
-				rows)
-		}
+		//if regexp.MustCompile(`.*sbtest.*`).MatchString(p.table.tableName) {
+		//	logutil.Infof("xxxx partititonReader reads from partitionState.rows, "+
+		//		"txn:%s, table:%s, batch:%s, len:%d",
+		//		p.table.db.op.Txn().DebugString(),
+		//		p.table.tableName,
+		//		common.MoBatchToString(result, 10),
+		//		rows)
+		//}
 		if logutil.GetSkip1Logger().Core().Enabled(zap.DebugLevel) {
 			logutil.Debug(testutil.OperatorCatchBatch(
 				"partition reader[snapshot: partitionState.rows]",
