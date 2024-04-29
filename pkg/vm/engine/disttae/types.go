@@ -16,7 +16,9 @@ package disttae
 
 import (
 	"context"
+	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/common"
 	"math"
+	"regexp"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -445,6 +447,21 @@ func (txn *Transaction) adjustUpdateOrderLocked(writeOffset uint64) error {
 			}
 		}
 		txn.writes = append(txn.writes[:writeOffset], writes...)
+		//add for test
+		for i := writeOffset; i < uint64(len(txn.writes)); i++ {
+			if regexp.MustCompile(`.*sbtest.*`).MatchString(txn.writes[i].tableName) {
+				if txn.writes[i].typ == DELETE {
+					if txn.writes[i].fileName != "" {
+						logutil.Fatal("xxxx delete entry should not have file name")
+					}
+					logutil.Infof("xxxx adjustUpdateOrder txn:%s, table:%s, delete batch:%s",
+						txn.op.Txn().DebugString(),
+						txn.writes[i].tableName,
+						common.MoBatchToString(txn.writes[i].bat, 10))
+				}
+			}
+
+		}
 	}
 	return nil
 }

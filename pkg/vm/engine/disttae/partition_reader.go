@@ -108,7 +108,7 @@ func (p *PartitionReader) prepare() error {
 						if regexp.MustCompile(`.*sbtest.*`).MatchString(p.table.tableName) {
 							if !log {
 								logutil.Infof("xxxx txn:%s table:%s, "+
-									"partition reader load delete %s from workspace.",
+									"partition reader load deletes from workspace,deletes:%s",
 									p.table.db.op.Txn().DebugString(),
 									p.table.tableName,
 									common.MoBatchToString(entry.bat, 10))
