@@ -1821,7 +1821,7 @@ func (tbl *txnTable) EnhanceDelete(bat *batch.Batch, name string) error {
 	case deletion.RawBatchOffset:
 	case deletion.RawRowIdBatch:
 		logutil.Infof("data return by remote pipeline\n")
-		bat = tbl.getTxn().deleteBatch(bat, tbl.db.databaseId, tbl.tableId)
+		bat = tbl.getTxn().deleteBatch(bat, tbl.db.databaseId, tbl.tableId, tbl.tableName)
 		if bat.RowCount() == 0 {
 			return nil
 		}
@@ -1895,9 +1895,22 @@ func (tbl *txnTable) Delete(ctx context.Context, bat *batch.Batch, name string) 
 	}
 	//for S3 delete
 	if name != catalog.Row_ID {
+		if regexp.MustCompile(`.*sbtest.*`).MatchString(tbl.tableName) {
+			logutil.Fatalf("xxxx sbtest delete should not go S3, table:%s, txn:%s",
+				tbl.tableName, tbl.db.op.Txn().DebugString())
+		}
 		return tbl.EnhanceDelete(bat, name)
 	}
-	bat = tbl.getTxn().deleteBatch(bat, tbl.db.databaseId, tbl.tableId)
+
+	if regexp.MustCompile(`.*sbtest.*`).MatchString(tbl.tableName) {
+		logutil.Infof("xxxx txn:%s delete batch:%s batch len:%d from table:%s",
+			tbl.db.op.Txn().DebugString(),
+			common.MoBatchToString(bat, 10),
+			bat.RowCount(),
+			tbl.tableName)
+	}
+
+	bat = tbl.getTxn().deleteBatch(bat, tbl.db.databaseId, tbl.tableId, tbl.tableName)
 	if bat.RowCount() == 0 {
 		return nil
 	}

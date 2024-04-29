@@ -645,7 +645,7 @@ func (txn *Transaction) WriteFile(
 }
 
 func (txn *Transaction) deleteBatch(bat *batch.Batch,
-	databaseId, tableId uint64) *batch.Batch {
+	databaseId, tableId uint64, name string) *batch.Batch {
 	start := time.Now()
 	seq := txn.op.NextSequence()
 	trace.GetService().AddTxnDurationAction(
@@ -681,6 +681,12 @@ func (txn *Transaction) deleteBatch(bat *batch.Batch,
 		mp[rowid] = 0
 		rowOffset := rowid.GetRowOffset()
 		if colexec.Get() != nil && colexec.Get().GetCnSegmentType(uid) == colexec.CnBlockIdType {
+
+			if regexp.MustCompile(`.*sbtest.*`).MatchString(name) {
+				logutil.Fatalf("xxxx sysbench test should not go here, txn:%s, table:%s",
+					txn.op.Txn().DebugString(),
+					name)
+			}
 			txn.deletedBlocks.addDeletedBlocks(&blkid, []int64{int64(rowOffset)})
 			cnRowIdOffsets = append(cnRowIdOffsets, int64(i))
 			continue
