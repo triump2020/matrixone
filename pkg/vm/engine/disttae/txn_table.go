@@ -696,16 +696,22 @@ func (tbl *txnTable) Ranges(ctx context.Context, exprs []*plan.Expr) (ranges eng
 		return
 	}
 	if regexp.MustCompile(`.*sbtest.*`).MatchString(tbl.tableName) {
+		blkstr := ""
 		for i := 1; i < blocks.Len(); i++ {
 			blk := blocks.Get(i)
-			logutil.Infof("xxxx table:%s ranges return blks, "+
-				"txn:%s,blkid:%s, entry state:%v, can remote:%v",
-				tbl.tableName,
-				tbl.db.op.Txn().DebugString(),
+			blkstr = fmt.Sprintf("%s, [%s,%v,%v]",
+				blkstr,
 				blk.BlockID.String(),
 				blk.EntryState,
 				blk.CanRemote)
 		}
+		if blkstr == "" {
+			blkstr = "no blocks"
+		}
+		logutil.Infof("xxxx table:%s txn:%s call ranges return blks:%s",
+			tbl.tableName,
+			tbl.db.op.Txn().DebugString(),
+			blkstr)
 	}
 
 	return
@@ -732,10 +738,10 @@ func (tbl *txnTable) Ranges(ctx context.Context, exprs []*plan.Expr) (ranges eng
 func (tbl *txnTable) rangesOnePart(
 	ctx context.Context,
 	state *logtailreplay.PartitionState, // snapshot state of this transaction
-	tableDef *plan.TableDef,             // table definition (schema)
-	exprs []*plan.Expr,                  // filter expression
-	outBlocks *objectio.BlockInfoSlice,  // output marshaled block list after filtering
-	proc *process.Process,               // process of this transaction
+	tableDef *plan.TableDef, // table definition (schema)
+	exprs []*plan.Expr, // filter expression
+	outBlocks *objectio.BlockInfoSlice, // output marshaled block list after filtering
+	proc *process.Process, // process of this transaction
 ) (err error) {
 
 	uncommittedObjects := tbl.collectUnCommittedObjects()

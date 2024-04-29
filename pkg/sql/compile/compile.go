@@ -431,7 +431,7 @@ func (c *Compile) Run(_ uint64) (result *util2.RunResult, err error) {
 		c.proc.SetPrepareExprList(nil)
 	}()
 
-	fmt.Printf("%x run sql: %s\n", txnOp.Txn().DebugString(), sql)
+	fmt.Printf("%x run sql: %s\n", txnOp.Txn().ID, sql)
 
 	var writeOffset uint64
 
@@ -522,7 +522,7 @@ func (c *Compile) prepareRetry(defChanged bool) (*Compile, error) {
 	c.proc.TxnOperator.GetWorkspace().IncrSQLCount()
 
 	fmt.Printf("%x prepare retry sql: %s\n",
-		c.proc.TxnOperator.Txn().DebugString(),
+		c.proc.TxnOperator.Txn().ID,
 		c.sql)
 
 	// clear the workspace of the failed statement
