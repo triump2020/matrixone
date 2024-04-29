@@ -513,11 +513,11 @@ func (c *Compile) Run(_ uint64) (result *util2.RunResult, err error) {
 	}
 	result.AffectRows = runC.getAffectedRows()
 	if c.proc.TxnOperator != nil {
-		if c.proc.SessionInfo.User != "mo_logger" &&
-			strings.Contains(sql, "DELETE") {
-			fmt.Printf("%x run sql: %s, affected rows:%d",
-				txnOp.Txn().ID, sql, result.AffectRows)
-		}
+		//if c.proc.SessionInfo.User != "mo_logger" &&
+		//	strings.Contains(sql, "DELETE") {
+		//	fmt.Printf("%x run sql: %s, affected rows:%d",
+		//		txnOp.Txn().ID, sql, result.AffectRows)
+		//}
 		return result, c.proc.TxnOperator.GetWorkspace().Adjust(writeOffset)
 	}
 	return result, nil
