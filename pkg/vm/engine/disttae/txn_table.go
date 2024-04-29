@@ -1902,13 +1902,13 @@ func (tbl *txnTable) Delete(ctx context.Context, bat *batch.Batch, name string) 
 		return tbl.EnhanceDelete(bat, name)
 	}
 
-	if regexp.MustCompile(`.*sbtest.*`).MatchString(tbl.tableName) {
-		logutil.Infof("xxxx txn:%s delete batch:%s batch len:%d from table:%s",
-			tbl.db.op.Txn().DebugString(),
-			common.MoBatchToString(bat, 10),
-			bat.RowCount(),
-			tbl.tableName)
-	}
+	//if regexp.MustCompile(`.*sbtest.*`).MatchString(tbl.tableName) {
+	//	logutil.Infof("xxxx txn:%s delete batch:%s batch len:%d from table:%s",
+	//		tbl.db.op.Txn().DebugString(),
+	//		common.MoBatchToString(bat, 10),
+	//		bat.RowCount(),
+	//		tbl.tableName)
+	//}
 
 	bat = tbl.getTxn().deleteBatch(bat, tbl.db.databaseId, tbl.tableId, tbl.tableName)
 	if bat.RowCount() == 0 {
