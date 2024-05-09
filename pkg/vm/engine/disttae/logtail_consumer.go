@@ -1062,7 +1062,6 @@ func dispatchSubscribeResponse(
 			p := e.getOrCreateLatestPart(tbl.DbId, tbl.TbId)
 			p.UpdateDuration(types.TS{}, types.MaxTs())
 			c := e.getLatestCatalogCache()
-			logutil.Infof("xxxx update latest catalog duration, start=zeros, end=max")
 			c.UpdateDuration(types.TS{}, types.MaxTs())
 		}
 		e.pClient.subscribed.setTableSubscribe(tbl.DbId, tbl.TbId)

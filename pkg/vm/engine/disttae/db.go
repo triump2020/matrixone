@@ -469,6 +469,14 @@ func (e *Engine) getOrCreateSnapPart(
 		}
 		return nil
 	})
+	start, end := snap.GetDuration()
+	if ts.Greater(&end) || ts.Less(&start) {
+		return nil, moerr.NewInternalErrorNoCtx(
+			"Invalid checkpoints for snapshot read,snapshot:%s, start:%s, end:%s",
+			ts.ToTimestamp().DebugString(),
+			start.ToTimestamp().DebugString(),
+			end.ToTimestamp().DebugString())
+	}
 	snaps.snaps = append(snaps.snaps, snap)
 
 	return snap, nil
