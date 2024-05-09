@@ -281,7 +281,7 @@ func (e *Engine) Database(ctx context.Context, name string,
 			lstart, lend := latest.GetDuration()
 			if catalog != nil {
 				sstart, send := catalog.GetDuration()
-				logutil.Infof("xxxx ckpStart: 0-0, ckpEnd: 1       715230629681111485-0 success,txn:%s, parent:%s"+
+				logutil.Infof("xxxx getOrCreateSnapCatalogCache  success,txn:%s, parent:%s"+
 					"latestCatalog:%p-[%s_%s], lstart is maxTS:%v, catalog:%p-[%s_%s]",
 					txn.op.Txn().DebugString(),
 					txn.op.Parent().Txn().DebugString(),
