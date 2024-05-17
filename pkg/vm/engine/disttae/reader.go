@@ -19,6 +19,8 @@ import (
 	"sort"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/matrixorigin/matrixone/pkg/catalog"
 	"github.com/matrixorigin/matrixone/pkg/common/moerr"
 	"github.com/matrixorigin/matrixone/pkg/common/mpool"
@@ -40,7 +42,6 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/blockio"
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/index"
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
-	"go.uber.org/zap"
 )
 
 // -----------------------------------------------------------------
@@ -424,6 +425,9 @@ func (r *blockReader) Read(
 	defer func() {
 		v2.TxnBlockReaderDurationHistogram.Observe(time.Since(start).Seconds())
 	}()
+	//if r.tableDef.Name == "bmsql_history" {
+	//	logutil.Infof("xxxx call blockReader read, snapshot ts :%s", r.ts.DebugString())
+	//}
 
 	// for ordered scan, sort blocklist by zonemap info, and then filter by zonemap
 	if len(r.OrderBy) > 0 {

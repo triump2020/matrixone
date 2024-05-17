@@ -17,12 +17,13 @@ package disttae
 import (
 	"context"
 	"fmt"
-	"github.com/matrixorigin/matrixone/pkg/pb/timestamp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 	"unsafe"
+
+	"github.com/matrixorigin/matrixone/pkg/pb/timestamp"
 
 	"github.com/matrixorigin/matrixone/pkg/catalog"
 	"github.com/matrixorigin/matrixone/pkg/common/moerr"
@@ -632,6 +633,20 @@ func (tbl *txnTable) resetSnapshot() {
 func (tbl *txnTable) Ranges(ctx context.Context, exprs []*plan.Expr) (ranges engine.Ranges, err error) {
 	start := time.Now()
 	seq := tbl.db.op.NextSequence()
+	defer func() {
+		if tbl.tableName == "bmsql_history" {
+			aid, _ := defines.GetAccountId(ctx)
+			logutil.Infof("xxxx call ranges, txnop:%s, isSnap:%v, blk len:%d,"+
+				"dbid:%d, tableid:%d,accoutid:%d",
+				tbl.db.op.Txn().DebugString(),
+				tbl.db.op.IsSnapOp(),
+				ranges.Len(),
+				tbl.db.databaseId,
+				tbl.tableId,
+				aid)
+		}
+	}()
+
 	trace.GetService().AddTxnDurationAction(
 		tbl.db.op,
 		client.RangesEvent,
@@ -667,6 +682,9 @@ func (tbl *txnTable) Ranges(ctx context.Context, exprs []*plan.Expr) (ranges eng
 	ranges = &blocks
 
 	// get the table's snapshot
+	//if tbl.tableName == "bmsql_history" && !tbl.db.op.IsSnapOp() {
+	//	logutil.Infof("xxxx ")
+	//}
 	var part *logtailreplay.PartitionState
 	if part, err = tbl.getPartitionState(ctx); err != nil {
 		return
@@ -714,8 +732,15 @@ func (tbl *txnTable) rangesOnePart(
 	outBlocks *objectio.BlockInfoSlice, // output marshaled block list after filtering
 	proc *process.Process, // process of this transaction
 ) (err error) {
-
 	uncommittedObjects := tbl.collectUnCommittedObjects()
+	if tbl.tableName == "bmsql_history" {
+		writeOffset := tbl.getTxn().GetSnapshotWriteOffset()
+		logutil.Infof("xxxx collect uncommit objects,txn op:%s, isSnapshot:%v, objlen:%d, writeOffset:%d",
+			tbl.db.op.Txn().DebugString(),
+			tbl.db.op.IsSnapOp(),
+			len(uncommittedObjects),
+			writeOffset)
+	}
 	dirtyBlks := tbl.collectDirtyBlocks(state, uncommittedObjects)
 
 	done, err := tbl.tryFastFilterBlocks(
@@ -1912,6 +1937,17 @@ func (tbl *txnTable) GetDBID(ctx context.Context) uint64 {
 func (tbl *txnTable) NewReader(
 	ctx context.Context, num int, expr *plan.Expr, ranges []byte, orderedScan bool,
 ) ([]engine.Reader, error) {
+	if tbl.tableName == "bmsql_history" {
+		blks := objectio.BlockInfoSlice(ranges)
+		logutil.Infof("xxxx call new reader,txnop:%s, isSnap:%v, rangs len:%d, "+
+			"num:%d, tid:%d, dbid:%d",
+			tbl.db.op.Txn().DebugString(),
+			tbl.db.op.IsSnapOp(),
+			blks.Len(),
+			num,
+			tbl.tableId,
+			tbl.db.databaseId)
+	}
 	pkValue, hasNull, fnType := tbl.tryExtractPKFilter(expr)
 	blkArray := objectio.BlockInfoSlice(ranges)
 	if hasNull || plan2.IsFalseExpr(expr) {

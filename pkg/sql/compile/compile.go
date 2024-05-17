@@ -438,6 +438,13 @@ func (c *Compile) Run(_ uint64) (result *util2.RunResult, err error) {
 		c.proc.SetPrepareExprList(nil)
 	}()
 
+	if c.proc.SessionInfo.User != "mo_logger" {
+		fmt.Printf("xxxx txnid:%x, ts:%s, is snapshot:%v,  run sql: %s\n",
+			txnOp.Txn().ID,
+			txnOp.Txn().SnapshotTS.DebugString(),
+			txnOp.IsSnapOp(),
+			sql)
+	}
 	var writeOffset uint64
 
 	start := time.Now()
@@ -3709,6 +3716,7 @@ func (c *Compile) fillAnalyzeInfo() {
 }
 
 func (c *Compile) determinExpandRanges(n *plan.Node) bool {
+	return true
 	if n.TableDef.Partition != nil {
 		return true
 	}

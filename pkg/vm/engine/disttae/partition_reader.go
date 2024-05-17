@@ -18,10 +18,12 @@ import (
 	"context"
 
 	"github.com/matrixorigin/matrixone/pkg/objectio"
+	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/common"
+
+	"go.uber.org/zap"
 
 	"github.com/matrixorigin/matrixone/pkg/logutil"
 	"github.com/matrixorigin/matrixone/pkg/testutil"
-	"go.uber.org/zap"
 
 	"github.com/matrixorigin/matrixone/pkg/catalog"
 	"github.com/matrixorigin/matrixone/pkg/common/mpool"
@@ -83,6 +85,14 @@ func (p *PartitionReader) prepare() error {
 						return
 					}
 					inserts = append(inserts, entry.bat)
+					//if p.table.tableName == "bmsql_history" && !p.table.db.op.IsSnapOp() {
+					//	logutil.Infof("xxxx partition reader loads insert, parent op:%s, write offset:%d,"+
+					//		"inserts len:%d, deletes len:%d",
+					//		p.table.db.op.Txn().DebugString(),
+					//		p.table.getTxn().GetSnapshotWriteOffset(),
+					//		len(inserts),
+					//		len(deletes))
+					//}
 					return
 				}
 				//entry.typ == DELETE
@@ -110,6 +120,14 @@ func (p *PartitionReader) prepare() error {
 		if err := p.table.LoadDeletesForMemBlocksIn(p.table._partState.Load(), deletes); err != nil {
 			return err
 		}
+		if p.table.tableName == "bmsql_history" && !p.table.db.op.IsSnapOp() {
+			logutil.Infof("xxxx partition reader prepare, parent op:%s, write offset:%d,"+
+				"inserts len:%d, deletes len:%d",
+				p.table.db.op.Txn().DebugString(),
+				p.table.getTxn().GetSnapshotWriteOffset(),
+				len(inserts),
+				len(deletes))
+		}
 		p.inserts = inserts
 		p.deletes = deletes
 		p.prepared = true
@@ -123,6 +141,16 @@ func (p *PartitionReader) Read(
 	_ *plan.Expr,
 	mp *mpool.MPool,
 	pool engine.VectorPool) (result *batch.Batch, err error) {
+	defer func() {
+		if p.table.tableName == "bmsql_history" &&
+			!p.table.db.op.IsSnapOp() &&
+			result != nil && result.RowCount() > 0 {
+			logutil.Infof("xxxx call partition read ,parent op:%s, isSnapshot:%v, return batch:%s",
+				p.table.db.op.Txn().DebugString(),
+				p.table.db.op.IsSnapOp(),
+				common.MoBatchToString(result, 10))
+		}
+	}()
 	if p == nil {
 		return
 	}
