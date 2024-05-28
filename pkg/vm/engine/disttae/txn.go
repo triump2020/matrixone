@@ -17,9 +17,7 @@ package disttae
 import (
 	"context"
 	"encoding/hex"
-	"fmt"
 	"math"
-	"regexp"
 	"sync"
 	"time"
 
@@ -1161,45 +1159,45 @@ func (txn *Transaction) transferDeletesLocked(ctx context.Context, commit bool) 
 				types.TimestampToTS(ts),
 				types.TimestampToTS(endTs))
 
-			if commit {
-				deleteObjInfos := ""
-				createObjsInfos := ""
+			//if commit {
+			//	deleteObjInfos := ""
+			//	createObjsInfos := ""
 
-				if regexp.MustCompile(`.*sbtest.*`).MatchString(tbl.tableName) {
+			//	if regexp.MustCompile(`.*sbtest.*`).MatchString(tbl.tableName) {
 
-					//logutil.Infof("xxxx table:%s, txn:%s, lastTs:%s, endTS:%s",
-					//	tbl.tableName,
-					//	tbl.db.op.Txn().DebugString(),
-					//	ts.DebugString(),
-					//	endTs.DebugString())
+			//		//logutil.Infof("xxxx table:%s, txn:%s, lastTs:%s, endTS:%s",
+			//		//	tbl.tableName,
+			//		//	tbl.db.op.Txn().DebugString(),
+			//		//	ts.DebugString(),
+			//		//	endTs.DebugString())
 
-					if len(deleteObjs) > 0 || len(createObjs) > 0 {
-						for obj := range deleteObjs {
-							objInfo, ok := state.GetObject(obj)
-							if !ok {
-								logutil.Fatalf("xxxx obj-seg:%s not found in partition state",
-									obj.Segmentid().ToString())
-							}
-							deleteObjInfos = fmt.Sprintf("%s:%s", deleteObjInfos, objInfo.String())
-						}
-						for obj := range createObjs {
-							objInfo, ok := state.GetObject(obj)
-							if !ok {
-								logutil.Fatalf("xxxx obj-seg:%s not found in partition state",
-									obj.Segmentid().ToString())
-							}
-							createObjsInfos = fmt.Sprintf("%s:%s", createObjsInfos, objInfo.String())
-						}
-						logutil.Infof("xxxx table:%s, deleteObjs:%s, xxxx createObjs:%s, txn:%s, lastTs:%s, latestTs:%s",
-							tbl.tableName,
-							deleteObjInfos,
-							createObjsInfos,
-							tbl.db.op.Txn().DebugString(),
-							ts.DebugString(),
-							endTs.DebugString())
-					}
-				}
-			}
+			//		if len(deleteObjs) > 0 || len(createObjs) > 0 {
+			//			for obj := range deleteObjs {
+			//				objInfo, ok := state.GetObject(obj)
+			//				if !ok {
+			//					logutil.Fatalf("xxxx obj-seg:%s not found in partition state",
+			//						obj.Segmentid().ToString())
+			//				}
+			//				deleteObjInfos = fmt.Sprintf("%s:%s", deleteObjInfos, objInfo.String())
+			//			}
+			//			for obj := range createObjs {
+			//				objInfo, ok := state.GetObject(obj)
+			//				if !ok {
+			//					logutil.Fatalf("xxxx obj-seg:%s not found in partition state",
+			//						obj.Segmentid().ToString())
+			//				}
+			//				createObjsInfos = fmt.Sprintf("%s:%s", createObjsInfos, objInfo.String())
+			//			}
+			//			logutil.Infof("xxxx table:%s, deleteObjs:%s, xxxx createObjs:%s, txn:%s, lastTs:%s, latestTs:%s",
+			//				tbl.tableName,
+			//				deleteObjInfos,
+			//				createObjsInfos,
+			//				tbl.db.op.Txn().DebugString(),
+			//				ts.DebugString(),
+			//				endTs.DebugString())
+			//		}
+			//	}
+			//}
 
 			trace.GetService().ApplyFlush(
 				tbl.db.op.Txn().ID,
