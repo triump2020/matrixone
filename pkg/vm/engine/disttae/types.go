@@ -588,7 +588,10 @@ func (txn *Transaction) handleRCSnapshot(ctx context.Context, commit bool) error
 		txn.resetSnapshot()
 	}
 	//Transfer row ids for deletes in RC isolation
-	return txn.transferDeletesLocked(commit)
+	//if !commit {
+	return txn.transferDeletesLocked(ctx, commit)
+	//}
+	return nil
 }
 
 // Entry represents a delete/insert

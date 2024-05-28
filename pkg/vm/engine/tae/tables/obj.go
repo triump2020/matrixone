@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/RoaringBitmap/roaring"
+
 	"github.com/matrixorigin/matrixone/pkg/common/moerr"
 	"github.com/matrixorigin/matrixone/pkg/common/mpool"
 	"github.com/matrixorigin/matrixone/pkg/container/nulls"
@@ -136,7 +137,8 @@ func (obj *object) BatchDedup(
 ) (err error) {
 	defer func() {
 		if moerr.IsMoErrCode(err, moerr.ErrDuplicateEntry) {
-			logutil.Infof("BatchDedup %s (%v)obj-%s: %v",
+			logutil.Infof("BatchDedup txn-ctx:%s, table:%s, (%v)obj-%s: %v",
+				txn.Repr(),
 				obj.meta.GetTable().GetLastestSchemaLocked().Name,
 				obj.IsAppendable(),
 				obj.meta.ID.String(),

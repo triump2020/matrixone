@@ -21,6 +21,7 @@ import (
 	"sync/atomic"
 
 	"github.com/RoaringBitmap/roaring"
+
 	"github.com/matrixorigin/matrixone/pkg/common/moerr"
 	"github.com/matrixorigin/matrixone/pkg/common/mpool"
 	"github.com/matrixorigin/matrixone/pkg/container/types"
@@ -312,7 +313,7 @@ func (obj *aobject) BatchDedup(
 ) (err error) {
 	defer func() {
 		if moerr.IsMoErrCode(err, moerr.ErrDuplicateEntry) {
-			logutil.Debugf("BatchDedup obj-%s: %v", obj.meta.ID.String(), err)
+			logutil.Infof("BatchDedup txn-ctx:%s, obj-%s: %v", txn.Repr(), obj.meta.ID.String(), err)
 		}
 	}()
 	node := obj.PinNode()
