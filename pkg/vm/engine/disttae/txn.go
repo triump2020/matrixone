@@ -1191,7 +1191,7 @@ func (txn *Transaction) transferDeletesLocked(commit bool) error {
 							createObjsInfos,
 							tbl.db.op.Txn().DebugString(),
 							ts.DebugString(),
-							tbl.db.op.SnapshotTS().DebugString())
+							latestTs.DebugString())
 					}
 				}
 			}
