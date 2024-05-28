@@ -17,7 +17,9 @@ package disttae
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"math"
+	"regexp"
 	"sync"
 	"time"
 
@@ -1119,6 +1121,7 @@ func (txn *Transaction) GetSnapshotWriteOffset() int {
 }
 
 func (txn *Transaction) transferDeletesLocked(commit bool) error {
+	var latestTs timestamp.Timestamp
 	txn.timestamps = append(txn.timestamps, txn.op.SnapshotTS())
 	if txn.statementID > 0 && txn.op.Txn().IsRCIsolation() {
 		var ts timestamp.Timestamp
@@ -1128,12 +1131,13 @@ func (txn *Transaction) transferDeletesLocked(commit bool) error {
 			//statementID > 1
 			ts = txn.timestamps[txn.statementID-2]
 		}
-
-		latestTs := txn.op.LatestTS()
-		if commit &&
-			latestTs.PhysicalTime-ts.PhysicalTime < time.Second.Nanoseconds()*5 {
-			return nil
+		if commit {
+			latestTs = txn.op.LatestTS()
 		}
+		//if commit &&
+		//	latestTs.PhysicalTime-ts.PhysicalTime < time.Second.Nanoseconds()*5 {
+		//	return nil
+		//}
 
 		return txn.forEachTableHasDeletesLocked(func(tbl *txnTable) error {
 			ctx := tbl.proc.Load().Ctx
@@ -1150,6 +1154,46 @@ func (txn *Transaction) transferDeletesLocked(commit bool) error {
 			deleteObjs, createObjs := state.GetChangedObjsBetween(
 				types.TimestampToTS(ts),
 				types.TimestampToTS(endTs))
+
+			if commit {
+				deleteObjInfos := ""
+				createObjsInfos := ""
+
+				if regexp.MustCompile(`.*sbtest.*`).MatchString(tbl.tableName) {
+
+					//logutil.Infof("xxxx table:%s, txn:%s, lastTs:%s, endTS:%s",
+					//	tbl.tableName,
+					//	tbl.db.op.Txn().DebugString(),
+					//	ts.DebugString(),
+					//	endTs.DebugString())
+
+					if len(deleteObjs) > 0 || len(createObjs) > 0 {
+						for obj := range deleteObjs {
+							objInfo, ok := state.GetObject(obj)
+							if !ok {
+								logutil.Fatalf("xxxx obj-seg:%s not found in partition state",
+									obj.Segmentid().ToString())
+							}
+							deleteObjInfos = fmt.Sprintf("%s:%s", deleteObjInfos, objInfo.String())
+						}
+						for obj := range createObjs {
+							objInfo, ok := state.GetObject(obj)
+							if !ok {
+								logutil.Fatalf("xxxx obj-seg:%s not found in partition state",
+									obj.Segmentid().ToString())
+							}
+							createObjsInfos = fmt.Sprintf("%s:%s", createObjsInfos, objInfo.String())
+						}
+						logutil.Infof("xxxx table:%s, deleteObjs:%s, xxxx createObjs:%s, txn:%s, lastTs:%s, latestTs:%s",
+							tbl.tableName,
+							deleteObjInfos,
+							createObjsInfos,
+							tbl.db.op.Txn().DebugString(),
+							ts.DebugString(),
+							tbl.db.op.SnapshotTS().DebugString())
+					}
+				}
+			}
 
 			trace.GetService().ApplyFlush(
 				tbl.db.op.Txn().ID,

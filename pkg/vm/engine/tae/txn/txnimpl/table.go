@@ -21,9 +21,10 @@ import (
 	"runtime/trace"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/matrixorigin/matrixone/pkg/fileservice"
 	"github.com/matrixorigin/matrixone/pkg/util"
-	"go.uber.org/zap"
 
 	"github.com/matrixorigin/matrixone/pkg/perfcounter"
 
@@ -350,6 +351,7 @@ func (tbl *txnTable) TransferDeleteRows(
 	common.DoIfInfoEnabled(func() {
 		logutil.Info("[Start]",
 			common.AnyField("txn-start-ts", tbl.store.txn.GetStartTS().ToString()),
+			common.AnyField("transfer-to-ts", ts.ToString()),
 			common.OperationField("transfer-deletes"),
 			common.OperandField(id.BlockString()),
 			common.AnyField("phase", phase))
@@ -358,6 +360,7 @@ func (tbl *txnTable) TransferDeleteRows(
 		common.DoIfInfoEnabled(func() {
 			logutil.Info("[End]",
 				common.AnyField("txn-start-ts", tbl.store.txn.GetStartTS().ToString()),
+				common.AnyField("transfer-to-ts", ts.ToString()),
 				common.OperationField("transfer-deletes"),
 				common.OperandField(id.BlockString()),
 				common.AnyField("phase", phase),
