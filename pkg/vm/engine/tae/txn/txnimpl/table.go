@@ -352,6 +352,7 @@ func (tbl *txnTable) TransferDeleteRows(
 		logutil.Info("[Start]",
 			common.AnyField("txn-start-ts", tbl.store.txn.GetStartTS().ToString()),
 			common.AnyField("transfer-to-ts", ts.ToString()),
+			common.AnyField("txn-ctx", tbl.store.txn.Repr()),
 			common.OperationField("transfer-deletes"),
 			common.OperandField(id.BlockString()),
 			common.AnyField("phase", phase))
@@ -361,6 +362,7 @@ func (tbl *txnTable) TransferDeleteRows(
 			logutil.Info("[End]",
 				common.AnyField("txn-start-ts", tbl.store.txn.GetStartTS().ToString()),
 				common.AnyField("transfer-to-ts", ts.ToString()),
+				common.AnyField("txn-ctx", tbl.store.txn.Repr()),
 				common.OperationField("transfer-deletes"),
 				common.OperandField(id.BlockString()),
 				common.AnyField("phase", phase),
