@@ -1133,6 +1133,7 @@ func (txn *Transaction) transferDeletesLocked(commit bool) error {
 		}
 		if commit {
 			latestTs = txn.op.LatestTS()
+			txn.resetSnapshot()
 		}
 		//if commit &&
 		//	latestTs.PhysicalTime-ts.PhysicalTime < time.Second.Nanoseconds()*5 {
