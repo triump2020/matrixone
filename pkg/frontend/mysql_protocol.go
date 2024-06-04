@@ -420,7 +420,7 @@ func (mp *MysqlProtocolImpl) Write(execCtx *ExecCtx, bat *batch.Batch) error {
 	ses := execCtx.ses.(*Session)
 	isShowTableStatus := ses.GetShowStmtType() == ShowTableStatus
 	sql := execCtx.input.getSql()
-	if len(sql) > 0 && strings.Contains(sql, "select count(*) from tpch.") {
+	if len(sql) > 0 && strings.Contains(sql, "select count(*) from bmsql") {
 		needPrintTxnId = true
 	}
 	for j := 0; j < n; j++ { //row index
@@ -431,9 +431,11 @@ func (mp *MysqlProtocolImpl) Write(execCtx *ExecCtx, bat *batch.Batch) error {
 		if needPrintTxnId {
 			// if data is 0, then print txn id
 			if len(mrs.Data[0]) == 1 {
-				if rs := (mrs.Data[0][0]).(int64); rs == int64(0) {
-					logutil.Infof("txn id: %v, sql: %s", ses.feSessionImpl.staticTxnId, sql)
-				}
+				//if rs := (mrs.Data[0][0]).(int64); rs == int64(0) {
+					//logutil.Infof("txn id: %v, sql: %s", ses.feSessionImpl.staticTxnId, sql)
+				//}
+				rs := mrs.Data[0][0].(int64)
+				logutil.Infof("xxxx txn id: %v, sql: %s, rs:%v", ses.feSessionImpl.staticTxnId, sql, rs)
 			}
 		}
 		if isShowTableStatus {

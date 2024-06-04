@@ -675,7 +675,7 @@ func (tbl *txnTable) Ranges(ctx context.Context, exprs []*plan.Expr) (ranges eng
 	); err != nil {
 		return
 	}
-	if tbl.db.op.IsSnapOp() && tbl.db.databaseName == "tpch" {
+	if tbl.db.op.IsSnapOp() && tbl.db.databaseName == "tpcc" {
 		logutil.Infof("xxxx Ranges, table:%s, len:%d, snapshot op:%s",
 			tbl.tableName,
 			blocks.Len(),

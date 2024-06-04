@@ -412,7 +412,7 @@ func (e *Engine) getOrCreateSnapPart(
 	defer tblSnaps.Unlock()
 	for _, snap := range tblSnaps.snaps {
 		if snap.CanServe(ts) {
-			if tbl.db.databaseName == "tpch" {
+			if tbl.db.databaseName == "tpcc" {
 				logutil.Infof("xxxx getOrCreateSnapPart reuse snapshot partition state, "+
 					"db:%s, table:%s, snapshot op :%s, snap:%p",
 					tbl.db.databaseName,
@@ -471,7 +471,7 @@ func (e *Engine) getOrCreateSnapPart(
 	})
 	if snap.CanServe(ts) {
 		tblSnaps.snaps = append(tblSnaps.snaps, snap)
-		if tbl.db.databaseName == "tpch" {
+		if tbl.db.databaseName == "tpcc" {
 			logutil.Infof("xxxx getOrCreateSnapPart load ckps, db:%s, table:%s, snapshot op :%s, snap:%p",
 				tbl.db.databaseName,
 				tbl.tableName,
@@ -489,7 +489,7 @@ func (e *Engine) getOrCreateSnapPart(
 			return nil, err
 		}
 		p := e.getOrCreateLatestPart(tbl.db.databaseId, tbl.tableId)
-		if tbl.db.databaseName == "tpch" {
+		if tbl.db.databaseName == "tpcc" {
 			logutil.Infof("xxxx getOrCreateSnapPart reuse latest partiiton state, "+
 				"db:%s, table:%s, snapshot op :%s, snap:%p, ts:%s, start:%s, end:%s",
 				tbl.db.databaseName,
