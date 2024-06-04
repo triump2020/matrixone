@@ -432,6 +432,21 @@ func (e *Engine) getOrCreateSnapPart(
 	if err != nil {
 		return nil, err
 	}
+	ckpStr := ""
+	if tbl.db.databaseName == "tpcc" {
+		for _, ckp := range ckps {
+			ckpStr += ckp.String()
+		}
+	}
+	if tbl.db.databaseName == "tpcc" {
+		logutil.Infof("xxxx getOrCreateSnapPart list ckps, db:%s, table:%s, snapshot op :%s, ts:%s, ckpStr:%s",
+			tbl.db.databaseName,
+			tbl.tableName,
+			tbl.db.op.Txn().DebugString(),
+			ts.ToTimestamp().DebugString(),
+			ckpStr)
+	}
+
 	snap.ConsumeSnapCkps(ctx, ckps, func(
 		checkpoint *checkpoint.CheckpointEntry,
 		state *logtailreplay.PartitionState) error {
