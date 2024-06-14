@@ -563,11 +563,11 @@ func (h *Handle) HandleWrite(
 
 		if req.TableName == "mo_increment_columns" {
 			txnCtx.flag = true
-			//logutil.Infof("xxxx [precommit] handle write end txn: %s, tableID:%v, entry type:%v, batch:%s",
-			//	txn.String(),
-			//	req.TableID,
-			//	req.Type,
-			//	common.MoBatchToString(req.Batch, 5))
+			logutil.Infof("xxxx [precommit] handle write end txn: %s, tableID:%v, entry type:%v, batch:%s",
+				txn.String(),
+				req.TableID,
+				req.Type,
+				common.MoBatchToString(req.Batch, 5))
 		}
 
 		common.DoIfDebugEnabled(func() {
