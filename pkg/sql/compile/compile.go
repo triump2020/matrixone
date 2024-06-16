@@ -438,7 +438,7 @@ func (c *Compile) Run(_ uint64) (result *util2.RunResult, err error) {
 	}()
 
 	if c.proc.SessionInfo.User != "mo_logger" {
-		fmt.Printf("%x run sql: %s\n", txnOp.Txn().ID, sql)
+		fmt.Printf("xxxx %x run sql: %s\n", txnOp.Txn().ID, sql)
 	}
 
 	var writeOffset uint64
