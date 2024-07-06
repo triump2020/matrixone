@@ -636,11 +636,17 @@ func (h *Handle) HandleWrite(
 		name := tb.Schema().(*catalog.Schema).Name
 		if regexp.MustCompile(`.*sbtest.*`).MatchString(name) {
 			if tb.Schema().(*catalog.Schema).HasPK() {
-				if req.Batch.RowCount() < 5 {
+				rowCnt := req.Batch.RowCount()
+				if rowCnt < 5 {
 					logutil.Infof("xxxx txn :%s, table:%s, insert batch:%v",
 						txn.Repr(),
 						name,
 						common.MoBatchToString(req.Batch, 5))
+				} else {
+					logutil.Infof("xxxx txn :%s, table:%s, insert batch row count:%d",
+						txn.Repr(),
+						name,
+						rowCnt)
 				}
 			}
 		}
