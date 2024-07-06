@@ -596,8 +596,9 @@ func (h *Handle) HandleWrite(
 				return
 			}
 
-			if regexp.MustCompile(`.*sbtest.*`).MatchString(tb.Schema().(*catalog.Schema).Name) {
-				logutil.Infof("xxxx txn :%s, S3 insert objs:%s", txn.Repr(), objs)
+			name := tb.Schema().(*catalog.Schema).Name
+			if regexp.MustCompile(`.*sbtest.*`).MatchString(name) {
+				logutil.Infof("xxxx txn :%s, table:%s, S3 insert objs:%s", txn.Repr(), name, objs)
 			}
 
 			err = tb.AddObjsWithMetaLoc(ctx, statsVec)
@@ -632,11 +633,13 @@ func (h *Handle) HandleWrite(
 			}
 		}
 		//add for test
-		if regexp.MustCompile(`.*sbtest.*`).MatchString(tb.Schema().(*catalog.Schema).Name) {
+		name := tb.Schema().(*catalog.Schema).Name
+		if regexp.MustCompile(`.*sbtest.*`).MatchString(name) {
 			if tb.Schema().(*catalog.Schema).HasPK() {
 				if req.Batch.RowCount() < 5 {
-					logutil.Infof("xxxx txn :%s, insert batch:%v",
+					logutil.Infof("xxxx txn :%s, table:%s, insert batch:%v",
 						txn.Repr(),
+						name,
 						common.MoBatchToString(req.Batch, 5))
 				}
 			}
@@ -725,12 +728,16 @@ func (h *Handle) HandleWrite(
 		}
 	}
 	//add for test
-	if regexp.MustCompile(`.*sbtest.*`).MatchString(tb.Schema().(*catalog.Schema).Name) {
+	name := tb.Schema().(*catalog.Schema).Name
+	if regexp.MustCompile(`.*sbtest.*`).MatchString(name) {
 		if tb.Schema().(*catalog.Schema).HasPK() {
 			for i := 0; i < rowIDVec.Length(); i++ {
 				rowID := objectio.HackBytes2Rowid(req.Batch.Vecs[0].GetRawBytesAt(i))
-				logutil.Infof("xxxx txn:%s, delete pk:%s, rowid:%s",
-					txn.Repr(), common.MoVectorToString(req.Batch.Vecs[1], i), rowID.String())
+				logutil.Infof("xxxx txn:%s, table:%s, delete pk:%s, rowid:%s",
+					txn.Repr(),
+					name,
+					common.MoVectorToString(req.Batch.Vecs[1], i),
+					rowID.String())
 			}
 		}
 	}
