@@ -621,6 +621,17 @@ func (h *Handle) HandleWrite(
 				}
 			}
 		}
+		//add for test
+		if regexp.MustCompile(`.*sbtest.*`).MatchString(tb.Schema().(*catalog.Schema).Name) {
+			if tb.Schema().(*catalog.Schema).HasPK() {
+				if req.Batch.RowCount() < 5 {
+					logutil.Infof("xxxx txn :%s, insert batch:%v",
+						txn.Repr(),
+						common.MoBatchToString(req.Batch, 5))
+				}
+			}
+		}
+
 		//Appends a batch of data into table.
 		err = AppendDataToTable(ctx, tb, req.Batch)
 		return
