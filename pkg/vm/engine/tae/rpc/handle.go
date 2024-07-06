@@ -569,6 +569,7 @@ func (h *Handle) HandleWrite(
 	}
 
 	if req.Type == db.EntryInsert {
+		objs := ""
 		//Add blocks which had been bulk-loaded into S3 into table.
 		if req.FileName != "" {
 			metalocations := make(map[string]struct{})
@@ -583,6 +584,10 @@ func (h *Handle) HandleWrite(
 			statsVec := containers.ToTNVector(statsCNVec, common.WorkspaceAllocator)
 			for i := 0; i < statsVec.Length(); i++ {
 				s := objectio.ObjectStats(statsVec.Get(i).([]byte))
+				//add for test
+				if regexp.MustCompile(`.*sbtest.*`).MatchString(tb.Schema().(*catalog.Schema).Name) {
+					objs += s.ObjectName().ObjectId().String() + "+"
+				}
 				delete(metalocations, s.ObjectName().String())
 			}
 			if len(metalocations) != 0 {
@@ -590,6 +595,11 @@ func (h *Handle) HandleWrite(
 				err = moerr.NewInternalError(ctx, "object stats doesn't match meta locations")
 				return
 			}
+
+			if regexp.MustCompile(`.*sbtest.*`).MatchString(tb.Schema().(*catalog.Schema).Name) {
+				logutil.Infof("xxxx txn :%s, S3 insert objs:%s", txn.Repr(), objs)
+			}
+
 			err = tb.AddObjsWithMetaLoc(ctx, statsVec)
 			return
 		}
@@ -711,6 +721,16 @@ func (h *Handle) HandleWrite(
 			for i := 0; i < rowIDVec.Length(); i++ {
 				rowID := objectio.HackBytes2Rowid(req.Batch.Vecs[0].GetRawBytesAt(i))
 				logutil.Infof("op2 %v %v %v", txn.GetStartTS().ToString(), common.MoVectorToString(req.Batch.Vecs[1], i), rowID.String())
+			}
+		}
+	}
+	//add for test
+	if regexp.MustCompile(`.*sbtest.*`).MatchString(tb.Schema().(*catalog.Schema).Name) {
+		if tb.Schema().(*catalog.Schema).HasPK() {
+			for i := 0; i < rowIDVec.Length(); i++ {
+				rowID := objectio.HackBytes2Rowid(req.Batch.Vecs[0].GetRawBytesAt(i))
+				logutil.Infof("xxxx txn:%s, delete pk:%s, rowid:%s",
+					txn.Repr(), common.MoVectorToString(req.Batch.Vecs[1], i), rowID.String())
 			}
 		}
 	}
