@@ -1167,13 +1167,35 @@ func extractInsertAndDeletesFromWorkspace(
 			continue
 		}
 
-		if entry.IsGeneratedByTruncate() {
-			continue
-		}
+		//if entry.IsGeneratedByTruncate() {
+		//	continue
+		//}
 
-		if (entry.Type() == DELETE || entry.Type() == DELETE_TXN) && entry.FileName() == "" {
+		//if (entry.Type() == DELETE || entry.Type() == DELETE_TXN) && entry.FileName() == "" {
+		//	*destDeletes = append(*destDeletes, entry)
+		//}
+
+		//entry.typ == DELETE
+		if entry.bat.GetVector(0).GetType().Oid == types.T_Rowid {
+			/*
+				CASE:
+				create table t1(a int);
+				begin;
+				truncate t1; //txnDatabase.Truncate will DELETE mo_tables
+				show tables; // t1 must be shown
+			*/
+			if entry.IsGeneratedByTruncate() {
+				continue
+			}
+			//deletes in txn.Write maybe comes from PartitionState.Rows ,
+			// PartitionReader need to skip them.
+			//vs := vector.MustFixedCol[types.Rowid](entry.bat.GetVector(0))
+			//for _, v := range vs {
+			//	deletes[v] = 0
+			//}
 			*destDeletes = append(*destDeletes, entry)
 		}
+
 	}
 
 	for _, entry := range unCommittedInmemWrites {
@@ -1181,9 +1203,9 @@ func extractInsertAndDeletesFromWorkspace(
 			continue
 		}
 
-		if entry.IsGeneratedByTruncate() {
-			continue
-		}
+		//if entry.IsGeneratedByTruncate() {
+		//	continue
+		//}
 
 		if entry.Type() == INSERT || entry.Type() == INSERT_TXN {
 			if entry.Bat() == nil || entry.Bat().IsEmpty() || entry.Bat().Attrs[0] == catalog.BlockMeta_MetaLoc {
