@@ -1322,11 +1322,6 @@ func fastApplyDeletedRows(leftRows []int32, deletedRows []int64, o uint32) ([]in
 		}); found {
 			leftRows = append(leftRows[:x], leftRows[x+1:]...)
 		}
-		//if x := sort.Search(len(leftRows), func(i int) bool {
-		//	return int32(o) > leftRows[i]
-		//}); x != len(leftRows) && leftRows[x] == int32(o) {
-		//	leftRows = append(leftRows[:x], leftRows[x+1:]...)
-		//}
 	} else {
 		deletedRows = append(deletedRows, int64(o))
 	}
@@ -1339,6 +1334,7 @@ func (ls *LocalDataSource) applyWorkspaceEntryDeletes(
 
 	leftRows = offsets
 
+	done := false
 	for idx := range ls.unCommittedInmemDeletesEntry {
 		delRowIds := vector.MustFixedCol[types.Rowid](ls.unCommittedInmemDeletesEntry[idx].bat.Vecs[0])
 		for _, delRowId := range delRowIds {
@@ -1349,12 +1345,17 @@ func (ls *LocalDataSource) applyWorkspaceEntryDeletes(
 
 			leftRows, deletedRows = fastApplyDeletedRows(leftRows, deletedRows, o)
 			if leftRows != nil && len(leftRows) == 0 {
+				done = true
 				break
 			}
 		}
+
+		if done {
+			break
+		}
 	}
 
-	return offsets, deletedRows
+	return leftRows, deletedRows
 }
 
 func (ls *LocalDataSource) applyWorkspaceFlushedS3Deletes(
@@ -1400,6 +1401,10 @@ func (ls *LocalDataSource) applyWorkspaceFlushedS3Deletes(
 			if done {
 				break
 			}
+		}
+
+		if done {
+			break
 		}
 	}
 
