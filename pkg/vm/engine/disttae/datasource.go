@@ -1255,7 +1255,7 @@ func loadBlockDeletesByDeltaLoc(
 		}
 
 		readTotal := time.Since(t1)
-		blockio.RecordReadDel(readTotal, readCost, bisect)
+		blockio.RecordReadDel("", readTotal, readCost, bisect)
 	}
 
 	return deleteMask, nil

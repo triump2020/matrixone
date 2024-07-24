@@ -885,7 +885,7 @@ func (r *readerInProgress) Read(
 	}
 
 	bat, err = blockio.BlockDataRead(
-		statsCtx, blkInfo, r.source, r.columns.seqnums, r.columns.colTypes, r.ts,
+		statsCtx, r.withFilterMixin.proc.GetService(), blkInfo, r.source, r.columns.seqnums, r.columns.colTypes, r.ts,
 		r.filterState.seqnums,
 		r.filterState.colTypes,
 		filter,

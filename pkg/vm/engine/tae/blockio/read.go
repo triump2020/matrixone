@@ -145,6 +145,7 @@ func ReadByFilter(
 // BlockDataRead only read block data from storage, don't apply deletes.
 func BlockDataRead(
 	ctx context.Context,
+	sid string,
 	info *objectio.BlockInfoInProgress,
 	ds engine.DataSource,
 	columns []uint16,
@@ -184,10 +185,10 @@ func BlockDataRead(
 		}
 		v2.TaskSelReadFilterTotal.Inc()
 		if len(sels) == 0 {
-			RecordReadFilterSelectivity(1, 1)
+			RecordReadFilterSelectivity(sid, 1, 1)
 			v2.TaskSelReadFilterHit.Inc()
 		} else {
-			RecordReadFilterSelectivity(0, 1)
+			RecordReadFilterSelectivity(sid, 0, 1)
 		}
 
 		if len(sels) == 0 {

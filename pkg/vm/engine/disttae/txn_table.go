@@ -1052,7 +1052,7 @@ func (tbl *txnTable) rangesOnePartInProgress(
 	bhit, btotal := len(*outBlocks)-1, int(s3BlkCnt)
 	v2.TaskSelBlockTotal.Add(float64(btotal))
 	v2.TaskSelBlockHit.Add(float64(btotal - bhit))
-	blockio.RecordBlockSelectivity(bhit, btotal)
+	blockio.RecordBlockSelectivity(proc.GetService(), bhit, btotal)
 	if btotal > 0 {
 		v2.TxnRangesSlowPathLoadObjCntHistogram.Observe(float64(loadObjCnt))
 		v2.TxnRangesSlowPathSelectedBlockCntHistogram.Observe(float64(bhit))
@@ -2154,7 +2154,7 @@ func (tbl *txnTable) BuildReaders(
 	txnOffset int) ([]engine.Reader, error) {
 	proc := p.(*process.Process)
 	//relData maybe is nil, indicate that only read data from memory.
-	if relData == nil {
+	if relData == nil || relData.BlkCnt() == 0 {
 		relData = buildRelationDataV1([]*objectio.BlockInfoInProgress{&objectio.EmptyBlockInfoInProgress})
 	}
 	blkCnt := relData.BlkCnt()
