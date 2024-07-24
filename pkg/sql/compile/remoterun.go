@@ -179,7 +179,7 @@ func generatePipeline(s *Scope, ctx *scopeContext, ctxId int32) (*pipeline.Pipel
 	p.IsLoad = s.IsLoad
 	p.UuidsToRegIdx = convertScopeRemoteReceivInfo(s)
 	p.BuildIdx = int32(s.BuildIdx)
-	p.ShuffleCnt = int32(s.ShuffleCnt)
+	p.ShuffleIdx = int32(s.ShuffleIdx)
 
 	// Plan
 	if ctxId == 1 {
@@ -323,7 +323,7 @@ func generateScope(proc *process.Process, p *pipeline.Pipeline, ctx *scopeContex
 	s.IsLoad = p.IsLoad
 	s.IsRemote = isRemote
 	s.BuildIdx = int(p.BuildIdx)
-	s.ShuffleCnt = int(p.ShuffleCnt)
+	s.ShuffleIdx = int(p.ShuffleIdx)
 	if err = convertPipelineUuid(p, s); err != nil {
 		return nil, err
 	}
@@ -498,7 +498,9 @@ func convertToPipelineInstruction(op vm.Operator, ctx *scopeContext, ctxId int32
 			Result:                 t.Result,
 			HashOnPk:               t.HashOnPK,
 			IsShuffle:              t.IsShuffle,
+			ShuffleIdx:             t.ShuffleIdx,
 			RuntimeFilterBuildList: t.RuntimeFilterSpecs,
+			JoinMapTag:             t.JoinMapTag,
 		}
 	case *shuffle.Shuffle:
 		in.Shuffle = &pipeline.Shuffle{}
@@ -564,6 +566,8 @@ func convertToPipelineInstruction(op vm.Operator, ctx *scopeContext, ctxId int32
 			RuntimeFilterBuildList: t.RuntimeFilterSpecs,
 			HashOnPk:               t.HashOnPK,
 			IsShuffle:              t.IsShuffle,
+			ShuffleIdx:             t.ShuffleIdx,
+			JoinMapTag:             t.JoinMapTag,
 		}
 	case *left.LeftJoin:
 		relList, colList := getRelColList(t.Result)
@@ -577,6 +581,8 @@ func convertToPipelineInstruction(op vm.Operator, ctx *scopeContext, ctxId int32
 			RuntimeFilterBuildList: t.RuntimeFilterSpecs,
 			HashOnPk:               t.HashOnPK,
 			IsShuffle:              t.IsShuffle,
+			ShuffleIdx:             t.ShuffleIdx,
+			JoinMapTag:             t.JoinMapTag,
 		}
 	case *right.RightJoin:
 		rels, poses := getRelColList(t.Result)
@@ -591,6 +597,8 @@ func convertToPipelineInstruction(op vm.Operator, ctx *scopeContext, ctxId int32
 			RuntimeFilterBuildList: t.RuntimeFilterSpecs,
 			HashOnPk:               t.HashOnPK,
 			IsShuffle:              t.IsShuffle,
+			ShuffleIdx:             t.ShuffleIdx,
+			JoinMapTag:             t.JoinMapTag,
 		}
 	case *rightsemi.RightSemi:
 		in.RightSemiJoin = &pipeline.RightSemiJoin{
@@ -602,6 +610,8 @@ func convertToPipelineInstruction(op vm.Operator, ctx *scopeContext, ctxId int32
 			RuntimeFilterBuildList: t.RuntimeFilterSpecs,
 			HashOnPk:               t.HashOnPK,
 			IsShuffle:              t.IsShuffle,
+			ShuffleIdx:             t.ShuffleIdx,
+			JoinMapTag:             t.JoinMapTag,
 		}
 	case *rightanti.RightAnti:
 		in.RightAntiJoin = &pipeline.RightAntiJoin{
@@ -613,6 +623,8 @@ func convertToPipelineInstruction(op vm.Operator, ctx *scopeContext, ctxId int32
 			RuntimeFilterBuildList: t.RuntimeFilterSpecs,
 			HashOnPk:               t.HashOnPK,
 			IsShuffle:              t.IsShuffle,
+			ShuffleIdx:             t.ShuffleIdx,
+			JoinMapTag:             t.JoinMapTag,
 		}
 	case *limit.Limit:
 		in.Limit = t.LimitExpr
@@ -687,6 +699,8 @@ func convertToPipelineInstruction(op vm.Operator, ctx *scopeContext, ctxId int32
 			RuntimeFilterBuildList: t.RuntimeFilterSpecs,
 			HashOnPk:               t.HashOnPK,
 			IsShuffle:              t.IsShuffle,
+			ShuffleIdx:             t.ShuffleIdx,
+			JoinMapTag:             t.JoinMapTag,
 		}
 	case *indexjoin.IndexJoin:
 		in.IndexJoin = &pipeline.IndexJoin{
@@ -705,6 +719,7 @@ func convertToPipelineInstruction(op vm.Operator, ctx *scopeContext, ctxId int32
 			RightCond:              t.Conditions[1],
 			RuntimeFilterBuildList: t.RuntimeFilterSpecs,
 			HashOnPk:               t.HashOnPK,
+			JoinMapTag:             t.JoinMapTag,
 		}
 	case *top.Top:
 		in.Limit = t.Limit
@@ -743,13 +758,14 @@ func convertToPipelineInstruction(op vm.Operator, ctx *scopeContext, ctxId int32
 		}
 	case *mark.MarkJoin:
 		in.MarkJoin = &pipeline.MarkJoin{
-			Result:    t.Result,
-			LeftCond:  t.Conditions[0],
-			RightCond: t.Conditions[1],
-			Types:     convertToPlanTypes(t.Typs),
-			Expr:      t.Cond,
-			OnList:    t.OnList,
-			HashOnPk:  t.HashOnPK,
+			Result:     t.Result,
+			LeftCond:   t.Conditions[0],
+			RightCond:  t.Conditions[1],
+			Types:      convertToPlanTypes(t.Typs),
+			Expr:       t.Cond,
+			OnList:     t.OnList,
+			HashOnPk:   t.HashOnPK,
+			JoinMapTag: t.JoinMapTag,
 		}
 	case *table_function.TableFunction:
 		in.TableFunction = &pipeline.TableFunction{
@@ -895,7 +911,9 @@ func convertToVmOperator(opr *pipeline.Instruction, ctx *scopeContext, eng engin
 		arg.Result = t.Result
 		arg.HashOnPK = t.HashOnPk
 		arg.IsShuffle = t.IsShuffle
+		arg.ShuffleIdx = t.ShuffleIdx
 		arg.RuntimeFilterSpecs = t.RuntimeFilterBuildList
+		arg.JoinMapTag = t.JoinMapTag
 		op = arg
 	case vm.Shuffle:
 		t := opr.GetShuffle()
@@ -971,6 +989,8 @@ func convertToVmOperator(opr *pipeline.Instruction, ctx *scopeContext, eng engin
 		arg.RuntimeFilterSpecs = t.RuntimeFilterBuildList
 		arg.HashOnPK = t.HashOnPk
 		arg.IsShuffle = t.IsShuffle
+		arg.ShuffleIdx = t.ShuffleIdx
+		arg.JoinMapTag = t.JoinMapTag
 		op = arg
 	case vm.Left:
 		t := opr.GetLeftJoin()
@@ -982,6 +1002,8 @@ func convertToVmOperator(opr *pipeline.Instruction, ctx *scopeContext, eng engin
 		arg.RuntimeFilterSpecs = t.RuntimeFilterBuildList
 		arg.HashOnPK = t.HashOnPk
 		arg.IsShuffle = t.IsShuffle
+		arg.ShuffleIdx = t.ShuffleIdx
+		arg.JoinMapTag = t.JoinMapTag
 		op = arg
 	case vm.Right:
 		t := opr.GetRightJoin()
@@ -994,6 +1016,8 @@ func convertToVmOperator(opr *pipeline.Instruction, ctx *scopeContext, eng engin
 		arg.RuntimeFilterSpecs = t.RuntimeFilterBuildList
 		arg.HashOnPK = t.HashOnPk
 		arg.IsShuffle = t.IsShuffle
+		arg.ShuffleIdx = t.ShuffleIdx
+		arg.JoinMapTag = t.JoinMapTag
 		op = arg
 	case vm.RightSemi:
 		t := opr.GetRightSemiJoin()
@@ -1005,6 +1029,8 @@ func convertToVmOperator(opr *pipeline.Instruction, ctx *scopeContext, eng engin
 		arg.RuntimeFilterSpecs = t.RuntimeFilterBuildList
 		arg.HashOnPK = t.HashOnPk
 		arg.IsShuffle = t.IsShuffle
+		arg.ShuffleIdx = t.ShuffleIdx
+		arg.JoinMapTag = t.JoinMapTag
 		op = arg
 	case vm.RightAnti:
 		t := opr.GetRightAntiJoin()
@@ -1016,6 +1042,8 @@ func convertToVmOperator(opr *pipeline.Instruction, ctx *scopeContext, eng engin
 		arg.RuntimeFilterSpecs = t.RuntimeFilterBuildList
 		arg.HashOnPK = t.HashOnPk
 		arg.IsShuffle = t.IsShuffle
+		arg.ShuffleIdx = t.ShuffleIdx
+		arg.JoinMapTag = t.JoinMapTag
 		op = arg
 	case vm.Limit:
 		op = limit.NewArgument().WithLimit(opr.Limit)
@@ -1106,6 +1134,8 @@ func convertToVmOperator(opr *pipeline.Instruction, ctx *scopeContext, eng engin
 		arg.RuntimeFilterSpecs = t.RuntimeFilterBuildList
 		arg.HashOnPK = t.HashOnPk
 		arg.IsShuffle = t.IsShuffle
+		arg.ShuffleIdx = t.ShuffleIdx
+		arg.JoinMapTag = t.JoinMapTag
 		op = arg
 	case vm.Single:
 		t := opr.GetSingleJoin()
@@ -1116,6 +1146,7 @@ func convertToVmOperator(opr *pipeline.Instruction, ctx *scopeContext, eng engin
 		arg.Conditions = [][]*plan.Expr{t.LeftCond, t.RightCond}
 		arg.RuntimeFilterSpecs = t.RuntimeFilterBuildList
 		arg.HashOnPK = t.HashOnPk
+		arg.JoinMapTag = t.JoinMapTag
 		op = arg
 	case vm.Mark:
 		t := opr.GetMarkJoin()
@@ -1126,6 +1157,7 @@ func convertToVmOperator(opr *pipeline.Instruction, ctx *scopeContext, eng engin
 		arg.Cond = t.Expr
 		arg.OnList = t.OnList
 		arg.HashOnPK = t.HashOnPk
+		arg.JoinMapTag = t.JoinMapTag
 		op = arg
 	case vm.Top:
 		op = top.NewArgument().
