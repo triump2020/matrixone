@@ -751,7 +751,6 @@ func (tbl *txnTable) Ranges(
 	data = &relationDataBlkInfoListV1{
 		typ:     engine.RelDataBlkInfoListV1,
 		blklist: &blocks,
-		isEmpty: true,
 	}
 
 	return
@@ -1789,14 +1788,12 @@ func buildRemoteDS(
 	relData engine.RelData,
 ) (source engine.DataSource, err error) {
 
-	logutil.Infof("xxxx start to collect tombstones, txn:%s", tbl.db.op.Txn().DebugString())
 	tombstones, err := tbl.CollectTombstones(ctx, txnOffset)
 	if err != nil {
 		return nil, err
 	}
 	tombstones.Init()
 
-	logutil.Infof("xxxxx init tombstone finished, txn:%s", tbl.db.op.Txn().DebugString())
 	relData.AttachTombstones(tombstones)
 
 	source = NewRemoteDataSource(

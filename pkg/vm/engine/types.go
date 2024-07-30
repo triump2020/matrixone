@@ -23,7 +23,6 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/common/mpool"
 	"github.com/matrixorigin/matrixone/pkg/compress"
 	"github.com/matrixorigin/matrixone/pkg/container/batch"
-	"github.com/matrixorigin/matrixone/pkg/container/nulls"
 	"github.com/matrixorigin/matrixone/pkg/container/types"
 	"github.com/matrixorigin/matrixone/pkg/container/vector"
 	"github.com/matrixorigin/matrixone/pkg/objectio"
@@ -584,21 +583,11 @@ type Tombstoner interface {
 
 	Init() error
 
-	IsEmpty() bool
+	HasTombstones() bool
 
 	MarshalWithBuf(w *bytes.Buffer) (uint32, error)
 
 	UnMarshal(buf []byte) error
-
-	HasTombstones(bid types.Blockid) bool
-
-	ApplyTombstones(
-		rows []types.Rowid,
-		load1 func(
-			bid types.Blockid,
-			loc objectio.Location,
-			committs types.TS) (*nulls.Nulls, error),
-		load2 func(loc objectio.Location) (*nulls.Nulls, error)) ([]int64, error)
 
 	ApplyInMemTombstones(
 		bid types.Blockid,
@@ -609,10 +598,16 @@ type Tombstoner interface {
 		ctx context.Context,
 		bid types.Blockid,
 		rowsOffset []int32,
-		apply func(
+		applyCommit func(
 			ctx2 context.Context,
 			loc objectio.Location,
 			cts types.TS,
+			rowsOffset []int32,
+			left *[]int32,
+			deleted *[]int64) (err error),
+		applyUncommit func(
+			ctx2 context.Context,
+			loc objectio.Location,
 			rowsOffset []int32,
 			left *[]int32,
 			deleted *[]int64) (err error),
