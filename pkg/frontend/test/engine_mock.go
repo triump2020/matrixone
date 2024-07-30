@@ -12,7 +12,6 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	mpool "github.com/matrixorigin/matrixone/pkg/common/mpool"
 	batch "github.com/matrixorigin/matrixone/pkg/container/batch"
-	nulls "github.com/matrixorigin/matrixone/pkg/container/nulls"
 	types "github.com/matrixorigin/matrixone/pkg/container/types"
 	vector "github.com/matrixorigin/matrixone/pkg/container/vector"
 	objectio "github.com/matrixorigin/matrixone/pkg/objectio"
@@ -213,22 +212,6 @@ func (m *MockTombstoner) EXPECT() *MockTombstonerMockRecorder {
 	return m.recorder
 }
 
-// ApplyCommittedDeltaLoc mocks base method.
-func (m *MockTombstoner) ApplyCommittedDeltaLoc(ctx context.Context, bid types.Blockid, rowsOffset []int32, apply func(context.Context, objectio.Location, types.TS, []int32, *[]int32, *[]int64) error) ([]int32, []int64, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ApplyCommittedDeltaLoc", ctx, bid, rowsOffset, apply)
-	ret0, _ := ret[0].([]int32)
-	ret1, _ := ret[1].([]int64)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-// ApplyCommittedDeltaLoc indicates an expected call of ApplyCommittedDeltaLoc.
-func (mr *MockTombstonerMockRecorder) ApplyCommittedDeltaLoc(ctx, bid, rowsOffset, apply interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ApplyCommittedDeltaLoc", reflect.TypeOf((*MockTombstoner)(nil).ApplyCommittedDeltaLoc), ctx, bid, rowsOffset, apply)
-}
-
 // ApplyInMemTombstones mocks base method.
 func (m *MockTombstoner) ApplyInMemTombstones(bid types.Blockid, rowsOffset []int32) ([]int32, []int64) {
 	m.ctrl.T.Helper()
@@ -244,49 +227,20 @@ func (mr *MockTombstonerMockRecorder) ApplyInMemTombstones(bid, rowsOffset inter
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ApplyInMemTombstones", reflect.TypeOf((*MockTombstoner)(nil).ApplyInMemTombstones), bid, rowsOffset)
 }
 
-// ApplyTombstones mocks base method.
-func (m *MockTombstoner) ApplyTombstones(rows []types.Rowid, load1 func(types.Blockid, objectio.Location, types.TS) (*nulls.Nulls, error), load2 func(objectio.Location) (*nulls.Nulls, error)) ([]int64, error) {
+// ApplyPersistedTombstones mocks base method.
+func (m *MockTombstoner) ApplyPersistedTombstones(ctx context.Context, bid types.Blockid, rowsOffset []int32, applyCommit func(context.Context, objectio.Location, types.TS, []int32, *[]int32, *[]int64) error, applyUncommit func(context.Context, objectio.Location, []int32, *[]int32, *[]int64) error) ([]int32, []int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ApplyTombstones", rows, load1, load2)
-	ret0, _ := ret[0].([]int64)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ApplyTombstones indicates an expected call of ApplyTombstones.
-func (mr *MockTombstonerMockRecorder) ApplyTombstones(rows, load1, load2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ApplyTombstones", reflect.TypeOf((*MockTombstoner)(nil).ApplyTombstones), rows, load1, load2)
-}
-
-// ApplyUncommitDeltaLoc mocks base method.
-func (m *MockTombstoner) ApplyUncommitDeltaLoc(ctx context.Context, bid types.Blockid, rowsOffset []int32, apply func(context.Context, objectio.Location, []int32, *[]int32, *[]int64) error) ([]int32, []int64, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ApplyUncommitDeltaLoc", ctx, bid, rowsOffset, apply)
+	ret := m.ctrl.Call(m, "ApplyPersistedTombstones", ctx, bid, rowsOffset, applyCommit, applyUncommit)
 	ret0, _ := ret[0].([]int32)
 	ret1, _ := ret[1].([]int64)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
 
-// ApplyUncommitDeltaLoc indicates an expected call of ApplyUncommitDeltaLoc.
-func (mr *MockTombstonerMockRecorder) ApplyUncommitDeltaLoc(ctx, bid, rowsOffset, apply interface{}) *gomock.Call {
+// ApplyPersistedTombstones indicates an expected call of ApplyPersistedTombstones.
+func (mr *MockTombstonerMockRecorder) ApplyPersistedTombstones(ctx, bid, rowsOffset, applyCommit, applyUncommit interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ApplyUncommitDeltaLoc", reflect.TypeOf((*MockTombstoner)(nil).ApplyUncommitDeltaLoc), ctx, bid, rowsOffset, apply)
-}
-
-// HasBlkTombstones mocks base method.
-func (m *MockTombstoner) HasBlkTombstones(bid types.Blockid) bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "HasBlkTombstones", bid)
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// HasBlkTombstones indicates an expected call of HasBlkTombstones.
-func (mr *MockTombstonerMockRecorder) HasBlkTombstones(bid interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasBlkTombstones", reflect.TypeOf((*MockTombstoner)(nil).HasBlkTombstones), bid)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ApplyPersistedTombstones", reflect.TypeOf((*MockTombstoner)(nil).ApplyPersistedTombstones), ctx, bid, rowsOffset, applyCommit, applyUncommit)
 }
 
 // HasTombstones mocks base method.
