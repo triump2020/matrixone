@@ -578,7 +578,7 @@ func (tbl *txnTable) resetSnapshot() {
 func (tbl *txnTable) CollectTombstones(
 	ctx context.Context, txnOffset int,
 ) (engine.Tombstoner, error) {
-	tombstone := buildTombstoneV1()
+	tombstone := buildTombstoneWithDeltaLoc()
 
 	offset := txnOffset
 	if tbl.db.op.IsSnapOp() {

@@ -53,7 +53,7 @@ func TestRelationDataV1_MarshalAndUnMarshal(t *testing.T) {
 	}
 
 	tombstoner := &tombstoneDataV1{
-		typ: engine.TombstoneV1,
+		typ: engine.TombstoneWithDeltaLoc,
 	}
 	deletes := types.BuildTestRowid(1, 1)
 	tombstoner.inMemTombstones = append(tombstoner.inMemTombstones, deletes)

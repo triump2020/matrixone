@@ -574,9 +574,8 @@ func (def *StreamConfigsDef) ToPBVersion() ConstraintPB {
 type TombstoneType uint8
 
 const (
-	EmptyTombstone TombstoneType = iota
-	TombstoneV1
-	TombstoneV2
+	InvalidTombstoneData TombstoneType = iota
+	TombstoneWithDeltaLoc
 )
 
 type Tombstoner interface {
