@@ -1781,6 +1781,29 @@ func BuildLocalDataSource(
 	return tbl.buildLocalDataSource(ctx, txnOffset, ranges)
 }
 
+// for test
+func buildRemoteDS(
+	ctx context.Context,
+	tbl *txnTable,
+	txnOffset int,
+	relData engine.RelData,
+) (source engine.DataSource, err error) {
+	tombstones, err := tbl.CollectTombstones(ctx, txnOffset)
+	if err != nil {
+		return nil, err
+	}
+	relData.AttachTombstones(tombstones)
+
+	source = NewRemoteDataSource(
+		ctx,
+		tbl.proc.Load(),
+		tbl.getTxn().engine.fs,
+		tbl.db.op.SnapshotTS(),
+		relData,
+	)
+	return
+}
+
 func (tbl *txnTable) buildLocalDataSource(
 	ctx context.Context,
 	txnOffset int,
@@ -1796,14 +1819,17 @@ func (tbl *txnTable) buildLocalDataSource(
 		if tbl.db.op.IsSnapOp() {
 			txnOffset = tbl.getTxn().GetSnapshotWriteOffset()
 		}
-		source, err = NewLocalDataSource(
-			ctx,
-			tbl,
-			txnOffset,
-			ranges,
-			skipReadMem,
-		)
-
+		if skipReadMem {
+			source, err = buildRemoteDS(ctx, tbl, txnOffset, relData)
+		} else {
+			source, err = NewLocalDataSource(
+				ctx,
+				tbl,
+				txnOffset,
+				ranges,
+				skipReadMem,
+			)
+		}
 	default:
 		logutil.Fatalf("unsupported rel data type: %v", relData.GetType())
 	}
