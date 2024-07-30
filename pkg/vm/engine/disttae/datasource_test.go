@@ -52,7 +52,7 @@ func TestRelationDataV1_MarshalAndUnMarshal(t *testing.T) {
 		relData.AppendBlockInfo(blkInfo)
 	}
 
-	tombstoner := &tombstoneDataV1{
+	tombstoner := &tombstoneDataWithDeltaLoc{
 		typ: engine.TombstoneWithDeltaLoc,
 	}
 	deletes := types.BuildTestRowid(1, 1)
@@ -74,7 +74,7 @@ func TestRelationDataV1_MarshalAndUnMarshal(t *testing.T) {
 	newRelData, err := UnmarshalRelationData(buf)
 	require.Nil(t, err)
 
-	tomIsEqual := func(t1 *tombstoneDataV1, t2 *tombstoneDataV1) bool {
+	tomIsEqual := func(t1 *tombstoneDataWithDeltaLoc, t2 *tombstoneDataWithDeltaLoc) bool {
 		if t1.typ != t2.typ || len(t1.inMemTombstones) != len(t2.inMemTombstones) ||
 			len(t1.uncommittedDeltaLocs) != len(t2.uncommittedDeltaLocs) ||
 			len(t1.committedDeltalocs) != len(t2.committedDeltalocs) ||
@@ -122,8 +122,8 @@ func TestRelationDataV1_MarshalAndUnMarshal(t *testing.T) {
 			return false
 		}
 
-		return tomIsEqual(rd1.tombstones.(*tombstoneDataV1),
-			rd2.tombstones.(*tombstoneDataV1))
+		return tomIsEqual(rd1.tombstones.(*tombstoneDataWithDeltaLoc),
+			rd2.tombstones.(*tombstoneDataWithDeltaLoc))
 
 	}
 	require.True(t, isEqual(relData, newRelData.(*blockListRelData)))
