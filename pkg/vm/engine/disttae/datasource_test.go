@@ -107,7 +107,7 @@ func TestRelationDataV1_MarshalAndUnMarshal(t *testing.T) {
 		return true
 	}
 
-	isEqual := func(rd1 *relationDataBlkInfoListV1, rd2 *relationDataBlkInfoListV1) bool {
+	isEqual := func(rd1 *blockListRelData, rd2 *blockListRelData) bool {
 		if rd1.typ != rd2.typ || rd1.DataCnt() != rd2.DataCnt() ||
 			rd1.isEmpty != rd2.isEmpty || rd1.tombstoneTyp != rd2.tombstoneTyp {
 			return false
@@ -126,6 +126,6 @@ func TestRelationDataV1_MarshalAndUnMarshal(t *testing.T) {
 			rd2.tombstones.(*tombstoneDataV1))
 
 	}
-	require.True(t, isEqual(relData, newRelData.(*relationDataBlkInfoListV1)))
+	require.True(t, isEqual(relData, newRelData.(*blockListRelData)))
 
 }

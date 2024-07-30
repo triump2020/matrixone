@@ -386,20 +386,20 @@ func (tomb *tombstoneDataWithDeltaLoc) Merge(other engine.Tombstoner) error {
 func UnmarshalRelationData(data []byte) (engine.RelData, error) {
 	typ := engine.RelDataType(data[0])
 	switch typ {
-	case engine.RelDataBlkInfoListV1:
-		rd1 := buildRelationDataV1()
-		if err := rd1.UnMarshal(data); err != nil {
+	case engine.RelDataBlockList:
+		relData := buildRelationDataV1()
+		if err := relData.UnMarshal(data); err != nil {
 			return nil, err
 		}
-		return rd1, nil
+		return relData, nil
 	default:
 		return nil, moerr.NewInternalErrorNoCtx("unsupported relation data type")
 	}
 }
 
-var _ engine.RelData = new(relationDataBlkInfoListV1)
+var _ engine.RelData = new(blockListRelData)
 
-type relationDataBlkInfoListV1 struct {
+type blockListRelData struct {
 	typ engine.RelDataType
 	//blkList[0] is a empty block info
 	//blkList []*objectio.BlockInfoInProgress
@@ -412,59 +412,59 @@ type relationDataBlkInfoListV1 struct {
 	tombstones engine.Tombstoner
 }
 
-func buildRelationDataV1() *relationDataBlkInfoListV1 {
-	return &relationDataBlkInfoListV1{
-		typ:     engine.RelDataBlkInfoListV1,
+func buildRelationDataV1() *blockListRelData {
+	return &blockListRelData{
+		typ:     engine.RelDataBlockList,
 		blklist: &objectio.BlockInfoSliceInProgress{},
 		isEmpty: true,
 	}
 }
 
-func (rd1 *relationDataBlkInfoListV1) GetShardIDList() []uint64 {
+func (relData *blockListRelData) GetShardIDList() []uint64 {
 	panic("not supported")
 }
-func (rd1 *relationDataBlkInfoListV1) GetShardID(i int) uint64 {
+func (relData *blockListRelData) GetShardID(i int) uint64 {
 	panic("not supported")
 }
-func (rd1 *relationDataBlkInfoListV1) SetShardID(i int, id uint64) {
+func (relData *blockListRelData) SetShardID(i int, id uint64) {
 	panic("not supported")
 }
-func (rd1 *relationDataBlkInfoListV1) AppendShardID(id uint64) {
+func (relData *blockListRelData) AppendShardID(id uint64) {
 	panic("not supported")
 }
 
-func (rd1 *relationDataBlkInfoListV1) GetBlockInfoSlice() objectio.BlockInfoSliceInProgress {
-	return rd1.blklist.GetAllBytes()
+func (relData *blockListRelData) GetBlockInfoSlice() objectio.BlockInfoSliceInProgress {
+	return relData.blklist.GetAllBytes()
 }
 
-func (rd1 *relationDataBlkInfoListV1) GetBlockInfo(i int) objectio.BlockInfoInProgress {
-	return *rd1.blklist.Get(i)
+func (relData *blockListRelData) GetBlockInfo(i int) objectio.BlockInfoInProgress {
+	return *relData.blklist.Get(i)
 }
 
-func (rd1 *relationDataBlkInfoListV1) SetBlockInfo(i int, blk objectio.BlockInfoInProgress) {
-	rd1.blklist.Set(i, &blk)
+func (relData *blockListRelData) SetBlockInfo(i int, blk objectio.BlockInfoInProgress) {
+	relData.blklist.Set(i, &blk)
 }
 
-func (rd1 *relationDataBlkInfoListV1) AppendBlockInfo(blk objectio.BlockInfoInProgress) {
-	rd1.blklist.AppendBlockInfo(blk)
+func (relData *blockListRelData) AppendBlockInfo(blk objectio.BlockInfoInProgress) {
+	relData.blklist.AppendBlockInfo(blk)
 }
 
-func (rd1 *relationDataBlkInfoListV1) UnMarshal(data []byte) error {
+func (relData *blockListRelData) UnMarshal(data []byte) error {
 	data = data[1:]
 
 	sizeofblks := types.DecodeUint32(data)
 	data = data[4:]
 
-	*rd1.blklist = data[:sizeofblks]
+	*relData.blklist = data[:sizeofblks]
 	data = data[sizeofblks:]
 
 	isEmpty := types.DecodeBool(data)
-	rd1.isEmpty = isEmpty
+	relData.isEmpty = isEmpty
 	data = data[1:]
 
 	if !isEmpty {
 		tombstoneTyp := engine.TombstoneType(types.DecodeUint8(data))
-		rd1.tombstoneTyp = tombstoneTyp
+		relData.tombstoneTyp = tombstoneTyp
 		data = data[1:]
 
 		size := types.DecodeUint32(data)
@@ -475,7 +475,7 @@ func (rd1 *relationDataBlkInfoListV1) UnMarshal(data []byte) error {
 			if err := tombstoner.UnMarshal(data[:size]); err != nil {
 				return err
 			}
-			rd1.AttachTombstones(tombstoner)
+			relData.AttachTombstones(tombstoner)
 		default:
 			return moerr.NewInternalErrorNoCtx("unsupported tombstone type")
 		}
@@ -484,33 +484,33 @@ func (rd1 *relationDataBlkInfoListV1) UnMarshal(data []byte) error {
 	return nil
 }
 
-func (rd1 *relationDataBlkInfoListV1) MarshalWithBuf(w *bytes.Buffer) error {
+func (relData *blockListRelData) MarshalWithBuf(w *bytes.Buffer) error {
 	var pos2 uint32
-	typ := uint8(rd1.typ)
+	typ := uint8(relData.typ)
 	if _, err := w.Write(types.EncodeUint8(&typ)); err != nil {
 		return err
 	}
 	pos2 += 1
 
-	sizeofblks := uint32(rd1.blklist.Size())
+	sizeofblks := uint32(relData.blklist.Size())
 	if _, err := w.Write(types.EncodeUint32(&sizeofblks)); err != nil {
 		return err
 	}
 	pos2 += 4
 
 	//marshal blk list
-	if _, err := w.Write(*rd1.blklist); err != nil {
+	if _, err := w.Write(*relData.blklist); err != nil {
 		return err
 	}
 	pos2 += sizeofblks
 
-	if _, err := w.Write(types.EncodeBool(&rd1.isEmpty)); err != nil {
+	if _, err := w.Write(types.EncodeBool(&relData.isEmpty)); err != nil {
 		return err
 	}
 	pos2 += 1
 
-	if !rd1.isEmpty {
-		typ := uint8(rd1.tombstoneTyp)
+	if !relData.isEmpty {
+		typ := uint8(relData.tombstoneTyp)
 		if _, err := w.Write(types.EncodeUint8(&typ)); err != nil {
 			return err
 		}
@@ -522,7 +522,7 @@ func (rd1 *relationDataBlkInfoListV1) MarshalWithBuf(w *bytes.Buffer) error {
 			return err
 		}
 
-		space, err := rd1.tombstones.MarshalWithBuf(w)
+		space, err := relData.tombstones.MarshalWithBuf(w)
 		if err != nil {
 			return err
 		}
@@ -533,45 +533,45 @@ func (rd1 *relationDataBlkInfoListV1) MarshalWithBuf(w *bytes.Buffer) error {
 	return nil
 }
 
-func (rd1 *relationDataBlkInfoListV1) GetType() engine.RelDataType {
-	return rd1.typ
+func (relData *blockListRelData) GetType() engine.RelDataType {
+	return relData.typ
 }
 
-func (rd1 *relationDataBlkInfoListV1) MarshalToBytes() []byte {
+func (relData *blockListRelData) MarshalToBytes() []byte {
 	var w bytes.Buffer
-	if err := rd1.MarshalWithBuf(&w); err != nil {
+	if err := relData.MarshalWithBuf(&w); err != nil {
 		return nil
 	}
 	buf := w.Bytes()
 	return buf
 }
 
-func (rd1 *relationDataBlkInfoListV1) AttachTombstones(tombstones engine.Tombstoner) error {
-	rd1.tombstones = tombstones
-	rd1.tombstoneTyp = tombstones.Type()
-	rd1.isEmpty = tombstones.IsEmpty()
+func (relData *blockListRelData) AttachTombstones(tombstones engine.Tombstoner) error {
+	relData.tombstones = tombstones
+	relData.tombstoneTyp = tombstones.Type()
+	relData.isEmpty = tombstones.IsEmpty()
 	return nil
 }
 
-func (rd1 *relationDataBlkInfoListV1) GetTombstones() engine.Tombstoner {
-	return rd1.tombstones
+func (relData *blockListRelData) GetTombstones() engine.Tombstoner {
+	return relData.tombstones
 }
 
-func (rd1 *relationDataBlkInfoListV1) DataSlice(i, j int) engine.RelData {
-	blist := objectio.BlockInfoSliceInProgress(rd1.blklist.Slice(i, j))
-	return &relationDataBlkInfoListV1{
-		typ:          rd1.typ,
+func (relData *blockListRelData) DataSlice(i, j int) engine.RelData {
+	blist := objectio.BlockInfoSliceInProgress(relData.blklist.Slice(i, j))
+	return &blockListRelData{
+		typ:          relData.typ,
 		blklist:      &blist,
-		isEmpty:      rd1.isEmpty,
-		tombstoneTyp: rd1.tombstoneTyp,
-		tombstones:   rd1.tombstones,
+		isEmpty:      relData.isEmpty,
+		tombstoneTyp: relData.tombstoneTyp,
+		tombstones:   relData.tombstones,
 	}
 }
 
-func (rd1 *relationDataBlkInfoListV1) GroupByPartitionNum() map[int16]engine.RelData {
+func (relData *blockListRelData) GroupByPartitionNum() map[int16]engine.RelData {
 	ret := make(map[int16]engine.RelData)
 
-	blks := rd1.GetBlockInfoSlice()
+	blks := relData.GetBlockInfoSlice()
 	blksLen := blks.Len()
 	for idx := range blksLen {
 		blkInfo := blks.Get(idx)
@@ -580,11 +580,11 @@ func (rd1 *relationDataBlkInfoListV1) GroupByPartitionNum() map[int16]engine.Rel
 		}
 		partitionNum := blkInfo.PartitionNum
 		if _, ok := ret[partitionNum]; !ok {
-			ret[partitionNum] = &relationDataBlkInfoListV1{
-				typ:          rd1.typ,
-				isEmpty:      rd1.isEmpty,
-				tombstoneTyp: rd1.tombstoneTyp,
-				tombstones:   rd1.tombstones,
+			ret[partitionNum] = &blockListRelData{
+				typ:          relData.typ,
+				isEmpty:      relData.isEmpty,
+				tombstoneTyp: relData.tombstoneTyp,
+				tombstones:   relData.tombstones,
 			}
 			ret[partitionNum].AppendBlockInfo(objectio.EmptyBlockInfoInProgress)
 		}
@@ -594,16 +594,16 @@ func (rd1 *relationDataBlkInfoListV1) GroupByPartitionNum() map[int16]engine.Rel
 	return ret
 }
 
-func (rd1 *relationDataBlkInfoListV1) BuildEmptyRelData() engine.RelData {
-	return &relationDataBlkInfoListV1{
+func (relData *blockListRelData) BuildEmptyRelData() engine.RelData {
+	return &blockListRelData{
 		blklist: &objectio.BlockInfoSliceInProgress{},
-		typ:     rd1.typ,
+		typ:     relData.typ,
 		isEmpty: true,
 	}
 }
 
-func (rd1 *relationDataBlkInfoListV1) DataCnt() int {
-	return rd1.blklist.Len()
+func (relData *blockListRelData) DataCnt() int {
+	return relData.blklist.Len()
 }
 
 type RemoteDataSource struct {

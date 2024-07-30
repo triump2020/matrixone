@@ -625,10 +625,9 @@ type Tombstoner interface {
 type RelDataType uint8
 
 const (
-	EmptyRelData RelDataType = iota
+	RelDataEmpty RelDataType = iota
 	RelDataShardIDList
-	RelDataBlkInfoListV1
-	RelDataObjInfoListV1
+	RelDataBlockList
 )
 
 type RelData interface {
@@ -931,7 +930,7 @@ type EmptyRelationData struct {
 }
 
 func BuildEmptyRelData() RelData {
-	return &EmptyRelationData{EmptyRelData}
+	return &EmptyRelationData{RelDataEmpty}
 }
 
 func (rd *EmptyRelationData) GetShardIDList() []uint64 {
@@ -1011,7 +1010,7 @@ func (rd *EmptyRelationData) AppendDataBlk(blk any) {
 }
 
 func (rd *EmptyRelationData) BuildEmptyRelData() RelData {
-	return &EmptyRelationData{EmptyRelData}
+	return &EmptyRelationData{RelDataEmpty}
 }
 
 func (rd *EmptyRelationData) DataCnt() int {
