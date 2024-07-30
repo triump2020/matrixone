@@ -17,6 +17,7 @@ package disttae
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"slices"
 	"sort"
 
@@ -128,109 +129,83 @@ func (tomV1 *tombstoneDataV1) IsEmpty() bool {
 }
 
 func (tomV1 *tombstoneDataV1) UnMarshal(buf []byte) error {
-
 	tomV1.typ = engine.TombstoneType(types.DecodeUint8(buf))
 	buf = buf[1:]
 
-	rowIDCnt := types.DecodeUint32(buf)
+	rowIdCnt := binary.LittleEndian.Uint16(buf)
 	buf = buf[4:]
-	for i := 0; i < int(rowIDCnt); i++ {
-		rowid := types.DecodeFixed[types.Rowid](buf[:types.RowidSize])
-		tomV1.inMemTombstones = append(tomV1.inMemTombstones, rowid)
-		buf = buf[types.RowidSize:]
+	for idx := 0; idx < int(rowIdCnt); idx++ {
+		tomV1.inMemTombstones = append(tomV1.inMemTombstones, types.Rowid(buf[:24]))
+		buf = buf[24:]
 	}
 
-	cntOfUncommit := types.DecodeUint32(buf)
-	buf = buf[4:]
-	for i := 0; i < int(cntOfUncommit); i++ {
-		loc := objectio.Location(buf[:objectio.LocationLen])
-		tomV1.uncommittedDeltaLocs = append(tomV1.uncommittedDeltaLocs, loc)
-		buf = buf[objectio.LocationLen:]
-	}
+	bats := []*batch.Batch{tomV1.uncommittedDeltaLocs, tomV1.committedDeltalocs}
 
-	cntOfCommit := types.DecodeUint32(buf)
-	buf = buf[4:]
-	for i := 0; i < int(cntOfCommit); i++ {
-		loc := objectio.Location(buf[:objectio.LocationLen])
-		tomV1.committedDeltalocs = append(tomV1.committedDeltalocs, loc)
-		buf = buf[objectio.LocationLen:]
-	}
+	for len(buf) > 0 {
+		fieldType := types.DecodeUint8(buf)
+		buf = buf[1:]
 
-	if cntOfCommit > 0 {
-		cntOfCommitTS := types.DecodeUint32(buf)
-		buf = buf[4:]
-		for i := 0; i < int(cntOfCommitTS); i++ {
-			ts := types.DecodeFixed[types.TS](buf[:types.TxnTsSize])
-			tomV1.commitTS = append(tomV1.commitTS, ts)
-			buf = buf[types.TxnTsSize:]
+		bat := bats[int(fieldType)]
+
+		for idx := 0; idx < 3; idx++ {
+			colBytes := binary.LittleEndian.Uint32(buf)
+			buf = buf[4:]
+
+			vec := vector.NewVec(types.T_any.ToType())
+			if err := vec.UnmarshalBinary(buf[:colBytes]); err != nil {
+				return err
+			}
+
+			bat.Vecs = append(bat.Vecs, vec)
+			buf = buf[colBytes:]
 		}
+
+		bat.SetRowCount(bat.Vecs[0].Length())
 	}
+
 	return nil
 }
 
 func (tomV1 *tombstoneDataV1) MarshalWithBuf(w *bytes.Buffer) (uint32, error) {
-	var size uint32
-	typ := uint8(tomV1.typ)
-	if _, err := w.Write(types.EncodeUint8(&typ)); err != nil {
-		return 0, err
-	}
-	size += 1
+	w.Write(types.EncodeUint8((*uint8)(&tomV1.typ)))
 
-	length := uint32(len(tomV1.inMemTombstones))
-	if _, err := w.Write(types.EncodeUint32(&length)); err != nil {
-		return 0, err
-	}
-	size += 4
+	rowIdCnt := uint32(len(tomV1.inMemTombstones))
+	w.Write([]byte{0, 0, 0, 0})
+	binary.LittleEndian.PutUint32(w.Bytes()[w.Len()-4:], rowIdCnt)
 
-	for _, row := range tomV1.inMemTombstones {
-		if _, err := w.Write(types.EncodeFixed(row)); err != nil {
+	for idx := range rowIdCnt {
+		if _, err := w.Write(tomV1.inMemTombstones[int(idx)][:]); err != nil {
 			return 0, err
 		}
-		size += types.RowidSize
 	}
 
-	length = uint32(len(tomV1.uncommittedDeltaLocs))
-	if _, err := w.Write(types.EncodeUint32(&length)); err != nil {
-		return 0, err
-	}
-	size += 4
+	bats := []*batch.Batch{tomV1.uncommittedDeltaLocs, tomV1.committedDeltalocs}
 
-	for _, loc := range tomV1.uncommittedDeltaLocs {
-		if _, err := w.Write(types.EncodeSlice([]byte(loc))); err != nil {
-			return 0, err
+	for x := range bats {
+		if bats[x] == nil || bats[x].RowCount() == 0 ||
+			bats[x].VectorCount() == 0 || bats[x].Vecs[0].Length() == 0 {
+			continue
 		}
-		size += uint32(objectio.LocationLen)
-	}
 
-	length = uint32(len(tomV1.committedDeltalocs))
-	if _, err := w.Write(types.EncodeUint32(&length)); err != nil {
-		return 0, err
-	}
-	size += 4
+		fieldTyp := uint8(x)
+		w.Write(types.EncodeUint8(&fieldTyp))
 
-	for _, loc := range tomV1.committedDeltalocs {
-		if _, err := w.Write(types.EncodeSlice([]byte(loc))); err != nil {
-			return 0, err
-		}
-		size += uint32(objectio.LocationLen)
-	}
-
-	if length > 0 {
-		length = uint32(len(tomV1.commitTS))
-		if _, err := w.Write(types.EncodeUint32(&length)); err != nil {
-			return 0, err
-		}
-		size += 4
-
-		for _, ts := range tomV1.commitTS {
-			if _, err := w.Write(types.EncodeFixed(ts)); err != nil {
+		for idx := 0; idx < 3; idx++ {
+			bb, err := bats[x].Vecs[idx].MarshalBinary()
+			if err != nil {
 				return 0, err
 			}
-			size += types.TxnTsSize
+
+			colBytes := uint32(len(bb))
+			w.Write([]byte{0, 0, 0, 0})
+			binary.LittleEndian.PutUint32(w.Bytes()[w.Len()-4:], colBytes)
+			if _, err = w.Write(bb); err != nil {
+				return 0, err
+			}
 		}
 	}
-	return size, nil
 
+	return uint32(w.Len()), nil
 }
 
 func (tomV1 *tombstoneDataV1) HasTombstones(bid types.Blockid) bool {
@@ -339,15 +314,15 @@ func (tomV1 *tombstoneDataV1) Type() engine.TombstoneType {
 }
 
 func (tomV1 *tombstoneDataV1) Merge(other engine.Tombstoner) error {
-	if v, ok := other.(*tombstoneDataV1); ok {
-		tomV1.inMemTombstones = append(tomV1.inMemTombstones, v.inMemTombstones...)
-
-		for i, v := range v.committedDeltalocs.Vecs {
-			tomV1.committedDeltalocs.Vecs[i].UnionBatch()
-		}
-		tomV1.committedDeltalocs = append(tomV1.committedDeltalocs, v.committedDeltalocs...)
-		tomV1.uncommittedDeltaLocs = append(tomV1.uncommittedDeltaLocs, v.uncommittedDeltaLocs...)
-	}
+	//if v, ok := other.(*tombstoneDataV1); ok {
+	//	tomV1.inMemTombstones = append(tomV1.inMemTombstones, v.inMemTombstones...)
+	//
+	//	for i, v := range v.committedDeltalocs.Vecs {
+	//		tomV1.committedDeltalocs.Vecs[i].UnionBatch()
+	//	}
+	//	tomV1.committedDeltalocs = append(tomV1.committedDeltalocs, v.committedDeltalocs...)
+	//	tomV1.uncommittedDeltaLocs = append(tomV1.uncommittedDeltaLocs, v.uncommittedDeltaLocs...)
+	//}
 	return moerr.NewInternalErrorNoCtx("tombstone type mismatch")
 }
 

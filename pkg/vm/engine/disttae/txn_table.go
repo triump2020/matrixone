@@ -631,11 +631,11 @@ func (tbl *txnTable) CollectTombstones(
 	}
 
 	//collect uncommitted persisted tombstones.
-	if err := tbl.getTxn().getUncommittedS3Tombstone(&tombstone.uncommittedDeltaLocs); err != nil {
-		return nil, err
-	}
+	//if err := tbl.getTxn().getUncommittedS3Tombstone(&tombstone.uncommittedDeltaLocs); err != nil {
+	//	return nil, err
+	//}
 	//collect committed persisted tombstones from partition state.
-	state.GetTombstoneDeltaLocs(&tombstone.committedDeltalocs, &tombstone.commitTS)
+	//state.GetTombstoneDeltaLocs(&tombstone.committedDeltalocs, &tombstone.commitTS)
 	return tombstone, nil
 }
 
