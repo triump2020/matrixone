@@ -589,14 +589,6 @@ type Tombstoner interface {
 
 	UnMarshal(buf []byte) error
 
-	ApplyTombstones(
-		rows []types.Rowid,
-		load1 func(
-			bid types.Blockid,
-			loc objectio.Location,
-			committs types.TS) (*nulls.Nulls, error),
-		load2 func(loc objectio.Location) (*nulls.Nulls, error)) ([]int64, error)
-
 	ApplyInMemTombstones(
 		bid types.Blockid,
 		rowsOffset []int32,

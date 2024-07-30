@@ -300,61 +300,6 @@ func rowIdsToOffset(rowIds []types.Rowid, wantedType any) any {
 	return nil
 }
 
-func (tomb *tombstoneDataWithDeltaLoc) ApplyTombstones(
-	rows []types.Rowid,
-	loadCommit func(
-		bid types.Blockid,
-		loc objectio.Location,
-		committs types.TS) (*nulls.Nulls, error),
-	loadUncommit func(loc objectio.Location) (*nulls.Nulls, error),
-) ([]int64, error) {
-
-	left := make([]types.Rowid, 0)
-	blockId, _ := rows[0].Decode()
-
-	var (
-		commitTombstones *nulls.Nulls
-		err              error
-	)
-
-	uncommitTombstones := nulls.NewWithSize(0)
-
-	if _, ok := tomb.blk2DeltaLoc[blockId]; ok {
-		commitTombstones, err = loadCommit(
-			blockId,
-			tomb.blk2DeltaLoc[blockId],
-			tomb.blk2CommitTS[blockId])
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if _, ok := tomb.blk2UncommitDeltaLocs[blockId]; ok {
-		for _, loc := range tomb.blk2UncommitDeltaLocs[blockId] {
-			tombstones, err := loadUncommit(loc)
-			if err != nil {
-				return nil, err
-			}
-			uncommitTombstones.Merge(tombstones)
-		}
-	}
-
-	for _, row := range rows {
-		if _, ok := tomb.rowIDs[row]; ok {
-			continue
-		}
-		_, offset := row.Decode()
-		if commitTombstones != nil && commitTombstones.Contains(uint64(offset)) {
-			continue
-		}
-		if uncommitTombstones.Contains(uint64(offset)) {
-			continue
-		}
-		left = append(left, row)
-	}
-	return rowIdsToOffset(left, int64(0)).([]int64), nil
-}
-
 func (tomb *tombstoneDataWithDeltaLoc) Type() engine.TombstoneType {
 	return tomb.typ
 }
