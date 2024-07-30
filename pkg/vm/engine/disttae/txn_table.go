@@ -1792,6 +1792,7 @@ func buildRemoteDS(
 	if err != nil {
 		return nil, err
 	}
+	tombstones.Init()
 	relData.AttachTombstones(tombstones)
 
 	source = NewRemoteDataSource(

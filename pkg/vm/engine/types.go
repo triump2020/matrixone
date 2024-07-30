@@ -582,7 +582,7 @@ const (
 type Tombstoner interface {
 	Type() TombstoneType
 
-	Init()
+	Init() error
 
 	IsEmpty() bool
 
