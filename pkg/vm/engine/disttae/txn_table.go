@@ -578,7 +578,7 @@ func (tbl *txnTable) resetSnapshot() {
 func (tbl *txnTable) CollectTombstones(
 	ctx context.Context, txnOffset int,
 ) (engine.Tombstoner, error) {
-	tombstone := buildTombstoneV1()
+	tombstone := buildTombstoneV1WithProc(tbl.proc.Load())
 
 	offset := txnOffset
 	if tbl.db.op.IsSnapOp() {
@@ -631,11 +631,11 @@ func (tbl *txnTable) CollectTombstones(
 	}
 
 	//collect uncommitted persisted tombstones.
-	if err := tbl.getTxn().getUncommittedS3Tombstone(&tombstone.uncommittedDeltaLocs); err != nil {
+	if err := tbl.getTxn().getUncommittedS3Tombstone(tombstone.uncommittedDeltaLocs, tombstone.mp); err != nil {
 		return nil, err
 	}
 	//collect committed persisted tombstones from partition state.
-	state.GetTombstoneDeltaLocs(&tombstone.committedDeltalocs, &tombstone.commitTS)
+	state.GetTombstoneDeltaLocs(tombstone.committedDeltalocs, tombstone.mp)
 	return tombstone, nil
 }
 
@@ -1788,11 +1788,15 @@ func buildRemoteDS(
 	txnOffset int,
 	relData engine.RelData,
 ) (source engine.DataSource, err error) {
+
+	logutil.Infof("xxxx start to collect tombstones, txn:%s", tbl.db.op.Txn().DebugString())
 	tombstones, err := tbl.CollectTombstones(ctx, txnOffset)
 	if err != nil {
 		return nil, err
 	}
 	tombstones.Init()
+
+	logutil.Infof("xxxxx init tombstone finished, txn:%s", tbl.db.op.Txn().DebugString())
 	relData.AttachTombstones(tombstones)
 
 	source = NewRemoteDataSource(

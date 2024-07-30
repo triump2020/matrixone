@@ -46,6 +46,7 @@ type blockDeltaLoc struct {
 	loc objectio.Location
 }
 type tombstoneDataV1 struct {
+	mp  *mpool.MPool
 	typ engine.TombstoneType
 	//in memory tombstones
 	inMemTombstones []types.Rowid
@@ -63,6 +64,28 @@ type tombstoneDataV1 struct {
 	rowIDs map[types.Rowid]struct{}
 
 	blk2DeltaLoc map[types.Blockid][]blockDeltaLoc
+}
+
+func buildTombstoneV1WithProc(p *process.Process) *tombstoneDataV1 {
+	t := &tombstoneDataV1{
+		mp:                   p.GetMPool(),
+		typ:                  engine.TombstoneV1,
+		committedDeltalocs:   batch.NewWithSize(3),
+		uncommittedDeltaLocs: batch.NewWithSize(3),
+	}
+	//attrs := []string{
+	//	catalog.BlockMeta_ID,
+	//	catalog.BlockMeta_CommitTs,
+	//	catalog.BlockMeta_DeltaLoc}
+	t.committedDeltalocs.Vecs[0] = p.GetVector(types.T_Blockid.ToType())
+	t.committedDeltalocs.Vecs[1] = p.GetVector(types.T_TS.ToType())
+	t.committedDeltalocs.Vecs[2] = p.GetVector(types.T_text.ToType())
+
+	t.uncommittedDeltaLocs.Vecs[0] = p.GetVector(types.T_Blockid.ToType())
+	t.uncommittedDeltaLocs.Vecs[1] = p.GetVector(types.T_TS.ToType())
+	t.uncommittedDeltaLocs.Vecs[2] = p.GetVector(types.T_text.ToType())
+
+	return t
 }
 
 func buildTombstoneV1() *tombstoneDataV1 {
@@ -140,31 +163,25 @@ func (tomV1 *tombstoneDataV1) UnMarshal(buf []byte) error {
 		buf = buf[types.RowidSize:]
 	}
 
-	cntOfUncommit := types.DecodeUint32(buf)
+	sizeOfUncommit := types.DecodeUint32(buf)
 	buf = buf[4:]
-	for i := 0; i < int(cntOfUncommit); i++ {
-		loc := objectio.Location(buf[:objectio.LocationLen])
-		tomV1.uncommittedDeltaLocs = append(tomV1.uncommittedDeltaLocs, loc)
-		buf = buf[objectio.LocationLen:]
-	}
 
-	cntOfCommit := types.DecodeUint32(buf)
+	bat := batch.NewWithSize(3)
+	if err := bat.UnmarshalBinary(buf[:sizeOfUncommit]); err != nil {
+		return err
+	}
+	tomV1.uncommittedDeltaLocs = bat
+	buf = buf[sizeOfUncommit:]
+
+	sizeOfCommit := types.DecodeUint32(buf)
 	buf = buf[4:]
-	for i := 0; i < int(cntOfCommit); i++ {
-		loc := objectio.Location(buf[:objectio.LocationLen])
-		tomV1.committedDeltalocs = append(tomV1.committedDeltalocs, loc)
-		buf = buf[objectio.LocationLen:]
-	}
 
-	if cntOfCommit > 0 {
-		cntOfCommitTS := types.DecodeUint32(buf)
-		buf = buf[4:]
-		for i := 0; i < int(cntOfCommitTS); i++ {
-			ts := types.DecodeFixed[types.TS](buf[:types.TxnTsSize])
-			tomV1.commitTS = append(tomV1.commitTS, ts)
-			buf = buf[types.TxnTsSize:]
-		}
+	bat = batch.NewWithSize(3)
+	if err := bat.UnmarshalBinary(buf[:sizeOfCommit]); err != nil {
+		return err
 	}
+	tomV1.committedDeltalocs = bat
+	buf = buf[sizeOfCommit:]
 	return nil
 }
 
@@ -189,48 +206,46 @@ func (tomV1 *tombstoneDataV1) MarshalWithBuf(w *bytes.Buffer) (uint32, error) {
 		size += types.RowidSize
 	}
 
-	length = uint32(len(tomV1.uncommittedDeltaLocs))
-	if _, err := w.Write(types.EncodeUint32(&length)); err != nil {
+	var sizeOfbat1 uint32
+	pos1 := size
+	if _, err := w.Write(types.EncodeUint32(&sizeOfbat1)); err != nil {
 		return 0, err
 	}
 	size += 4
 
-	for _, loc := range tomV1.uncommittedDeltaLocs {
-		if _, err := w.Write(types.EncodeSlice([]byte(loc))); err != nil {
-			return 0, err
-		}
-		size += uint32(objectio.LocationLen)
+	bytes, err := tomV1.uncommittedDeltaLocs.MarshalBinary()
+	if err != nil {
+		return 0, err
 	}
+	sizeOfbat1 = uint32(len(bytes))
+	//update the size of uncommittedDeltaLocs.
+	copy(w.Bytes()[pos1:pos1+4], types.EncodeUint32(&sizeOfbat1))
 
-	length = uint32(len(tomV1.committedDeltalocs))
-	if _, err := w.Write(types.EncodeUint32(&length)); err != nil {
+	if _, err := w.Write(bytes); err != nil {
+		return 0, err
+	}
+	size += sizeOfbat1
+
+	var sizeOfbat2 uint32
+	pos2 := size
+	if _, err := w.Write(types.EncodeUint32(&sizeOfbat2)); err != nil {
 		return 0, err
 	}
 	size += 4
 
-	for _, loc := range tomV1.committedDeltalocs {
-		if _, err := w.Write(types.EncodeSlice([]byte(loc))); err != nil {
-			return 0, err
-		}
-		size += uint32(objectio.LocationLen)
+	bytes, err = tomV1.committedDeltalocs.MarshalBinary()
+	if err != nil {
+		return 0, err
 	}
+	sizeOfbat2 = uint32(len(bytes))
+	//update the size of committedDeltaLocs.
+	copy(w.Bytes()[pos2:pos2+4], types.EncodeUint32(&sizeOfbat2))
 
-	if length > 0 {
-		length = uint32(len(tomV1.commitTS))
-		if _, err := w.Write(types.EncodeUint32(&length)); err != nil {
-			return 0, err
-		}
-		size += 4
-
-		for _, ts := range tomV1.commitTS {
-			if _, err := w.Write(types.EncodeFixed(ts)); err != nil {
-				return 0, err
-			}
-			size += types.TxnTsSize
-		}
+	if _, err := w.Write(bytes); err != nil {
+		return 0, err
 	}
+	size += sizeOfbat2
 	return size, nil
-
 }
 
 func (tomV1 *tombstoneDataV1) HasTombstones(bid types.Blockid) bool {
@@ -343,10 +358,19 @@ func (tomV1 *tombstoneDataV1) Merge(other engine.Tombstoner) error {
 		tomV1.inMemTombstones = append(tomV1.inMemTombstones, v.inMemTombstones...)
 
 		for i, v := range v.committedDeltalocs.Vecs {
-			tomV1.committedDeltalocs.Vecs[i].UnionBatch()
+			if err := tomV1.committedDeltalocs.Vecs[i].UnionBatch(
+				v, 0, v.Length(), nil, tomV1.mp); err != nil {
+				return err
+			}
 		}
-		tomV1.committedDeltalocs = append(tomV1.committedDeltalocs, v.committedDeltalocs...)
-		tomV1.uncommittedDeltaLocs = append(tomV1.uncommittedDeltaLocs, v.uncommittedDeltaLocs...)
+
+		for i, v := range v.uncommittedDeltaLocs.Vecs {
+			if err := tomV1.uncommittedDeltaLocs.Vecs[i].UnionBatch(
+				v, 0, v.Length(), nil, tomV1.mp); err != nil {
+				return err
+			}
+		}
+
 	}
 	return moerr.NewInternalErrorNoCtx("tombstone type mismatch")
 }
@@ -447,7 +471,8 @@ func UnmarshalRelationData(data []byte) (engine.RelData, error) {
 var _ engine.RelData = new(relationDataBlkInfoListV1)
 
 type relationDataBlkInfoListV1 struct {
-	typ engine.RelDataType
+	proc *process.Process
+	typ  engine.RelDataType
 	//blkList[0] is a empty block info
 	//blkList []*objectio.BlockInfoInProgress
 	blklist *objectio.BlockInfoSliceInProgress
@@ -820,10 +845,16 @@ func (rs *RemoteDataSource) ApplyTombstonesInProgress(
 	if err != nil {
 		return nil, err
 	}
+
+	logutil.Infof("xxxx start to apply committed delta loc, txn:%s",
+		rs.proc.GetTxnOperator().Txn().DebugString())
+
 	rowsOffset, _, err = rs.applyCommittedDeltaLoc(ctx, bid, rowsOffset)
 	if err != nil {
 		return nil, err
 	}
+	logutil.Infof("xxxx finish to apply committed delta loc, txn:%s",
+		rs.proc.GetTxnOperator().Txn().DebugString())
 	return rowsOffset, nil
 }
 
@@ -840,10 +871,17 @@ func (rs *RemoteDataSource) GetTombstonesInProgress(
 	}
 	deletedRows = append(deletedRows, dels...)
 
+	logutil.Infof("xxxx start to get tombstontes , txn:%s",
+		rs.proc.GetTxnOperator().Txn().DebugString())
+
 	_, dels, err = rs.applyCommittedDeltaLoc(ctx, bid, nil)
 	if err != nil {
 		return
 	}
+
+	logutil.Infof("xxxx finish to get tombstontes, txn:%s",
+		rs.proc.GetTxnOperator().Txn().DebugString())
+
 	deletedRows = append(deletedRows, dels...)
 
 	return

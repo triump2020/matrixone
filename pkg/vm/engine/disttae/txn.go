@@ -23,6 +23,7 @@ import (
 
 	"github.com/matrixorigin/matrixone/pkg/catalog"
 	"github.com/matrixorigin/matrixone/pkg/common/moerr"
+	"github.com/matrixorigin/matrixone/pkg/common/mpool"
 	"github.com/matrixorigin/matrixone/pkg/container/batch"
 	"github.com/matrixorigin/matrixone/pkg/container/types"
 	"github.com/matrixorigin/matrixone/pkg/container/vector"
@@ -38,7 +39,6 @@ import (
 	v2 "github.com/matrixorigin/matrixone/pkg/util/metric/v2"
 	"github.com/matrixorigin/matrixone/pkg/vm/engine"
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/disttae/cache"
-	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/blockio"
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/common"
 )
 
@@ -971,21 +971,39 @@ func (txn *Transaction) compactionBlksLocked() error {
 //}
 
 // TODO::remove it after workspace refactor.
-func (txn *Transaction) getUncommittedS3Tombstone(locs *[]objectio.Location) error {
+func (txn *Transaction) getUncommittedS3Tombstone(bat *batch.Batch, p *mpool.MPool) (err error) {
 	txn.blockId_tn_delete_metaLoc_batch.RLock()
 	defer txn.blockId_tn_delete_metaLoc_batch.RUnlock()
-	for _, bats := range txn.blockId_tn_delete_metaLoc_batch.data {
-		for _, bat := range bats {
-			vs, area := vector.MustVarlenaRawData(bat.GetVector(0))
+	var rowCnt int
+
+	for bid, bats := range txn.blockId_tn_delete_metaLoc_batch.data {
+
+		for _, b := range bats {
+
+			vs, area := vector.MustVarlenaRawData(b.GetVector(0))
+
 			for i := range vs {
-				location, err := blockio.EncodeLocationFromString(vs[i].UnsafeGetString(area))
+
+				err = vector.AppendFixed[types.Blockid](bat.GetVector(0), bid, false, p)
 				if err != nil {
-					return err
+					return
 				}
-				*locs = append(*locs, location)
+				err = vector.AppendFixed[types.TS](bat.GetVector(1), types.TS{}, false, p)
+				if err != nil {
+					return
+				}
+
+				loc := vs[i].GetByteSlice(area)
+				err = vector.AppendBytes(bat.GetVector(2), loc, false, p)
+				if err != nil {
+					return
+				}
+				rowCnt++
+
 			}
 		}
 	}
+	bat.SetRowCount(rowCnt)
 	return nil
 }
 
