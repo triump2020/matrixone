@@ -589,8 +589,6 @@ type Tombstoner interface {
 
 	UnMarshal(buf []byte) error
 
-	HasTombstones(bid types.Blockid) bool
-
 	ApplyTombstones(
 		rows []types.Rowid,
 		load1 func(

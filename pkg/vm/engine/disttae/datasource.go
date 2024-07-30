@@ -208,20 +208,6 @@ func (tomb *tombstoneDataWithDeltaLoc) MarshalWithBuf(w *bytes.Buffer) (uint32, 
 
 }
 
-func (tomb *tombstoneDataWithDeltaLoc) HasTombstones(bid types.Blockid) bool {
-
-	if _, ok := tomb.blk2DeltaLoc[bid]; ok {
-		return true
-	}
-	if _, ok := tomb.blk2RowID[bid]; ok {
-		return true
-	}
-	if _, ok := tomb.blk2UncommitDeltaLocs[bid]; ok {
-		return true
-	}
-	return false
-}
-
 func (tomb *tombstoneDataWithDeltaLoc) ApplyInMemTombstones(
 	bid types.Blockid,
 	rowsOffset []int32,
@@ -777,55 +763,6 @@ func (rs *RemoteDataSource) GetTombstonesInProgress(
 	return mask, nil
 }
 
-func (rs *RemoteDataSource) HasTombstones(bid types.Blockid) bool {
-	return rs.data.GetTombstones().HasTombstones(bid)
-}
-
-// ApplyTombstones Apply tombstones into rows.
-// Notice that rows should come from the same block.
-func (rs *RemoteDataSource) ApplyTombstones(rows []types.Rowid) ([]int64, error) {
-	loadCommitted := func(
-		bid types.Blockid,
-		loc objectio.Location,
-		committs types.TS) (*nulls.Nulls, error) {
-		tombstones, err := loadBlockDeletesByDeltaLoc(
-			rs.ctx,
-			rs.fs,
-			bid,
-			loc,
-			rs.ts,
-			committs,
-		)
-		if err != nil {
-			return nil, err
-		}
-		return tombstones, nil
-	}
-	loadUncommited := func(loc objectio.Location) (*nulls.Nulls, error) {
-		rowIdBat, release, err := blockio.LoadTombstoneColumns(
-			rs.ctx,
-			[]uint16{0},
-			nil,
-			rs.fs,
-			loc,
-			rs.proc.GetMPool())
-		if err != nil {
-			return nil, err
-		}
-		defer release()
-
-		offsets := nulls.NewWithSize(0)
-		rowids := vector.MustFixedCol[types.Rowid](rowIdBat.GetVector(0))
-
-		for _, rowid := range rowids {
-			row := rowid.GetRowOffset()
-			offsets.Add(uint64(row))
-		}
-		return offsets, nil
-	}
-	return rs.data.GetTombstones().ApplyTombstones(rows, loadCommitted, loadUncommited)
-}
-
 func (rs *RemoteDataSource) SetOrderBy(orderby []*plan.OrderBySpec) {
 	panic("Not Support order by")
 }
@@ -1026,16 +963,8 @@ func (ls *LocalDataSource) deleteFirstNBlocks(n int) {
 	}
 }
 
-func (ls *LocalDataSource) HasTombstones(bid types.Blockid) bool {
-	panic("implement me")
-}
-
 func (ls *LocalDataSource) Close() {
 	ls.pStateRows.insIter.Close()
-}
-
-func (ls *LocalDataSource) ApplyTombstones(rows []types.Rowid) (sel []int64, err error) {
-	panic("implement me")
 }
 
 func (ls *LocalDataSource) Next(
