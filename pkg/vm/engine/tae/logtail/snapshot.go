@@ -212,7 +212,7 @@ func (d *DeltaLocDataSource) GetTombstonesInProgress(
 	if err != nil {
 		return
 	}
-	if rows.IsEmpty() {
+	if rows == nil || rows.IsEmpty() {
 		return
 	}
 	return rows, nil
