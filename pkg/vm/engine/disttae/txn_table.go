@@ -1982,7 +1982,6 @@ func (tbl *txnTable) PKPersistedBetween(
 	//only check data objects.
 	delObjs, cObjs := p.GetChangedObjsBetween(from.Next(), types.MaxTs())
 	isFakePK := tbl.GetTableDef(ctx).Pkey.PkeyColName == catalog.FakePrimaryKeyColName
-
 	if err := ForeachCommittedObjects(cObjs, delObjs, p,
 		func(obj logtailreplay.ObjectInfo) (err2 error) {
 			var zmCkecked bool
@@ -2051,9 +2050,8 @@ func (tbl *txnTable) PKPersistedBetween(
 					blk.EntryState = obj.EntryState
 					blk.CommitTs = obj.CommitTS
 					if obj.HasDeltaLoc {
-						deltaLoc, commitTs, ok := p.GetBockDeltaLoc(blk.BlockID)
+						_, commitTs, ok := p.GetBockDeltaLoc(blk.BlockID)
 						if ok {
-							blk.DeltaLoc = deltaLoc
 							blk.CommitTs = commitTs
 						}
 					}
