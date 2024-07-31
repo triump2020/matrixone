@@ -460,7 +460,6 @@ func (sm *SnapshotMeta) GetSnapshot(ctx context.Context, sid string, fs fileserv
 	}
 	for _, objectMap := range objects {
 		checkpointTS := types.BuildTS(time.Now().UTC().UnixNano(), 0)
-		NewOMapDeltaSource(objectMap)
 		ds := NewDeltaLocDataSource(ctx, fs, checkpointTS, NewOMapDeltaSource(objectMap))
 		for _, object := range objectMap {
 			location := object.stats.ObjectLocation()

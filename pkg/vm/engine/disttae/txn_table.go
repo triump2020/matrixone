@@ -2223,7 +2223,6 @@ func (tbl *txnTable) transferDeletes(
 			beTransfered := 0
 			toTransfer := 0
 			for i, rowid := range rowids {
-				logutil.Infof("transferDeletes: check rowid %v", rowid.String())
 				blkid, _ := rowid.Decode()
 				if _, ok := deleteObjs[*objectio.ShortName(&blkid)]; ok {
 					toTransfer++
@@ -2309,7 +2308,6 @@ func (tbl *txnTable) readNewRowid(
 			continue
 		}
 		// rowid + pk
-		logutil.Infof("readNewRowid: read block %v", blk.MetaLocation().String())
 		bat, err := blockio.BlockDataRead(
 			tbl.proc.Load().Ctx, tbl.proc.Load().GetService(), &blk, ds, columns, colTypes, tbl.db.op.SnapshotTS(),
 			nil, nil, blockio.BlockReadFilter{},
@@ -2318,7 +2316,6 @@ func (tbl *txnTable) readNewRowid(
 		if err != nil {
 			return rowid, false, err
 		}
-		logutil.Infof("readNewRowid: start %d ", bat.Vecs[0].Length())
 		vec, err := colexec.EvalExpressionOnce(tbl.getTxn().proc, filter, []*batch.Batch{bat})
 		if err != nil {
 			return rowid, false, err
@@ -2327,7 +2324,6 @@ func (tbl *txnTable) readNewRowid(
 		for i, b := range bs {
 			if b {
 				rowids := vector.MustFixedCol[types.Rowid](bat.Vecs[0])
-				logutil.Infof("readNewRowid: end %v", rowids[i].String())
 				vec.Free(tbl.proc.Load().Mp())
 				bat.Clean(tbl.proc.Load().Mp())
 				return rowids[i], true, nil

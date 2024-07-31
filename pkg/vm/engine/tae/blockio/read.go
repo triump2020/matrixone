@@ -427,12 +427,6 @@ func BlockDataReadInner(
 		return
 	}
 	defer release()
-	for _, vec := range loaded.Vecs {
-		if vec != nil {
-			logutil.Infof("read block %s, columns %v, types %v, loaded %d", info.BlockID.String(), columns, colTypes, vec.Length())
-			break
-		}
-	}
 	// assemble result batch for return
 	result = batch.NewWithSize(len(loaded.Vecs))
 
