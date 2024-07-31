@@ -831,11 +831,11 @@ func readBlockDataInprogress(
 			return
 		}
 
-		logutil.Infof("readBlockDataInprogress: %v, metaloc : %v", info.BlockID.String(), info.MetaLocation().String())
 		if loaded, release, err = LoadColumns(ctx, cols, typs, fs, info.MetaLocation(), m, policy); err != nil {
 			return
 		}
-
+		logutil.Infof("readBlockDataInprogress: %v, metaloc : %v, loaded is %d", info.BlockID.String(), info.MetaLocation().String(), loaded.String())
+		logutil.Infof("readBlockDataInprogress111: %v, metaloc : %v, loaded is %d", info.BlockID.String(), info.MetaLocation().String(), loaded.Vecs[0].Length())
 		colPos := 0
 		result = batch.NewWithSize(len(colTypes))
 		for i, typ := range colTypes {
