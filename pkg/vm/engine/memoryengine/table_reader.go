@@ -292,7 +292,7 @@ func (rd *MemRelationData) GetType() engine.RelDataType {
 	return engine.RelDataShardIDList
 }
 
-func (rd MemRelationData) UnMarshal(buf []byte) error {
+func (rd MemRelationData) UnmarshalBinary(buf []byte) error {
 	panic("Not Support")
 }
 

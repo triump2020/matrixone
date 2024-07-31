@@ -299,18 +299,18 @@ func (mr *MockTombstonerMockRecorder) Type() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Type", reflect.TypeOf((*MockTombstoner)(nil).Type))
 }
 
-// UnMarshal mocks base method.
-func (m *MockTombstoner) UnMarshal(buf []byte) error {
+// UnmarshalBinary mocks base method.
+func (m *MockTombstoner) UnmarshalBinary(buf []byte) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UnMarshal", buf)
+	ret := m.ctrl.Call(m, "UnmarshalBinary", buf)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// UnMarshal indicates an expected call of UnMarshal.
-func (mr *MockTombstonerMockRecorder) UnMarshal(buf interface{}) *gomock.Call {
+// UnmarshalBinary indicates an expected call of UnmarshalBinary.
+func (mr *MockTombstonerMockRecorder) UnmarshalBinary(buf interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnMarshal", reflect.TypeOf((*MockTombstoner)(nil).UnMarshal), buf)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnmarshalBinary", reflect.TypeOf((*MockTombstoner)(nil).UnmarshalBinary), buf)
 }
 
 // MockRelData is a mock of RelData interface.
@@ -553,18 +553,18 @@ func (mr *MockRelDataMockRecorder) SetShardID(i, id interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetShardID", reflect.TypeOf((*MockRelData)(nil).SetShardID), i, id)
 }
 
-// UnMarshal mocks base method.
-func (m *MockRelData) UnMarshal(buf []byte) error {
+// UnmarshalBinary mocks base method.
+func (m *MockRelData) UnmarshalBinary(buf []byte) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UnMarshal", buf)
+	ret := m.ctrl.Call(m, "UnmarshalBinary", buf)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// UnMarshal indicates an expected call of UnMarshal.
-func (mr *MockRelDataMockRecorder) UnMarshal(buf interface{}) *gomock.Call {
+// UnmarshalBinary indicates an expected call of UnmarshalBinary.
+func (mr *MockRelDataMockRecorder) UnmarshalBinary(buf interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnMarshal", reflect.TypeOf((*MockRelData)(nil).UnMarshal), buf)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnmarshalBinary", reflect.TypeOf((*MockRelData)(nil).UnmarshalBinary), buf)
 }
 
 // MockDataSource is a mock of DataSource interface.

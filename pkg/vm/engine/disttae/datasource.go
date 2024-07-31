@@ -70,7 +70,7 @@ func (tomb *tombstoneDataWithDeltaLoc) HasTombstones() bool {
 	return true
 }
 
-func (tomb *tombstoneDataWithDeltaLoc) UnMarshal(buf []byte) error {
+func (tomb *tombstoneDataWithDeltaLoc) UnmarshalBinary(buf []byte) error {
 	tomb.typ = engine.TombstoneType(types.DecodeUint8(buf))
 	buf = buf[1:]
 
@@ -336,7 +336,7 @@ func UnmarshalRelationData(data []byte) (engine.RelData, error) {
 	switch typ {
 	case engine.RelDataBlockList:
 		relData := buildBlockListRelationData()
-		if err := relData.UnMarshal(data); err != nil {
+		if err := relData.UnmarshalBinary(data); err != nil {
 			return nil, err
 		}
 		return relData, nil
@@ -396,7 +396,7 @@ func (relData *blockListRelData) AppendBlockInfo(blk objectio.BlockInfoInProgres
 	relData.blklist.AppendBlockInfo(blk)
 }
 
-func (relData *blockListRelData) UnMarshal(data []byte) error {
+func (relData *blockListRelData) UnmarshalBinary(data []byte) error {
 	data = data[1:]
 
 	sizeofblks := types.DecodeUint32(data)
@@ -419,7 +419,7 @@ func (relData *blockListRelData) UnMarshal(data []byte) error {
 		switch tombstoneTyp {
 		case engine.TombstoneWithDeltaLoc:
 			tombstoner := buildTombstoneWithDeltaLoc()
-			if err := tombstoner.UnMarshal(data[:size]); err != nil {
+			if err := tombstoner.UnmarshalBinary(data[:size]); err != nil {
 				return err
 			}
 			relData.AttachTombstones(tombstoner)
