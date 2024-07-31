@@ -2299,6 +2299,7 @@ func (tbl *txnTable) readNewRowid(
 		if err != nil {
 			return rowid, false, err
 		}
+		logutil.Infof("readNewRowid: start")
 		vec, err := colexec.EvalExpressionOnce(tbl.getTxn().proc, filter, []*batch.Batch{bat})
 		if err != nil {
 			return rowid, false, err
@@ -2307,6 +2308,7 @@ func (tbl *txnTable) readNewRowid(
 		for i, b := range bs {
 			if b {
 				rowids := vector.MustFixedCol[types.Rowid](bat.Vecs[0])
+				logutil.Infof("readNewRowid: end %v", rowids[i].String())
 				vec.Free(tbl.proc.Load().Mp())
 				bat.Clean(tbl.proc.Load().Mp())
 				return rowids[i], true, nil
