@@ -875,6 +875,7 @@ func readBlockDataInprogress(
 		bat, deleteMask, err = readABlkColumns(idxes)
 	} else {
 		bat, _, err = readColumns(idxes)
+		logutil.Infof("readBlockDataInprogress23: %v, metaloc : %v, bat is %d", info.BlockID.String(), info.MetaLocation().String(), bat.Vecs[0].Length())
 	}
 
 	return
