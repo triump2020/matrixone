@@ -2199,13 +2199,11 @@ func (tbl *txnTable) transferDeletes(
 					if obj.HasDeltaLoc {
 						deltaLoc, commitTs, ok := state.GetBockDeltaLoc(blkInfo.BlockID)
 						if ok {
-							logutil.Infof("transferDeletes: get block %v deltaLoc %v", blkInfo.BlockID.String(), objectio.Location(deltaLoc[:]).String())
 							deltaMap[blkInfo.BlockID] = deltaLoc[:]
 							blkInfo.CommitTs = commitTs
 						}
 					}
 					blks = append(blks, blkInfo)
-					logutil.Infof("transferDeletes: add block %v", blkInfo.BlockID.String())
 				}
 			}
 		}
