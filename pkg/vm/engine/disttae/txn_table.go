@@ -2229,6 +2229,12 @@ func (tbl *txnTable) transferDeletes(
 						MetaLoc:    *(*[objectio.LocationLen]byte)(unsafe.Pointer(&metaLoc[0])),
 						CommitTs:   obj.CommitTS,
 					}
+					if obj.HasDeltaLoc {
+						_, commitTs, ok := state.GetBockDeltaLoc(blkInfo.BlockID)
+						if ok {
+							blkInfo.CommitTs = commitTs
+						}
+					}
 					blks = append(blks, blkInfo)
 				}
 			}
