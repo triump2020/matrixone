@@ -2208,6 +2208,7 @@ func (tbl *txnTable) transferDeletes(
 			beTransfered := 0
 			toTransfer := 0
 			for i, rowid := range rowids {
+				logutil.Infof("transferDeletes: check rowid %v", rowid.String())
 				blkid, _ := rowid.Decode()
 				if _, ok := deleteObjs[*objectio.ShortName(&blkid)]; ok {
 					toTransfer++
@@ -2293,6 +2294,7 @@ func (tbl *txnTable) readNewRowid(
 			continue
 		}
 		// rowid + pk
+		logutil.Infof("readNewRowid: read block %v", blk.MetaLocation().String())
 		bat, err := blockio.BlockDataRead(
 			tbl.proc.Load().Ctx, tbl.proc.Load().GetService(), &blk, ds, columns, colTypes, tbl.db.op.SnapshotTS(),
 			nil, nil, blockio.BlockReadFilter{},
