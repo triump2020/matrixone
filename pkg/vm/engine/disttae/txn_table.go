@@ -25,8 +25,6 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/logtail"
-
 	"github.com/docker/go-units"
 	"go.uber.org/zap"
 
@@ -1809,7 +1807,7 @@ func BuildLocalDataSource(
 		tbl = rel.(*txnTableDelegate).origin
 	}
 
-	return tbl.buildLocalDataSource(ctx, txnOffset, ranges, SkipCheckPolicy(0))
+	return tbl.buildLocalDataSource(ctx, txnOffset, ranges, CheckAll)
 }
 
 func (tbl *txnTable) buildLocalDataSource(
@@ -1893,7 +1891,7 @@ func (tbl *txnTable) BuildReaders(
 		} else {
 			shard = relData.DataSlice(i*divide+mod, (i+1)*divide+mod)
 		}
-		ds, err := tbl.buildLocalDataSource(ctx, txnOffset, shard, 0)
+		ds, err := tbl.buildLocalDataSource(ctx, txnOffset, shard, CheckAll)
 		if err != nil {
 			return nil, err
 		}
@@ -2188,9 +2186,9 @@ func (tbl *txnTable) transferDeletes(
 ) error {
 	var blks []objectio.BlockInfoInProgress
 	sid := tbl.proc.Load().GetService()
-	relData := buildRelationDataV1()
+	relData := buildBlockListRelationData()
 	relData.AppendBlockInfo(objectio.EmptyBlockInfoInProgress)
-	ds, err := tbl.buildLocalDataSource(ctx, 0, relData, SkipCheckPolicy(SkipCheckAll))
+	ds, err := tbl.buildLocalDataSource(ctx, 0, relData, SkipCheckPolicy(CheckCommittedS3Only))
 	if err != nil {
 		return err
 	}
