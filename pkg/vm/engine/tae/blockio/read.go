@@ -427,7 +427,12 @@ func BlockDataReadInner(
 		return
 	}
 	defer release()
-	logutil.Infof("read block %s, columns %v, types %v, loaded %d", info.BlockID.String(), columns, colTypes, loaded.Vecs[1].Length())
+	for _, vec := range loaded.Vecs {
+		if vec != nil {
+			logutil.Infof("read block %s, columns %v, types %v, loaded %d", info.BlockID.String(), columns, colTypes, vec.Length())
+			break
+		}
+	}
 	// assemble result batch for return
 	result = batch.NewWithSize(len(loaded.Vecs))
 
@@ -841,7 +846,7 @@ func readBlockDataInprogress(
 		for i, typ := range colTypes {
 			if typ.Oid != types.T_Rowid {
 				result.Vecs[i] = loaded.Vecs[colPos]
-				logutil.Infof("colPos is %d", colPos)
+				logutil.Infof("colPos is %d, i %d", colPos, i)
 				colPos++
 			}
 		}
@@ -876,7 +881,12 @@ func readBlockDataInprogress(
 		bat, deleteMask, err = readABlkColumns(idxes)
 	} else {
 		bat, _, err = readColumns(idxes)
-		logutil.Infof("readBlockDataInprogress23: %v, metaloc : %v, bat is %d", info.BlockID.String(), info.MetaLocation().String(), bat.Vecs[1].Length())
+		for i := 0; i < len(bat.Vecs); i++ {
+			if bat.Vecs[i] != nil {
+				logutil.Infof("readBlockDataInprogress23: %v, metaloc : %v, bat is %d", info.BlockID.String(), info.MetaLocation().String(), bat.Vecs[i].Length())
+				break
+			}
+		}
 	}
 
 	return
