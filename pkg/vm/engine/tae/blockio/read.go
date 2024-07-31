@@ -205,7 +205,7 @@ func BlockDataReadNoCopy(
 			loaded.Vecs[rowidPos].Free(mp)
 		}
 	}
-
+	loaded.SetRowCount(loaded.Vecs[0].Length())
 	return loaded, &deleteMask, release, nil
 }
 
