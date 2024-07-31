@@ -1562,9 +1562,8 @@ func (ls *LocalDataSource) batchPrefetch(seqNums []uint16) {
 	}
 
 	// prefetch blk data
-	err := blockio.BlockPrefetchInProgress(
-		ls.table.proc.Load().GetService(), seqNums, ls.fs,
-		[][]*objectio.BlockInfoInProgress{blks}, true)
+	err := blockio.BlockPrefetch(
+		ls.table.proc.Load().GetService(), seqNums, ls.fs, blks, true)
 	if err != nil {
 		logutil.Errorf("pefetch block data: %s", err.Error())
 	}

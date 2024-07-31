@@ -1040,52 +1040,22 @@ func BlockPrefetch(
 	sid string,
 	idxes []uint16,
 	service fileservice.FileService,
-	infos [][]*objectio.BlockInfo,
+	infos []*objectio.BlockInfoInProgress,
 	prefetchFile bool,
 ) error {
-	// Generate prefetch task
-	for i := range infos {
-		// build reader
-		pref, err := BuildPrefetchParams(service, infos[i][0].MetaLocation())
-		if err != nil {
-			return err
-		}
-		for _, info := range infos[i] {
-			pref.AddBlock(idxes, []uint16{info.MetaLocation().ID()})
-			if !info.DeltaLocation().IsEmpty() {
-				// Need to read all delete
-				err = PrefetchTombstone(sid, []uint16{0, 1, 2}, []uint16{info.DeltaLocation().ID()}, service, info.DeltaLocation())
-				if err != nil {
-					return err
-				}
-			}
-		}
-		pref.prefetchFile = prefetchFile
-		err = MustGetPipeline(sid).Prefetch(pref)
-		if err != nil {
-			return err
-		}
+	if len(infos) == 0 {
+		return nil
 	}
-	return nil
-}
 
-func BlockPrefetchInProgress(
-	sid string,
-	idxes []uint16,
-	service fileservice.FileService,
-	infos [][]*objectio.BlockInfoInProgress,
-	prefetchFile bool,
-) error {
+	// build reader
+	pref, err := BuildPrefetchParams(service, infos[0].MetaLocation())
+	if err != nil {
+		return err
+	}
+
 	// Generate prefetch task
 	for i := range infos {
-		// build reader
-		pref, err := BuildPrefetchParams(service, infos[i][0].MetaLocation())
-		if err != nil {
-			return err
-		}
-		for _, info := range infos[i] {
-			pref.AddBlock(idxes, []uint16{info.MetaLocation().ID()})
-		}
+		pref.AddBlock(idxes, []uint16{infos[i].MetaLocation().ID()})
 		pref.prefetchFile = prefetchFile
 		err = MustGetPipeline(sid).Prefetch(pref)
 		if err != nil {

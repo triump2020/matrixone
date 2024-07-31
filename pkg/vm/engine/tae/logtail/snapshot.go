@@ -115,23 +115,26 @@ var (
 )
 
 type DeltaLocDataSource struct {
-	ctx        context.Context
-	fs         fileservice.FileService
-	ts         types.TS
-	objectMeta map[objectio.Segmentid]*objectInfo
+	ctx  context.Context
+	fs   fileservice.FileService
+	ts   types.TS
+	blks map[objectio.Blockid]*objectio.Location
+	//objectMeta map[objectio.Segmentid]*objectInfo
 }
 
 func NewDeltaLocDataSource(
 	ctx context.Context,
 	fs fileservice.FileService,
 	ts types.TS,
-	objectMeta map[objectio.Segmentid]*objectInfo,
+	blks map[objectio.Blockid]*objectio.Location,
+	// objectMeta map[objectio.Segmentid]*objectInfo,
 ) *DeltaLocDataSource {
 	return &DeltaLocDataSource{
-		ctx:        ctx,
-		fs:         fs,
-		ts:         ts,
-		objectMeta: objectMeta,
+		ctx:  ctx,
+		fs:   fs,
+		ts:   ts,
+		blks: blks,
+		//objectMeta: objectMeta,
 	}
 }
 
@@ -188,8 +191,7 @@ func (d *DeltaLocDataSource) GetTombstonesInProgress(
 func (d *DeltaLocDataSource) getAndApplyTombstonesInProgress(
 	ctx context.Context, bid objectio.Blockid,
 ) (*nulls.Bitmap, error) {
-	segment := bid.Segment()
-	deltaLoc := d.objectMeta[*segment].deltaLocation[uint32(bid.Sequence())]
+	deltaLoc := d.blks[bid]
 	if deltaLoc == nil {
 		return nil, nil
 	}
@@ -410,6 +412,24 @@ func (sm *SnapshotMeta) Update(data *CheckpointData) *SnapshotMeta {
 	return nil
 }
 
+func buildDeltaLocDataSourceByObjectMap(
+	ctx context.Context,
+	fs fileservice.FileService,
+	ts types.TS,
+	objectMap map[objectio.Segmentid]*objectInfo) *DeltaLocDataSource {
+	blks := make(map[objectio.Blockid]*objectio.Location)
+
+	for _, object := range objectMap {
+		name := object.stats.ObjectName()
+		for i := uint32(0); i < object.stats.BlkCnt(); i++ {
+			bid := objectio.BuildObjectBlockid(name, uint16(i))
+			blks[*bid] = object.deltaLocation[i]
+		}
+	}
+
+	return NewDeltaLocDataSource(ctx, fs, ts, blks)
+}
+
 func (sm *SnapshotMeta) GetSnapshot(ctx context.Context, sid string, fs fileservice.FileService, mp *mpool.MPool) (map[uint32]containers.Vector, error) {
 	now := time.Now()
 	defer func() {
@@ -428,7 +448,7 @@ func (sm *SnapshotMeta) GetSnapshot(ctx context.Context, sid string, fs fileserv
 	}
 	for _, objectMap := range objects {
 		checkpointTS := types.BuildTS(time.Now().UTC().UnixNano(), 0)
-		ds := NewDeltaLocDataSource(ctx, fs, checkpointTS, objectMap)
+		ds := buildDeltaLocDataSourceByObjectMap(ctx, fs, checkpointTS, objectMap)
 		for _, object := range objectMap {
 			location := object.stats.ObjectLocation()
 			name := object.stats.ObjectName()
