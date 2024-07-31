@@ -757,8 +757,19 @@ type LocalDataSource struct {
 	sorted   bool // blks need to be sorted by zonemap
 	OrderBy  []*plan.OrderBySpec
 
-	filterZM objectio.ZoneMap
+	filterZM    objectio.ZoneMap
+	checkPolicy SkipCheckDeletes
 }
+
+type SkipCheckDeletes uint64
+
+const (
+	SkipCheckWorkSpace = 1 << iota
+	SkipCheckCommittedInMem
+	SkipCheckCommittedS3
+)
+
+const SkipCheckAll = SkipCheckWorkSpace | SkipCheckCommittedInMem | SkipCheckCommittedS3
 
 func NewLocalDataSource(
 	ctx context.Context,
@@ -766,12 +777,14 @@ func NewLocalDataSource(
 	txnOffset int,
 	rangesSlice objectio.BlockInfoSliceInProgress,
 	skipReadMem bool,
+	policy SkipCheckDeletes,
 ) (source *LocalDataSource, err error) {
 
 	source = &LocalDataSource{}
 	source.fs = table.getTxn().engine.fs
 	source.ctx = ctx
 	source.mp = table.proc.Load().Mp()
+	source.checkPolicy = policy
 
 	if rangesSlice != nil && rangesSlice.Len() > 0 {
 		if bytes.Equal(
@@ -1291,14 +1304,23 @@ func (ls *LocalDataSource) GetTombstonesInProgress(
 	deletedRows = &nulls.Nulls{}
 	deletedRows.InitWithSize(8192)
 
-	ls.applyWorkspaceEntryDeletes(bid, nil, deletedRows)
-	_, err = ls.applyWorkspaceFlushedS3Deletes(bid, nil, deletedRows)
-	if err != nil {
-		return nil, err
+	if ls.checkPolicy&SkipCheckWorkSpace == 0 {
+		ls.applyWorkspaceEntryDeletes(bid, nil, deletedRows)
+	}
+	if ls.checkPolicy&SkipCheckCommittedS3 == 0 {
+		_, err = ls.applyWorkspaceFlushedS3Deletes(bid, nil, deletedRows)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	ls.applyWorkspaceRawRowIdDeletes(bid, nil, deletedRows)
-	ls.applyPStateInMemDeletes(bid, nil, deletedRows)
+	if ls.checkPolicy&SkipCheckWorkSpace == 0 {
+		ls.applyWorkspaceRawRowIdDeletes(bid, nil, deletedRows)
+	}
+
+	if ls.checkPolicy&SkipCheckCommittedInMem == 0 {
+		ls.applyPStateInMemDeletes(bid, nil, deletedRows)
+	}
 
 	_, err = ls.applyPStatePersistedDeltaLocation(bid, nil, deletedRows)
 	if err != nil {
