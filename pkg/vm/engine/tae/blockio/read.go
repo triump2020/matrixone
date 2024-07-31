@@ -835,12 +835,13 @@ func readBlockDataInprogress(
 			return
 		}
 		logutil.Infof("readBlockDataInprogress: %v, metaloc : %v, loaded is %d", info.BlockID.String(), info.MetaLocation().String(), loaded.String())
-		logutil.Infof("readBlockDataInprogress111: %v, metaloc : %v, loaded is %d", info.BlockID.String(), info.MetaLocation().String(), loaded.Vecs[0].Length())
+		logutil.Infof("readBlockDataInprogress111: %v, metaloc : %v, loaded is %d, len(colTypes) is %d", info.BlockID.String(), info.MetaLocation().String(), loaded.Vecs[0].Length(), len(colTypes))
 		colPos := 0
 		result = batch.NewWithSize(len(colTypes))
 		for i, typ := range colTypes {
 			if typ.Oid != types.T_Rowid {
 				result.Vecs[i] = loaded.Vecs[colPos]
+				logutil.Infof("colPos is %d", colPos)
 				colPos++
 			}
 		}
