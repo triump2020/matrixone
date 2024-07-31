@@ -2156,9 +2156,13 @@ func (tbl *txnTable) transferDeletes(
 	createObjs map[objectio.ObjectNameShort]struct{},
 ) error {
 	var blks []objectio.BlockInfoInProgress
-	deltaMap := make(map[objectio.Blockid]objectio.Location)
 	sid := tbl.proc.Load().GetService()
-	var ds *logtail.DeltaLocDataSource
+	relData := buildRelationDataV1()
+	relData.AppendBlockInfo(objectio.EmptyBlockInfoInProgress)
+	ds, err := tbl.buildLocalDataSource(ctx, 0, relData)
+	if err != nil {
+		return err
+	}
 	{
 		fs, err := fileservice.Get[fileservice.FileService](
 			tbl.proc.Load().GetFileService(),
@@ -2196,20 +2200,10 @@ func (tbl *txnTable) transferDeletes(
 						MetaLoc:    *(*[objectio.LocationLen]byte)(unsafe.Pointer(&metaLoc[0])),
 						CommitTs:   obj.CommitTS,
 					}
-					if obj.HasDeltaLoc {
-						deltaLoc, commitTs, ok := state.GetBockDeltaLoc(blkInfo.BlockID)
-						if ok {
-							deltaMap[blkInfo.BlockID] = deltaLoc[:]
-							blkInfo.CommitTs = commitTs
-						}
-					}
 					blks = append(blks, blkInfo)
 				}
 			}
 		}
-		ds = logtail.NewDeltaLocDataSource(
-			ctx, fs, types.TimestampToTS(tbl.db.op.SnapshotTS()),
-			logtail.NewBMapDeltaSource(deltaMap))
 
 	}
 
@@ -2255,7 +2249,7 @@ func (tbl *txnTable) transferDeletes(
 }
 
 func (tbl *txnTable) readNewRowid(
-	vec *vector.Vector, row int, blks []objectio.BlockInfoInProgress, ds *logtail.DeltaLocDataSource,
+	vec *vector.Vector, row int, blks []objectio.BlockInfoInProgress, ds engine.DataSource,
 ) (types.Rowid, bool, error) {
 	var auxIdCnt int32
 	var typ plan.Type
