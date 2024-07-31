@@ -620,7 +620,7 @@ type RelData interface {
 	// general interface
 
 	GetType() RelDataType
-	MarshalToBytes() []byte
+	MarshalBinary() ([]byte, error)
 	UnMarshal(buf []byte) error
 	AttachTombstones(tombstones Tombstoner) error
 	GetTombstones() Tombstoner
@@ -955,7 +955,7 @@ func (rd *EmptyRelationData) GetType() RelDataType {
 	return rd.typ
 }
 
-func (rd *EmptyRelationData) MarshalToBytes() []byte {
+func (rd *EmptyRelationData) MarshalBinary() ([]byte, error) {
 	panic("Not Supported")
 }
 

@@ -284,7 +284,7 @@ func (rd *MemRelationData) AppendShardID(id uint64) {
 	rd.Shards.Append(bb)
 }
 
-func (rd *MemRelationData) MarshalToBytes() []byte {
+func (rd *MemRelationData) MarshalBinary() ([]byte, error) {
 	panic("Not Support")
 }
 

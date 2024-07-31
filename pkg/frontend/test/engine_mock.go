@@ -514,18 +514,19 @@ func (mr *MockRelDataMockRecorder) GroupByPartitionNum() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GroupByPartitionNum", reflect.TypeOf((*MockRelData)(nil).GroupByPartitionNum))
 }
 
-// MarshalToBytes mocks base method.
-func (m *MockRelData) MarshalToBytes() []byte {
+// MarshalBinary mocks base method.
+func (m *MockRelData) MarshalBinary() ([]byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MarshalToBytes")
+	ret := m.ctrl.Call(m, "MarshalBinary")
 	ret0, _ := ret[0].([]byte)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
-// MarshalToBytes indicates an expected call of MarshalToBytes.
-func (mr *MockRelDataMockRecorder) MarshalToBytes() *gomock.Call {
+// MarshalBinary indicates an expected call of MarshalBinary.
+func (mr *MockRelDataMockRecorder) MarshalBinary() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarshalToBytes", reflect.TypeOf((*MockRelData)(nil).MarshalToBytes))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarshalBinary", reflect.TypeOf((*MockRelData)(nil).MarshalBinary))
 }
 
 // SetBlockInfo mocks base method.

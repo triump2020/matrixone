@@ -484,13 +484,13 @@ func (relData *blockListRelData) GetType() engine.RelDataType {
 	return relData.typ
 }
 
-func (relData *blockListRelData) MarshalToBytes() []byte {
+func (relData *blockListRelData) MarshalBinary() ([]byte, error) {
 	var w bytes.Buffer
 	if err := relData.MarshalWithBuf(&w); err != nil {
-		return nil
+		return nil, err
 	}
 	buf := w.Bytes()
-	return buf
+	return buf, nil
 }
 
 func (relData *blockListRelData) AttachTombstones(tombstones engine.Tombstoner) error {
