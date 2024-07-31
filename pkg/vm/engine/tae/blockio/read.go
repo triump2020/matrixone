@@ -980,12 +980,14 @@ func BlockPrefetch(
 	// Generate prefetch task
 	for i := range infos {
 		pref.AddBlock(idxes, []uint16{infos[i].MetaLocation().ID()})
-		pref.prefetchFile = prefetchFile
-		err = MustGetPipeline(sid).Prefetch(pref)
-		if err != nil {
-			return err
-		}
 	}
+
+	pref.prefetchFile = prefetchFile
+	err = MustGetPipeline(sid).Prefetch(pref)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
