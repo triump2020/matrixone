@@ -1069,6 +1069,8 @@ func (ls *LocalDataSource) sortBlockList() {
 		helper[i].blk = ls.rangeSlice.Get(i)
 		helper[i].zm = ls.blockZMS[i]
 	}
+	ls.rangeSlice = make(objectio.BlockInfoSliceInProgress, ls.rangeSlice.Size())
+
 	if ls.desc {
 		sort.Slice(helper, func(i, j int) bool {
 			zm1 := helper[i].zm
@@ -1758,10 +1760,10 @@ func (ls *LocalDataSource) batchPrefetch(seqNums []uint16) {
 		return
 	}
 
-	batchSize := min(1000, ls.rangeSlice.Len()-ls.rc.batchPrefetchCursor)
+	batchSize := min(1000, ls.rangeSlice.Len()-ls.rangesCursor)
 
-	begin := ls.rc.batchPrefetchCursor
-	end := ls.rc.batchPrefetchCursor + batchSize
+	begin := ls.rangesCursor
+	end := ls.rangesCursor + batchSize
 
 	blks := make([]*objectio.BlockInfoInProgress, end-begin)
 	for idx := begin; idx < end; idx++ {
@@ -1833,5 +1835,5 @@ func (ls *LocalDataSource) batchPrefetch(seqNums []uint16) {
 		}
 	}
 
-	ls.rc.batchPrefetchCursor += batchSize
+	ls.rc.batchPrefetchCursor = end
 }
