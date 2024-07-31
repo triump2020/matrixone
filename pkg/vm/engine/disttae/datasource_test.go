@@ -31,7 +31,7 @@ import (
 func Test_TombstoneMarshalUnMarshal(t *testing.T) {
 
 	t.Run("only has row id", func(t *testing.T) {
-		original := tombstoneDataV1{}
+		original := tombstoneDataWithDeltaLoc{}
 		original.typ = 1
 		for idx := 0; idx < 100; idx++ {
 			original.inMemTombstones = append(original.inMemTombstones, types.RandomRowid())
@@ -39,7 +39,7 @@ func Test_TombstoneMarshalUnMarshal(t *testing.T) {
 			buf := new(bytes.Buffer)
 			_, err := original.MarshalWithBuf(buf)
 			require.NoError(t, err)
-			copied := tombstoneDataV1{}
+			copied := tombstoneDataWithDeltaLoc{}
 			require.NoError(t, copied.UnMarshal(buf.Bytes()))
 
 			require.Equal(t, original.typ, copied.typ)
@@ -48,7 +48,7 @@ func Test_TombstoneMarshalUnMarshal(t *testing.T) {
 	})
 
 	t.Run("only has un committed delta loc", func(t *testing.T) {
-		original := tombstoneDataV1{}
+		original := tombstoneDataWithDeltaLoc{}
 		original.typ = 1
 
 		bat := batch.NewWithSize(3)
@@ -75,7 +75,7 @@ func Test_TombstoneMarshalUnMarshal(t *testing.T) {
 		_, err := original.MarshalWithBuf(buf)
 		require.NoError(t, err)
 
-		copied := tombstoneDataV1{}
+		copied := tombstoneDataWithDeltaLoc{}
 
 		require.NoError(t, copied.UnMarshal(buf.Bytes()))
 
@@ -94,7 +94,7 @@ func Test_TombstoneMarshalUnMarshal(t *testing.T) {
 	})
 
 	t.Run("has all fields", func(t *testing.T) {
-		original := tombstoneDataV1{}
+		original := tombstoneDataWithDeltaLoc{}
 		original.typ = 1
 
 		bat := batch.NewWithSize(3)
@@ -122,7 +122,7 @@ func Test_TombstoneMarshalUnMarshal(t *testing.T) {
 		_, err := original.MarshalWithBuf(buf)
 		require.NoError(t, err)
 
-		copied := tombstoneDataV1{}
+		copied := tombstoneDataWithDeltaLoc{}
 
 		require.NoError(t, copied.UnMarshal(buf.Bytes()))
 
@@ -170,9 +170,9 @@ func TestRelationDataV1_MarshalAndUnMarshal(t *testing.T) {
 		relData.AppendBlockInfo(blkInfo)
 	}
 
-	buildTombstoner := func() *tombstoneDataV1 {
-		tombstoner := &tombstoneDataV1{
-			typ: engine.TombstoneV1,
+	buildTombstoner := func() *tombstoneDataWithDeltaLoc {
+		tombstoner := &tombstoneDataWithDeltaLoc{
+			typ: engine.TombstoneWithDeltaLoc,
 		}
 		deletes := types.BuildTestRowid(1, 1)
 		tombstoner.inMemTombstones = append(tombstoner.inMemTombstones, deletes)
@@ -208,7 +208,7 @@ func TestRelationDataV1_MarshalAndUnMarshal(t *testing.T) {
 	newRelData, err := UnmarshalRelationData(buf)
 	require.Nil(t, err)
 
-	tomIsEqual := func(t1 *tombstoneDataV1, t2 *tombstoneDataV1) bool {
+	tomIsEqual := func(t1 *tombstoneDataWithDeltaLoc, t2 *tombstoneDataWithDeltaLoc) bool {
 		if t1.typ != t2.typ ||
 			len(t1.inMemTombstones) != len(t2.inMemTombstones) ||
 			t1.uncommittedDeltaLocs.RowCount() != t2.uncommittedDeltaLocs.RowCount() ||
@@ -244,7 +244,7 @@ func TestRelationDataV1_MarshalAndUnMarshal(t *testing.T) {
 		return true
 	}
 
-	isEqual := func(rd1 *relationDataBlkInfoListV1, rd2 *relationDataBlkInfoListV1) bool {
+	isEqual := func(rd1 *blockListRelData, rd2 *blockListRelData) bool {
 
 		if rd1.typ != rd2.typ || rd1.DataCnt() != rd2.DataCnt() ||
 			rd1.hasTombstones != rd2.hasTombstones || rd1.tombstoneTyp != rd2.tombstoneTyp {
@@ -255,10 +255,10 @@ func TestRelationDataV1_MarshalAndUnMarshal(t *testing.T) {
 			return false
 		}
 
-		return tomIsEqual(rd1.tombstones.(*tombstoneDataV1),
-			rd2.tombstones.(*tombstoneDataV1))
+		return tomIsEqual(rd1.tombstones.(*tombstoneDataWithDeltaLoc),
+			rd2.tombstones.(*tombstoneDataWithDeltaLoc))
 
 	}
-	require.True(t, isEqual(relData, newRelData.(*relationDataBlkInfoListV1)))
+	require.True(t, isEqual(relData, newRelData.(*blockListRelData)))
 
 }
