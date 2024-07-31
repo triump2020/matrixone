@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/logtail"
 	"strconv"
 	"strings"
 	"sync"
@@ -609,12 +608,15 @@ func (tbl *txnTable) CollectTombstones(
 				//deletes in txn.Write maybe comes from PartitionState.Rows ,
 				// PartitionReader need to skip them.
 				vs := vector.MustFixedCol[types.Rowid](entry.bat.GetVector(0))
-				tombstone.inMemTombstones = append(tombstone.inMemTombstones, vs...)
+				for _, v := range vs {
+					bid, o := v.Decode()
+					tombstone.inMemTombstones[bid] = append(tombstone.inMemTombstones[bid], int32(o))
+				}
 			}
 		})
 
 	//collect uncommitted in-memory tombstones belongs to blocks persisted by CN writing S3
-	tbl.getTxn().deletedBlocks.getDeletedRowIDs(&tombstone.inMemTombstones)
+	tbl.getTxn().deletedBlocks.getDeletedRowIDs(tombstone.inMemTombstones)
 
 	//collect committed in-memory tombstones from partition state.
 	state, err := tbl.getPartitionState(ctx)
@@ -626,17 +628,18 @@ func (tbl *txnTable) CollectTombstones(
 		iter := state.NewRowsIter(types.TimestampToTS(ts), nil, true)
 		for iter.Next() {
 			entry := iter.Entry()
-			tombstone.inMemTombstones = append(tombstone.inMemTombstones, entry.RowID)
+			bid, o := entry.RowID.Decode()
+			tombstone.inMemTombstones[bid] = append(tombstone.inMemTombstones[bid], int32(o))
 		}
 		iter.Close()
 	}
 
 	//collect uncommitted persisted tombstones.
-	if err := tbl.getTxn().getUncommittedS3Tombstone(&tombstone.uncommittedDeltaLocs); err != nil {
+	if err := tbl.getTxn().getUncommittedS3Tombstone(tombstone.blk2UncommitLoc); err != nil {
 		return nil, err
 	}
 	//collect committed persisted tombstones from partition state.
-	state.GetTombstoneDeltaLocs(&tombstone.committedDeltalocs, &tombstone.commitTS)
+	state.GetTombstoneDeltaLocs(tombstone.blk2CommitLoc)
 	return tombstone, nil
 }
 
@@ -752,7 +755,6 @@ func (tbl *txnTable) Ranges(
 	data = &blockListRelData{
 		typ:     engine.RelDataBlockList,
 		blklist: &blocks,
-		isEmpty: true,
 	}
 
 	return
@@ -1762,6 +1764,32 @@ func (tbl *txnTable) GetDBID(ctx context.Context) uint64 {
 	return tbl.db.databaseId
 }
 
+// for test
+func buildRemoteDS(
+	ctx context.Context,
+	tbl *txnTable,
+	txnOffset int,
+	relData engine.RelData,
+) (source engine.DataSource, err error) {
+
+	tombstones, err := tbl.CollectTombstones(ctx, txnOffset)
+	if err != nil {
+		return nil, err
+	}
+	//tombstones.Init()
+
+	relData.AttachTombstones(tombstones)
+
+	source = NewRemoteDataSource(
+		ctx,
+		tbl.proc.Load(),
+		tbl.getTxn().engine.fs,
+		tbl.db.op.SnapshotTS(),
+		relData,
+	)
+	return
+}
+
 // for ut
 func BuildLocalDataSource(
 	ctx context.Context,
@@ -1779,13 +1807,14 @@ func BuildLocalDataSource(
 		tbl = rel.(*txnTableDelegate).origin
 	}
 
-	return tbl.buildLocalDataSource(ctx, txnOffset, ranges)
+	return tbl.buildLocalDataSource(ctx, txnOffset, ranges, CheckAll)
 }
 
 func (tbl *txnTable) buildLocalDataSource(
 	ctx context.Context,
 	txnOffset int,
 	relData engine.RelData,
+	policy SkipCheckPolicy,
 ) (source engine.DataSource, err error) {
 
 	switch relData.GetType() {
@@ -1803,6 +1832,7 @@ func (tbl *txnTable) buildLocalDataSource(
 			txnOffset,
 			ranges,
 			skipReadMem,
+			policy,
 		)
 
 	default:
@@ -1841,8 +1871,7 @@ func (tbl *txnTable) BuildReaders(
 
 	//relData maybe is nil, indicate that only read data from memory.
 	if relData == nil || relData.DataCnt() == 0 {
-		//s := objectio.BlockInfoSliceInProgress(objectio.EmptyBlockInfoInProgressBytes)
-		relData = buildRelationDataV1()
+		relData = buildBlockListRelationData()
 		relData.AppendBlockInfo(objectio.EmptyBlockInfoInProgress)
 	}
 	blkCnt := relData.DataCnt()
@@ -1862,7 +1891,7 @@ func (tbl *txnTable) BuildReaders(
 		} else {
 			shard = relData.DataSlice(i*divide+mod, (i+1)*divide+mod)
 		}
-		ds, err := tbl.buildLocalDataSource(ctx, txnOffset, shard)
+		ds, err := tbl.buildLocalDataSource(ctx, txnOffset, shard, CheckAll)
 		if err != nil {
 			return nil, err
 		}
@@ -1953,7 +1982,6 @@ func (tbl *txnTable) PKPersistedBetween(
 	//only check data objects.
 	delObjs, cObjs := p.GetChangedObjsBetween(from.Next(), types.MaxTs())
 	isFakePK := tbl.GetTableDef(ctx).Pkey.PkeyColName == catalog.FakePrimaryKeyColName
-
 	if err := ForeachCommittedObjects(cObjs, delObjs, p,
 		func(obj logtailreplay.ObjectInfo) (err2 error) {
 			var zmCkecked bool
@@ -2022,9 +2050,8 @@ func (tbl *txnTable) PKPersistedBetween(
 					blk.EntryState = obj.EntryState
 					blk.CommitTs = obj.CommitTS
 					if obj.HasDeltaLoc {
-						deltaLoc, commitTs, ok := p.GetBockDeltaLoc(blk.BlockID)
+						_, commitTs, ok := p.GetBockDeltaLoc(blk.BlockID)
 						if ok {
-							blk.DeltaLoc = deltaLoc
 							blk.CommitTs = commitTs
 						}
 					}
@@ -2156,9 +2183,13 @@ func (tbl *txnTable) transferDeletes(
 	createObjs map[objectio.ObjectNameShort]struct{},
 ) error {
 	var blks []objectio.BlockInfoInProgress
-	deltaMap := make(map[objectio.Blockid]objectio.Location)
 	sid := tbl.proc.Load().GetService()
-	var ds *logtail.DeltaLocDataSource
+	relData := buildBlockListRelationData()
+	relData.AppendBlockInfo(objectio.EmptyBlockInfoInProgress)
+	ds, err := tbl.buildLocalDataSource(ctx, 0, relData, SkipCheckPolicy(CheckCommittedS3Only))
+	if err != nil {
+		return err
+	}
 	{
 		fs, err := fileservice.Get[fileservice.FileService](
 			tbl.proc.Load().GetFileService(),
@@ -2197,9 +2228,8 @@ func (tbl *txnTable) transferDeletes(
 						CommitTs:   obj.CommitTS,
 					}
 					if obj.HasDeltaLoc {
-						deltaLoc, commitTs, ok := state.GetBockDeltaLoc(blkInfo.BlockID)
+						_, commitTs, ok := state.GetBockDeltaLoc(blkInfo.BlockID)
 						if ok {
-							deltaMap[blkInfo.BlockID] = deltaLoc[:]
 							blkInfo.CommitTs = commitTs
 						}
 					}
@@ -2207,9 +2237,6 @@ func (tbl *txnTable) transferDeletes(
 				}
 			}
 		}
-		ds = logtail.NewDeltaLocDataSource(
-			ctx, fs, types.TimestampToTS(tbl.db.op.SnapshotTS()),
-			logtail.NewBMapDeltaSource(deltaMap))
 
 	}
 
@@ -2255,7 +2282,7 @@ func (tbl *txnTable) transferDeletes(
 }
 
 func (tbl *txnTable) readNewRowid(
-	vec *vector.Vector, row int, blks []objectio.BlockInfoInProgress, ds *logtail.DeltaLocDataSource,
+	vec *vector.Vector, row int, blks []objectio.BlockInfoInProgress, ds engine.DataSource,
 ) (types.Rowid, bool, error) {
 	var auxIdCnt int32
 	var typ plan.Type
