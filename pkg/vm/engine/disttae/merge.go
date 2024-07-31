@@ -86,7 +86,7 @@ func newCNMergeTask(
 ) (*cnMergeTask, error) {
 	relData := buildRelationDataV1()
 	relData.AppendBlockInfo(objectio.EmptyBlockInfoInProgress)
-	source, err := tbl.buildLocalDataSource(ctx, 0, relData)
+	source, err := tbl.buildLocalDataSource(ctx, 0, relData, 0)
 	if err != nil {
 		return nil, err
 	}

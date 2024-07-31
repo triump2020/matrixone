@@ -1863,7 +1863,7 @@ func (tbl *txnTable) BuildReaders(
 		} else {
 			shard = relData.DataSlice(i*divide+mod, (i+1)*divide+mod)
 		}
-		ds, err := tbl.buildLocalDataSource(ctx, txnOffset, shard)
+		ds, err := tbl.buildLocalDataSource(ctx, txnOffset, shard, 0)
 		if err != nil {
 			return nil, err
 		}
