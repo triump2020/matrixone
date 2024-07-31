@@ -2166,17 +2166,34 @@ func (tbl *txnTable) transferDeletes(
 		if err != nil {
 			return err
 		}
+		var objDataMeta objectio.ObjectDataMeta
+		var objMeta objectio.ObjectMeta
 		for name := range createObjs {
 			if obj, ok := state.GetObject(name); ok {
 				objectStats := obj.ObjectStats
+				location := obj.Location()
+				if objMeta, err = objectio.FastLoadObjectMeta(
+					ctx,
+					&location,
+					false,
+					fs); err != nil {
+					return err
+				}
+				objDataMeta = objMeta.MustDataMeta()
 				for i := 0; i < int(objectStats.BlkCnt()); i++ {
+					blkMeta := objDataMeta.GetBlockMeta(uint32(i))
+					metaLoc := blockio.EncodeLocation(
+						obj.Location().Name(),
+						obj.Location().Extent(),
+						blkMeta.GetRows(),
+						blkMeta.GetID(),
+					)
 					bid := objectio.BuildObjectBlockid(objectStats.ObjectName(), uint16(i))
-					objectStats.ObjectLocation()
 					blkInfo := objectio.BlockInfoInProgress{
 						BlockID:    *bid,
 						EntryState: obj.EntryState,
 						Sorted:     obj.Sorted,
-						MetaLoc:    *(*[objectio.LocationLen]byte)(unsafe.Pointer(&objectStats.ObjectLocation()[0])),
+						MetaLoc:    *(*[objectio.LocationLen]byte)(unsafe.Pointer(&metaLoc[0])),
 						CommitTs:   obj.CommitTS,
 					}
 					if obj.HasDeltaLoc {
