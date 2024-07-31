@@ -20,129 +20,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/matrixorigin/matrixone/pkg/container/batch"
 	"github.com/matrixorigin/matrixone/pkg/container/types"
-	"github.com/matrixorigin/matrixone/pkg/container/vector"
 	"github.com/matrixorigin/matrixone/pkg/objectio"
-	"github.com/matrixorigin/matrixone/pkg/vm/engine"
-	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/common"
+	"github.com/matrixorigin/matrixone/pkg/vm/engine/disttae/logtailreplay"
 )
-
-func Test_TombstoneMarshalUnMarshal(t *testing.T) {
-
-	t.Run("only has row id", func(t *testing.T) {
-		original := tombstoneDataWithDeltaLoc{}
-		original.typ = 1
-		for idx := 0; idx < 100; idx++ {
-			original.inMemTombstones = append(original.inMemTombstones, types.RandomRowid())
-
-			buf := new(bytes.Buffer)
-			_, err := original.MarshalWithBuf(buf)
-			require.NoError(t, err)
-			copied := tombstoneDataWithDeltaLoc{}
-			require.NoError(t, copied.UnMarshal(buf.Bytes()))
-
-			require.Equal(t, original.typ, copied.typ)
-			require.Equal(t, original.inMemTombstones, copied.inMemTombstones)
-		}
-	})
-
-	t.Run("only has un committed delta loc", func(t *testing.T) {
-		original := tombstoneDataWithDeltaLoc{}
-		original.typ = 1
-
-		bat := batch.NewWithSize(3)
-		bat.Vecs[0] = vector.NewVec(types.T_Blockid.ToType())
-		bat.Vecs[1] = vector.NewVec(types.T_TS.ToType())
-		bat.Vecs[2] = vector.NewVec(types.T_text.ToType())
-
-		for idx := 0; idx < 100; idx++ {
-			rowId := types.RandomRowid()
-			bid := *rowId.BorrowBlockID()
-			require.NoError(t, vector.AppendFixed(bat.Vecs[0], bid, false, common.DefaultAllocator))
-
-			ts := types.TS(rowId[:12])
-			require.NoError(t, vector.AppendFixed(bat.Vecs[1], ts, false, common.DefaultAllocator))
-
-			name := objectio.MockLocation(objectio.MockObjectName())
-			require.NoError(t, vector.AppendBytes(bat.Vecs[2], []byte(name.String()), false, common.DefaultAllocator))
-		}
-
-		bat.SetRowCount(bat.Vecs[0].Length())
-		original.uncommittedDeltaLocs = bat
-
-		buf := new(bytes.Buffer)
-		_, err := original.MarshalWithBuf(buf)
-		require.NoError(t, err)
-
-		copied := tombstoneDataWithDeltaLoc{}
-
-		require.NoError(t, copied.UnMarshal(buf.Bytes()))
-
-		require.Equal(t, original.typ, copied.typ)
-
-		for idx := 0; idx < 3; idx++ {
-			require.Equal(t, original.uncommittedDeltaLocs.Vecs[idx].Length(),
-				copied.uncommittedDeltaLocs.Vecs[idx].Length())
-
-			for x := range original.uncommittedDeltaLocs.Vecs[idx].Length() {
-				require.Equal(t, original.uncommittedDeltaLocs.Vecs[idx].GetRawBytesAt(x),
-					copied.uncommittedDeltaLocs.Vecs[idx].GetRawBytesAt(x))
-			}
-		}
-
-	})
-
-	t.Run("has all fields", func(t *testing.T) {
-		original := tombstoneDataWithDeltaLoc{}
-		original.typ = 1
-
-		bat := batch.NewWithSize(3)
-		bat.Vecs[0] = vector.NewVec(types.T_Blockid.ToType())
-		bat.Vecs[1] = vector.NewVec(types.T_TS.ToType())
-		bat.Vecs[2] = vector.NewVec(types.T_text.ToType())
-
-		for idx := 0; idx < 100; idx++ {
-			rowId := types.RandomRowid()
-			bid := *rowId.BorrowBlockID()
-			require.NoError(t, vector.AppendFixed(bat.Vecs[0], bid, false, common.DefaultAllocator))
-
-			ts := types.TS(rowId[:12])
-			require.NoError(t, vector.AppendFixed(bat.Vecs[1], ts, false, common.DefaultAllocator))
-
-			name := objectio.MockLocation(objectio.MockObjectName())
-			require.NoError(t, vector.AppendBytes(bat.Vecs[2], []byte(name.String()), false, common.DefaultAllocator))
-		}
-
-		bat.SetRowCount(bat.Vecs[0].Length())
-		original.uncommittedDeltaLocs = bat
-		original.committedDeltalocs = bat
-
-		buf := new(bytes.Buffer)
-		_, err := original.MarshalWithBuf(buf)
-		require.NoError(t, err)
-
-		copied := tombstoneDataWithDeltaLoc{}
-
-		require.NoError(t, copied.UnMarshal(buf.Bytes()))
-
-		require.Equal(t, original.typ, copied.typ)
-
-		bats1 := []*batch.Batch{original.uncommittedDeltaLocs, original.committedDeltalocs}
-		bats2 := []*batch.Batch{copied.uncommittedDeltaLocs, copied.committedDeltalocs}
-
-		for y := 0; y < 2; y++ {
-			for idx := 0; idx < 3; idx++ {
-				require.Equal(t, bats1[y].Vecs[idx].Length(), bats2[y].Vecs[idx].Length())
-
-				for x := range bats1[y].Vecs[idx].Length() {
-					require.Equal(t, bats1[y].Vecs[idx].GetRawBytesAt(x), bats2[y].Vecs[idx].GetRawBytesAt(x))
-				}
-			}
-		}
-
-	})
-}
 
 func TestRelationDataV1_MarshalAndUnMarshal(t *testing.T) {
 
@@ -154,8 +35,7 @@ func TestRelationDataV1_MarshalAndUnMarshal(t *testing.T) {
 	metaLoc := objectio.ObjectLocation(delLoc)
 	cts := types.BuildTSForTest(1, 1)
 
-	//var blkInfos []*objectio.BlockInfoInProgress
-	relData := buildRelationDataV1()
+	relData := buildBlockListRelationData()
 	blkNum := 10
 	for i := 0; i < blkNum; i++ {
 		blkID := types.NewBlockidWithObjectID(objID, uint16(blkNum))
@@ -171,35 +51,23 @@ func TestRelationDataV1_MarshalAndUnMarshal(t *testing.T) {
 	}
 
 	buildTombstoner := func() *tombstoneDataWithDeltaLoc {
-		tombstoner := &tombstoneDataWithDeltaLoc{
-			typ: engine.TombstoneWithDeltaLoc,
+		tombstoner := buildTombstoneWithDeltaLoc()
+
+		for i := 0; i < 10; i++ {
+			bid := types.BuildTestBlockid(int64(i), 1)
+			for j := 0; j < 10; j++ {
+				tombstoner.inMemTombstones[bid] = append(tombstoner.inMemTombstones[bid], int32(i))
+				loc := objectio.MockLocation(objectio.MockObjectName())
+				tombstoner.blk2UncommitLoc[bid] = append(tombstoner.blk2UncommitLoc[bid], loc)
+			}
+			tombstoner.blk2CommitLoc[bid] = logtailreplay.BlockDeltaInfo{
+				Cts: *types.BuildTSForTest(1, 1),
+				Loc: objectio.MockLocation(objectio.MockObjectName()),
+			}
 		}
-		deletes := types.BuildTestRowid(1, 1)
-		tombstoner.inMemTombstones = append(tombstoner.inMemTombstones, deletes)
-		tombstoner.inMemTombstones = append(tombstoner.inMemTombstones, deletes)
-
-		bat := batch.NewWithSize(3)
-		bat.Vecs[0] = vector.NewVec(types.T_Blockid.ToType())
-		bat.Vecs[1] = vector.NewVec(types.T_TS.ToType())
-		bat.Vecs[2] = vector.NewVec(types.T_text.ToType())
-
-		for idx := 0; idx < 100; idx++ {
-			rowId := types.RandomRowid()
-			bid := *rowId.BorrowBlockID()
-			require.NoError(t, vector.AppendFixed(bat.Vecs[0], bid, false, common.DefaultAllocator))
-
-			ts := types.TS(rowId[:12])
-			require.NoError(t, vector.AppendFixed(bat.Vecs[1], ts, false, common.DefaultAllocator))
-
-			name := objectio.MockLocation(objectio.MockObjectName())
-			require.NoError(t, vector.AppendBytes(bat.Vecs[2], []byte(name.String()), false, common.DefaultAllocator))
-		}
-
-		bat.SetRowCount(bat.Vecs[0].Length())
-		tombstoner.uncommittedDeltaLocs = bat
-		tombstoner.committedDeltalocs = bat
 		return tombstoner
 	}
+
 	tombstoner := buildTombstoner()
 
 	relData.AttachTombstones(tombstoner)
@@ -211,36 +79,55 @@ func TestRelationDataV1_MarshalAndUnMarshal(t *testing.T) {
 	tomIsEqual := func(t1 *tombstoneDataWithDeltaLoc, t2 *tombstoneDataWithDeltaLoc) bool {
 		if t1.typ != t2.typ ||
 			len(t1.inMemTombstones) != len(t2.inMemTombstones) ||
-			t1.uncommittedDeltaLocs.RowCount() != t2.uncommittedDeltaLocs.RowCount() ||
-			t1.committedDeltalocs.RowCount() != t2.committedDeltalocs.RowCount() {
+			len(t1.blk2UncommitLoc) != len(t2.blk2UncommitLoc) ||
+			len(t1.blk2CommitLoc) != len(t2.blk2CommitLoc) {
 			return false
 		}
-		for i := 0; i < len(t1.inMemTombstones); i++ {
-			if !t1.inMemTombstones[i].Equal(t2.inMemTombstones[i]) {
+
+		for bid, offsets1 := range t1.inMemTombstones {
+			if _, ok := t2.inMemTombstones[bid]; !ok {
+				return false
+			}
+			offsets2 := t2.inMemTombstones[bid]
+			if len(offsets1) != len(offsets2) {
+				return false
+			}
+			for i := 0; i < len(offsets1); i++ {
+				if offsets1[i] != offsets2[i] {
+					return false
+				}
+			}
+
+		}
+
+		for bid, locs1 := range t1.blk2UncommitLoc {
+			if _, ok := t2.blk2UncommitLoc[bid]; !ok {
+				return false
+			}
+			locs2 := t2.blk2UncommitLoc[bid]
+			if len(locs1) != len(locs2) {
+				return false
+			}
+			for i := 0; i < len(locs1); i++ {
+				if !bytes.Equal(locs1[i], locs2[i]) {
+					return false
+				}
+			}
+
+		}
+
+		for bid, info1 := range t1.blk2CommitLoc {
+			if _, ok := t2.blk2CommitLoc[bid]; !ok {
+				return false
+			}
+			info2 := t2.blk2CommitLoc[bid]
+			if info1.Cts != info2.Cts {
+				return false
+			}
+			if !bytes.Equal(info1.Loc, info2.Loc) {
 				return false
 			}
 		}
-
-		for i := 0; i < 3; i++ {
-			for j := 0; j < t1.uncommittedDeltaLocs.Vecs[i].Length(); j++ {
-				if !bytes.Equal(
-					t1.uncommittedDeltaLocs.Vecs[i].GetRawBytesAt(j),
-					t2.uncommittedDeltaLocs.Vecs[i].GetRawBytesAt(j)) {
-					return false
-				}
-			}
-		}
-
-		for i := 0; i < 3; i++ {
-			for j := 0; j < t1.committedDeltalocs.Vecs[i].Length(); j++ {
-				if !bytes.Equal(
-					t1.committedDeltalocs.Vecs[i].GetRawBytesAt(j),
-					t2.committedDeltalocs.Vecs[i].GetRawBytesAt(j)) {
-					return false
-				}
-			}
-		}
-
 		return true
 	}
 

@@ -578,7 +578,7 @@ func (tbl *txnTable) resetSnapshot() {
 func (tbl *txnTable) CollectTombstones(
 	ctx context.Context, txnOffset int,
 ) (engine.Tombstoner, error) {
-	tombstone := buildDeltaLocTombstoneWithProc(tbl.proc.Load())
+	tombstone := buildTombstoneWithDeltaLoc()
 
 	offset := txnOffset
 	if tbl.db.op.IsSnapOp() {
@@ -608,12 +608,15 @@ func (tbl *txnTable) CollectTombstones(
 				//deletes in txn.Write maybe comes from PartitionState.Rows ,
 				// PartitionReader need to skip them.
 				vs := vector.MustFixedCol[types.Rowid](entry.bat.GetVector(0))
-				tombstone.inMemTombstones = append(tombstone.inMemTombstones, vs...)
+				for _, v := range vs {
+					bid, o := v.Decode()
+					tombstone.inMemTombstones[bid] = append(tombstone.inMemTombstones[bid], int32(o))
+				}
 			}
 		})
 
 	//collect uncommitted in-memory tombstones belongs to blocks persisted by CN writing S3
-	tbl.getTxn().deletedBlocks.getDeletedRowIDs(&tombstone.inMemTombstones)
+	tbl.getTxn().deletedBlocks.getDeletedRowIDs(tombstone.inMemTombstones)
 
 	//collect committed in-memory tombstones from partition state.
 	state, err := tbl.getPartitionState(ctx)
@@ -625,17 +628,18 @@ func (tbl *txnTable) CollectTombstones(
 		iter := state.NewRowsIter(types.TimestampToTS(ts), nil, true)
 		for iter.Next() {
 			entry := iter.Entry()
-			tombstone.inMemTombstones = append(tombstone.inMemTombstones, entry.RowID)
+			bid, o := entry.RowID.Decode()
+			tombstone.inMemTombstones[bid] = append(tombstone.inMemTombstones[bid], int32(o))
 		}
 		iter.Close()
 	}
 
 	//collect uncommitted persisted tombstones.
-	if err := tbl.getTxn().getUncommittedS3Tombstone(tombstone.uncommittedDeltaLocs, tombstone.mp); err != nil {
+	if err := tbl.getTxn().getUncommittedS3Tombstone(tombstone.blk2UncommitLoc); err != nil {
 		return nil, err
 	}
 	//collect committed persisted tombstones from partition state.
-	state.GetTombstoneDeltaLocs(tombstone.committedDeltalocs, tombstone.mp)
+	state.GetTombstoneDeltaLocs(tombstone.blk2CommitLoc)
 	return tombstone, nil
 }
 
@@ -1792,7 +1796,7 @@ func buildRemoteDS(
 	if err != nil {
 		return nil, err
 	}
-	tombstones.Init()
+	//tombstones.Init()
 
 	relData.AttachTombstones(tombstones)
 
@@ -1821,17 +1825,13 @@ func (tbl *txnTable) buildLocalDataSource(
 		if tbl.db.op.IsSnapOp() {
 			txnOffset = tbl.getTxn().GetSnapshotWriteOffset()
 		}
-		if skipReadMem {
-			source, err = buildRemoteDS(ctx, tbl, txnOffset, relData)
-		} else {
-			source, err = NewLocalDataSource(
-				ctx,
-				tbl,
-				txnOffset,
-				ranges,
-				skipReadMem,
-			)
-		}
+		source, err = NewLocalDataSource(
+			ctx,
+			tbl,
+			txnOffset,
+			ranges,
+			skipReadMem,
+		)
 	default:
 		logutil.Fatalf("unsupported rel data type: %v", relData.GetType())
 	}
@@ -1869,7 +1869,7 @@ func (tbl *txnTable) BuildReaders(
 	//relData maybe is nil, indicate that only read data from memory.
 	if relData == nil || relData.DataCnt() == 0 {
 		//s := objectio.BlockInfoSliceInProgress(objectio.EmptyBlockInfoInProgressBytes)
-		relData = buildRelationDataV1()
+		relData = buildBlockListRelationData()
 		relData.AppendBlockInfo(objectio.EmptyBlockInfoInProgress)
 	}
 	blkCnt := relData.DataCnt()

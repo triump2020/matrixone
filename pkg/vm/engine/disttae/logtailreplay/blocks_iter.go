@@ -21,10 +21,7 @@ import (
 	"github.com/tidwall/btree"
 
 	"github.com/matrixorigin/matrixone/pkg/common/moerr"
-	"github.com/matrixorigin/matrixone/pkg/common/mpool"
-	"github.com/matrixorigin/matrixone/pkg/container/batch"
 	"github.com/matrixorigin/matrixone/pkg/container/types"
-	"github.com/matrixorigin/matrixone/pkg/container/vector"
 	"github.com/matrixorigin/matrixone/pkg/objectio"
 )
 
@@ -210,28 +207,23 @@ func (p *PartitionState) GetObject(name objectio.ObjectNameShort) (ObjectInfo, b
 	return ObjectInfo{}, false
 }
 
-func (p *PartitionState) GetTombstoneDeltaLocs(bat *batch.Batch, mp *mpool.MPool) (err error) {
+type BlockDeltaInfo struct {
+	//the commit ts of location.
+	Cts types.TS
+	Loc objectio.Location
+}
+
+func (p *PartitionState) GetTombstoneDeltaLocs(mp map[types.Blockid]BlockDeltaInfo) (err error) {
 	iter := p.blockDeltas.Copy().Iter()
 	defer iter.Release()
-	var rowCnt int
+
 	for ok := iter.First(); ok; ok = iter.Next() {
 		item := iter.Item()
-
-		err = vector.AppendFixed[types.Blockid](bat.GetVector(0), item.BlockID, false, mp)
-		if err != nil {
-			return
+		mp[item.BlockID] = BlockDeltaInfo{
+			Loc: item.DeltaLoc[:],
+			Cts: item.CommitTs,
 		}
-		err = vector.AppendFixed[types.TS](bat.GetVector(1), item.CommitTs, false, mp)
-		if err != nil {
-			return
-		}
-		loc := item.DeltaLocation().String()
-		err = vector.AppendBytes(bat.GetVector(2), []byte(loc), false, mp)
-		if err != nil {
-			return
-		}
-		rowCnt++
 	}
-	bat.SetRowCount(rowCnt)
+
 	return nil
 }

@@ -257,6 +257,14 @@ func EncodeUuid(v *Uuid) []byte {
 	return unsafe.Slice((*byte)(unsafe.Pointer(v)), UuidSize)
 }
 
+func EncodeBlockID(v *Blockid) []byte {
+	return unsafe.Slice((*byte)(unsafe.Pointer(v)), BlockidSize)
+}
+
+func EncodeTxnTS(v *TS) []byte {
+	return unsafe.Slice((*byte)(unsafe.Pointer(v)), TxnTsSize)
+}
+
 func DecodeUuid(v []byte) Uuid {
 	return *(*Uuid)(unsafe.Pointer(&v[0]))
 }

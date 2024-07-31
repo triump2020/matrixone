@@ -580,7 +580,7 @@ const (
 type Tombstoner interface {
 	Type() TombstoneType
 
-	Init() error
+	//Init() error
 
 	HasTombstones() bool
 
