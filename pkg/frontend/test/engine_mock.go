@@ -256,19 +256,19 @@ func (mr *MockTombstonerMockRecorder) HasTombstones() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasTombstones", reflect.TypeOf((*MockTombstoner)(nil).HasTombstones))
 }
 
-// MarshalWithBuf mocks base method.
-func (m *MockTombstoner) MarshalWithBuf(w *bytes.Buffer) (uint32, error) {
+// MarshalBinaryWithBuffer mocks base method.
+func (m *MockTombstoner) MarshalBinaryWithBuffer(w *bytes.Buffer) (uint32, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MarshalWithBuf", w)
+	ret := m.ctrl.Call(m, "MarshalBinaryWithBuffer", w)
 	ret0, _ := ret[0].(uint32)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// MarshalWithBuf indicates an expected call of MarshalWithBuf.
-func (mr *MockTombstonerMockRecorder) MarshalWithBuf(w interface{}) *gomock.Call {
+// MarshalBinaryWithBuffer indicates an expected call of MarshalBinaryWithBuffer.
+func (mr *MockTombstonerMockRecorder) MarshalBinaryWithBuffer(w interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarshalWithBuf", reflect.TypeOf((*MockTombstoner)(nil).MarshalWithBuf), w)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarshalBinaryWithBuffer", reflect.TypeOf((*MockTombstoner)(nil).MarshalBinaryWithBuffer), w)
 }
 
 // Merge mocks base method.
