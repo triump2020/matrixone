@@ -427,7 +427,7 @@ func BlockDataReadInner(
 		return
 	}
 	defer release()
-	logutil.Infof("read block %s, columns %v, types %v, loaded %d", info.BlockID.String(), columns, colTypes, loaded.Vecs[0].Length())
+	logutil.Infof("read block %s, columns %v, types %v, loaded %d", info.BlockID.String(), columns, colTypes, loaded.Vecs[1].Length())
 	// assemble result batch for return
 	result = batch.NewWithSize(len(loaded.Vecs))
 
@@ -876,7 +876,7 @@ func readBlockDataInprogress(
 		bat, deleteMask, err = readABlkColumns(idxes)
 	} else {
 		bat, _, err = readColumns(idxes)
-		logutil.Infof("readBlockDataInprogress23: %v, metaloc : %v, bat is %d", info.BlockID.String(), info.MetaLocation().String(), bat.Vecs[0].Length())
+		logutil.Infof("readBlockDataInprogress23: %v, metaloc : %v, bat is %d", info.BlockID.String(), info.MetaLocation().String(), bat.Vecs[1].Length())
 	}
 
 	return
