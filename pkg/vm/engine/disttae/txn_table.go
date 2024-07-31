@@ -2299,7 +2299,7 @@ func (tbl *txnTable) readNewRowid(
 		if err != nil {
 			return rowid, false, err
 		}
-		logutil.Infof("readNewRowid: start")
+		logutil.Infof("readNewRowid: start %d ", bat.Vecs[0].Length())
 		vec, err := colexec.EvalExpressionOnce(tbl.getTxn().proc, filter, []*batch.Batch{bat})
 		if err != nil {
 			return rowid, false, err
