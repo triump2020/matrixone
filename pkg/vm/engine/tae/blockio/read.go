@@ -831,6 +831,7 @@ func readBlockDataInprogress(
 			return
 		}
 
+		logutil.Infof("readBlockDataInprogress: %v, metaloc : %v", info.BlockID.String(), info.MetaLocation().String())
 		if loaded, release, err = LoadColumns(ctx, cols, typs, fs, info.MetaLocation(), m, policy); err != nil {
 			return
 		}
