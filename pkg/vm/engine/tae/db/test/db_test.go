@@ -4587,11 +4587,11 @@ func TestBlockRead(t *testing.T) {
 			err = blockio.BlockPrefetch("", colIdxs, fs, infos, false)
 			assert.NoError(t, err)
 
-			blks := map[objectio.Blockid]*objectio.Location{
-				info.BlockID: &deltaloc,
+			blks := map[objectio.Blockid]objectio.Location{
+				info.BlockID: deltaloc,
 			}
 
-			ds := logtail.NewDeltaLocDataSource(ctx, fs, beforeDel, blks)
+			ds := logtail.NewDeltaLocDataSource(ctx, fs, beforeDel, logtail.NewBMapDeltaSource(blks))
 
 			b1, err := blockio.BlockDataReadInner(
 				context.Background(), "", info, ds, colIdxs, colTyps,
@@ -4601,7 +4601,7 @@ func TestBlockRead(t *testing.T) {
 			assert.Equal(t, len(columns), len(b1.Vecs))
 			assert.Equal(t, 20, b1.Vecs[0].Length())
 
-			ds = logtail.NewDeltaLocDataSource(ctx, fs, afterFirstDel, blks)
+			ds = logtail.NewDeltaLocDataSource(ctx, fs, afterFirstDel, logtail.NewBMapDeltaSource(blks))
 
 			b2, err := blockio.BlockDataReadInner(
 				context.Background(), "", info, ds, colIdxs, colTyps,
@@ -4610,7 +4610,7 @@ func TestBlockRead(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, 19, b2.Vecs[0].Length())
 
-			ds = logtail.NewDeltaLocDataSource(ctx, fs, afterSecondDel, blks)
+			ds = logtail.NewDeltaLocDataSource(ctx, fs, afterSecondDel, logtail.NewBMapDeltaSource(blks))
 
 			b3, err := blockio.BlockDataReadInner(
 				context.Background(), "", info, ds, colIdxs, colTyps,
