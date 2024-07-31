@@ -913,7 +913,10 @@ func (ls *LocalDataSource) deleteFirstNBlocks(n int) {
 }
 
 func (ls *LocalDataSource) Close() {
-	ls.pStateRows.insIter.Close()
+	if ls.pStateRows.insIter != nil {
+		ls.pStateRows.insIter.Close()
+		ls.pStateRows.insIter = nil
+	}
 }
 
 func (ls *LocalDataSource) Next(
