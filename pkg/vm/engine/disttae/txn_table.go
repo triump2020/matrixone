@@ -1809,14 +1809,14 @@ func BuildLocalDataSource(
 		tbl = rel.(*txnTableDelegate).origin
 	}
 
-	return tbl.buildLocalDataSource(ctx, txnOffset, ranges, SkipCheckDeletes(0))
+	return tbl.buildLocalDataSource(ctx, txnOffset, ranges, SkipCheckPolicy(0))
 }
 
 func (tbl *txnTable) buildLocalDataSource(
 	ctx context.Context,
 	txnOffset int,
 	relData engine.RelData,
-	policy SkipCheckDeletes,
+	policy SkipCheckPolicy,
 ) (source engine.DataSource, err error) {
 
 	switch relData.GetType() {
@@ -2190,7 +2190,7 @@ func (tbl *txnTable) transferDeletes(
 	sid := tbl.proc.Load().GetService()
 	relData := buildRelationDataV1()
 	relData.AppendBlockInfo(objectio.EmptyBlockInfoInProgress)
-	ds, err := tbl.buildLocalDataSource(ctx, 0, relData, SkipCheckDeletes(SkipCheckAll))
+	ds, err := tbl.buildLocalDataSource(ctx, 0, relData, SkipCheckPolicy(SkipCheckAll))
 	if err != nil {
 		return err
 	}

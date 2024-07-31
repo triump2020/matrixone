@@ -745,10 +745,10 @@ type LocalDataSource struct {
 	OrderBy  []*plan.OrderBySpec
 
 	filterZM    objectio.ZoneMap
-	checkPolicy SkipCheckDeletes
+	checkPolicy SkipCheckPolicy
 }
 
-type SkipCheckDeletes uint64
+type SkipCheckPolicy uint64
 
 const (
 	SkipCheckWorkSpace = 1 << iota
@@ -764,7 +764,7 @@ func NewLocalDataSource(
 	txnOffset int,
 	rangesSlice objectio.BlockInfoSliceInProgress,
 	skipReadMem bool,
-	policy SkipCheckDeletes,
+	policy SkipCheckPolicy,
 ) (source *LocalDataSource, err error) {
 
 	source = &LocalDataSource{}
