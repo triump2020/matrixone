@@ -909,7 +909,7 @@ type EntireEngine struct {
 }
 
 func IsMemtable(tblRange []byte) bool {
-	return bytes.Equal(tblRange, objectio.EmptyBlockInfoBytes)
+	return bytes.Equal(tblRange, objectio.EmptyBlockInfoInProgressBytes)
 }
 
 type EmptyRelationData struct {
