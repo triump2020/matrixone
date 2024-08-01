@@ -247,12 +247,12 @@ func (tomb *tombstoneDataWithDeltaLoc) ApplyPersistedTombstones(
 	rowsOffset []int32,
 	mask *nulls.Nulls,
 	apply func(
-		ctx context.Context,
-		loc objectio.Location,
-		cts types.TS,
-		rowsOffset []int32,
-		deleted *nulls.Nulls,
-	) (left []int32, err error),
+	ctx context.Context,
+	loc objectio.Location,
+	cts types.TS,
+	rowsOffset []int32,
+	deleted *nulls.Nulls,
+) (left []int32, err error),
 ) (left []int32, err error) {
 
 	if locs, ok := tomb.blk2UncommitLoc[bid]; ok {
