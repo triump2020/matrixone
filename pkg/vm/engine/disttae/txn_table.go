@@ -1826,6 +1826,19 @@ func (tbl *txnTable) buildLocalDataSource(
 		if tbl.db.op.IsSnapOp() {
 			txnOffset = tbl.getTxn().GetSnapshotWriteOffset()
 		}
+		//if skipReadMem {
+		//	source, err = buildRemoteDS(ctx, tbl, txnOffset, relData)
+		//} else {
+		//	source, err = NewLocalDataSource(
+		//		ctx,
+		//		tbl,
+		//		txnOffset,
+		//		ranges,
+		//		skipReadMem,
+		//		policy,
+		//	)
+		//}
+
 		source, err = NewLocalDataSource(
 			ctx,
 			tbl,

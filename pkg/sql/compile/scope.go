@@ -29,6 +29,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/common/reuse"
 	"github.com/matrixorigin/matrixone/pkg/common/runtime"
 	"github.com/matrixorigin/matrixone/pkg/defines"
+	"github.com/matrixorigin/matrixone/pkg/logutil"
 	pbpipeline "github.com/matrixorigin/matrixone/pkg/pb/pipeline"
 	"github.com/matrixorigin/matrixone/pkg/pb/plan"
 	"github.com/matrixorigin/matrixone/pkg/pb/timestamp"
@@ -1203,6 +1204,14 @@ func (s *Scope) buildReaders(c *Compile, maxProvidedCpuNumber int) (readers []en
 		// determined how many cpus we should use.
 		//blkSlice := objectio.BlockInfoSliceInProgress(s.NodeInfo.Data)
 		scanUsedCpuNumber = DetermineRuntimeDOP(maxProvidedCpuNumber, s.NodeInfo.Data.DataCnt())
+
+		logutil.Infof("xxxx cn:%s receive relData:%s, tombstones:%s, ts:%s, table:%s",
+			s.NodeInfo.Addr,
+			s.NodeInfo.Data.String(),
+			s.NodeInfo.Data.GetTombstones().String(),
+			s.DataSource.Timestamp.DebugString(),
+			s.DataSource.TableDef.Name)
+
 		readers, err = c.e.BuildBlockReaders(
 			ctx,
 			c.proc,

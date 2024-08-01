@@ -4375,6 +4375,12 @@ func putBlocksInAverage(c *Compile, relData engine.RelData, n *plan.Node) engine
 }
 
 func shuffleBlocksToMultiCN(c *Compile, rel engine.Relation, relData engine.RelData, n *plan.Node) (engine.Nodes, error) {
+
+	logutil.Infof("xxxx start to shuffle, txn:%s, relData:%s, table:%s",
+		c.proc.GetTxnOperator().Txn().DebugString(),
+		relData.String(),
+		rel.GetTableName())
+
 	var nodes engine.Nodes
 	// add current CN
 	nodes = append(nodes, engine.Node{
@@ -4440,6 +4446,19 @@ func shuffleBlocksToMultiCN(c *Compile, rel engine.Relation, relData engine.RelD
 					return nil, err
 				}
 				nodes[i].Data.AttachTombstones(tombstone)
+				logutil.Infof("xxxx distribute to reomote CN:%s, txn:%s, relData:%s, tombstone:%s, table:%s",
+					nodes[i].Addr,
+					c.proc.GetTxnOperator().Txn().DebugString(),
+					nodes[i].Data.String(),
+					tombstone.String(),
+					rel.GetTableName())
+			} else {
+				logutil.Infof("xxxx distribute to current CN:%s, txn:%s, relData:%s, table:%s",
+					nodes[0].Addr,
+					c.proc.GetTxnOperator().Txn().DebugString(),
+					nodes[i].Data.String(),
+					rel.GetTableName(),
+				)
 			}
 			newNodes = append(newNodes, nodes[i])
 		}
