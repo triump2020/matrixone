@@ -355,7 +355,7 @@ type blockListRelData struct {
 	typ engine.RelDataType
 	//blkList[0] is a empty block info
 	//blkList []*objectio.BlockInfoInProgress
-	blklist *objectio.BlockInfoSliceInProgress
+	blklist objectio.BlockInfoSliceInProgress
 
 	//marshal tombstones if isEmpty is false, otherwise don't need to marshal tombstones
 	hasTombstones bool
@@ -367,7 +367,7 @@ type blockListRelData struct {
 func buildBlockListRelationData() *blockListRelData {
 	return &blockListRelData{
 		typ:     engine.RelDataBlockList,
-		blklist: &objectio.BlockInfoSliceInProgress{},
+		blklist: objectio.BlockInfoSliceInProgress{},
 	}
 }
 
@@ -422,7 +422,7 @@ func (relData *blockListRelData) UnmarshalBinary(data []byte) error {
 	sizeofblks := types.DecodeUint32(data)
 	data = data[4:]
 
-	*relData.blklist = data[:sizeofblks]
+	relData.blklist = data[:sizeofblks]
 	data = data[sizeofblks:]
 
 	hasTombstones := types.DecodeBool(data)
@@ -466,7 +466,7 @@ func (relData *blockListRelData) MarshalBinaryWithBuffer(w *bytes.Buffer) error 
 	pos2 += 4
 
 	//marshal blk list
-	if _, err := w.Write(*relData.blklist); err != nil {
+	if _, err := w.Write(relData.blklist); err != nil {
 		return err
 	}
 	pos2 += sizeofblks
@@ -529,7 +529,7 @@ func (relData *blockListRelData) DataSlice(i, j int) engine.RelData {
 	blist := objectio.BlockInfoSliceInProgress(relData.blklist.Slice(i, j))
 	return &blockListRelData{
 		typ:           relData.typ,
-		blklist:       &blist,
+		blklist:       blist,
 		hasTombstones: relData.hasTombstones,
 		tombstoneTyp:  relData.tombstoneTyp,
 		tombstones:    relData.tombstones,
@@ -564,7 +564,7 @@ func (relData *blockListRelData) GroupByPartitionNum() map[int16]engine.RelData 
 
 func (relData *blockListRelData) BuildEmptyRelData() engine.RelData {
 	return &blockListRelData{
-		blklist: &objectio.BlockInfoSliceInProgress{},
+		blklist: objectio.BlockInfoSliceInProgress{},
 		typ:     relData.typ,
 	}
 }
