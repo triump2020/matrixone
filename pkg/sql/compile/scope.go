@@ -1205,10 +1205,14 @@ func (s *Scope) buildReaders(c *Compile, maxProvidedCpuNumber int) (readers []en
 		//blkSlice := objectio.BlockInfoSliceInProgress(s.NodeInfo.Data)
 		scanUsedCpuNumber = DetermineRuntimeDOP(maxProvidedCpuNumber, s.NodeInfo.Data.DataCnt())
 
+		tombstone := ""
+		if s.NodeInfo.Data.GetTombstones() != nil {
+			tombstone = s.NodeInfo.Data.GetTombstones().String()
+		}
 		logutil.Infof("xxxx cn:%s receive relData:%s, tombstones:%s, ts:%s, table:%s",
 			s.NodeInfo.Addr,
 			s.NodeInfo.Data.String(),
-			s.NodeInfo.Data.GetTombstones().String(),
+			tombstone,
 			s.DataSource.Timestamp.DebugString(),
 			s.DataSource.TableDef.Name)
 
