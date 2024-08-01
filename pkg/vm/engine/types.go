@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -581,6 +582,8 @@ const (
 
 type Tombstoner interface {
 	Type() TombstoneType
+	String() string
+	StringWithPrefix(string) string
 
 	HasTombstones() bool
 
@@ -621,6 +624,7 @@ type RelData interface {
 	// general interface
 
 	GetType() RelDataType
+	String() string
 	MarshalBinary() ([]byte, error)
 	UnmarshalBinary(buf []byte) error
 	AttachTombstones(tombstones Tombstoner) error
@@ -912,12 +916,14 @@ func IsMemtable(tblRange []byte) bool {
 	return bytes.Equal(tblRange, objectio.EmptyBlockInfoBytes)
 }
 
-type EmptyRelationData struct {
-	typ RelDataType
-}
+type EmptyRelationData struct{}
 
 func BuildEmptyRelData() RelData {
-	return &EmptyRelationData{RelDataEmpty}
+	return &EmptyRelationData{}
+}
+
+func (rd *EmptyRelationData) String() string {
+	return fmt.Sprintf("RelData[%d]", RelDataEmpty)
 }
 
 func (rd *EmptyRelationData) GetShardIDList() []uint64 {
@@ -953,7 +959,7 @@ func (rd *EmptyRelationData) AppendBlockInfo(blk objectio.BlockInfoInProgress) {
 }
 
 func (rd *EmptyRelationData) GetType() RelDataType {
-	return rd.typ
+	return RelDataEmpty
 }
 
 func (rd *EmptyRelationData) MarshalBinary() ([]byte, error) {
@@ -997,7 +1003,7 @@ func (rd *EmptyRelationData) AppendDataBlk(blk any) {
 }
 
 func (rd *EmptyRelationData) BuildEmptyRelData() RelData {
-	return &EmptyRelationData{RelDataEmpty}
+	return &EmptyRelationData{}
 }
 
 func (rd *EmptyRelationData) DataCnt() int {
