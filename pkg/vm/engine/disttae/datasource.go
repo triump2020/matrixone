@@ -42,7 +42,6 @@ import (
 )
 
 type tombstoneDataWithDeltaLoc struct {
-	typ engine.TombstoneType
 	//in memory tombstones
 	inMemTombstones map[types.Blockid][]int32
 
@@ -55,7 +54,6 @@ type tombstoneDataWithDeltaLoc struct {
 
 func buildTombstoneWithDeltaLoc() *tombstoneDataWithDeltaLoc {
 	return &tombstoneDataWithDeltaLoc{
-		typ:             engine.TombstoneWithDeltaLoc,
 		inMemTombstones: make(map[types.Blockid][]int32),
 		blk2UncommitLoc: make(map[types.Blockid][]objectio.Location),
 		blk2CommitLoc:   make(map[types.Blockid]logtailreplay.BlockDeltaInfo),
@@ -68,7 +66,7 @@ func (tomb *tombstoneDataWithDeltaLoc) String() string {
 
 func (tomb *tombstoneDataWithDeltaLoc) StringWithPrefix(prefix string) string {
 	var w bytes.Buffer
-	w.WriteString(fmt.Sprintf("%sTombstone[%d]<\n", prefix, tomb.typ))
+	w.WriteString(fmt.Sprintf("%sTombstone[%d]<\n", prefix, tomb.Type()))
 	w.WriteString(fmt.Sprintf("\t%sInMemTombstones: \n", prefix))
 	for bid, offsets := range tomb.inMemTombstones {
 		w.WriteString(fmt.Sprintf("\t\t%sblk:%s, offsets:%v\n", prefix, bid.String(), offsets))
@@ -95,7 +93,10 @@ func (tomb *tombstoneDataWithDeltaLoc) HasTombstones() bool {
 }
 
 func (tomb *tombstoneDataWithDeltaLoc) UnmarshalBinary(buf []byte) error {
-	tomb.typ = engine.TombstoneType(types.DecodeUint8(buf))
+	typ := engine.TombstoneType(types.DecodeUint8(buf))
+	if typ != engine.TombstoneWithDeltaLoc {
+		return moerr.NewInternalErrorNoCtx("UnmarshalBinary TombstoneWithDeltaLoc with %v", typ)
+	}
 	buf = buf[1:]
 
 	cnt := types.DecodeUint32(buf)
@@ -156,7 +157,7 @@ func (tomb *tombstoneDataWithDeltaLoc) UnmarshalBinary(buf []byte) error {
 }
 
 func (tomb *tombstoneDataWithDeltaLoc) MarshalBinaryWithBuffer(w *bytes.Buffer) (err error) {
-	typ := uint8(tomb.typ)
+	typ := uint8(tomb.Type())
 	if _, err = w.Write(types.EncodeUint8(&typ)); err != nil {
 		return
 	}
@@ -317,7 +318,7 @@ func rowIdsToOffset(rowIds []types.Rowid, wantedType any) any {
 }
 
 func (tomb *tombstoneDataWithDeltaLoc) Type() engine.TombstoneType {
-	return tomb.typ
+	return engine.TombstoneWithDeltaLoc
 }
 
 func (tomb *tombstoneDataWithDeltaLoc) Merge(other engine.Tombstoner) error {
