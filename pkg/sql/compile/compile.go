@@ -4440,7 +4440,7 @@ func shuffleBlocksToMultiCN(c *Compile, rel engine.Relation, relData engine.RelD
 			minWorkLoad = nodes[i].Data.DataCnt() / objectio.BlockInfoSize
 		}
 		if nodes[i].Data.DataCnt() > 0 {
-			if i != 0 {
+			if nodes[i].Addr != c.addr {
 				tombstone, err := collectTombstones(c, n, rel)
 				if err != nil {
 					return nil, err
@@ -4454,7 +4454,7 @@ func shuffleBlocksToMultiCN(c *Compile, rel engine.Relation, relData engine.RelD
 					rel.GetTableName())
 			} else {
 				logutil.Infof("xxxx distribute to current CN:%s, txn:%s, relData:%s, table:%s",
-					nodes[0].Addr,
+					nodes[i].Addr,
 					c.proc.GetTxnOperator().Txn().DebugString(),
 					nodes[i].Data.String(),
 					rel.GetTableName(),
