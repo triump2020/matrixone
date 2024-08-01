@@ -98,11 +98,12 @@ func (l Location) String() string {
 }
 
 func DecodeLocation(buf []byte) *Location {
-	return (*Location)(unsafe.Pointer(&buf[0]))
+	location := Location(buf)
+	return &location
 }
 
 func EncodeLocation(location Location) []byte {
-	return unsafe.Slice((*byte)(unsafe.Pointer(&location)), LocationLen)
+	return location[:]
 }
 
 type LocationSlice []byte

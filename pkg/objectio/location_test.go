@@ -101,15 +101,11 @@ func TestLocationSlice_Append(t *testing.T) {
 func TestLocationSliceTraverse(t *testing.T) {
 	var s LocationSlice
 	objectName := MockObjectName()
-	locations := make([]Location, 0)
 	for i := uint32(0); i < 1000; i++ {
 		location := BuildLocation(objectName, NewExtent(1, i, i, i), i, uint16(i))
-		locations = append(locations, location)
-	}
-
-	for _, location := range locations {
 		s.AppendLocation(location)
 	}
+
 	require.Equal(t, 1000, s.Len())
 
 	for i := 0; i < s.Len(); i++ {
@@ -122,13 +118,8 @@ func TestLocationSliceTraverse(t *testing.T) {
 func TestBytesToLocationSlice(t *testing.T) {
 	bs := make([]byte, 0)
 	objectName := MockObjectName()
-	locations := make([]Location, 0)
 	for i := uint32(0); i < 1000; i++ {
 		location := BuildLocation(objectName, NewExtent(1, i, i, i), i, uint16(i))
-		locations = append(locations, location)
-	}
-
-	for _, location := range locations {
 		bs = append(bs, EncodeLocation(location)...)
 	}
 
@@ -146,12 +137,8 @@ func TestBytesToLocationSlice(t *testing.T) {
 func TestLocationSlice_Remove(t *testing.T) {
 	var s LocationSlice
 	objectName := MockObjectName()
-	locations := make([]Location, 0)
 	for i := uint32(0); i < 1000; i++ {
 		location := BuildLocation(objectName, NewExtent(1, i, i, i), i, uint16(i))
-		locations = append(locations, location)
-	}
-	for _, location := range locations {
 		s.AppendLocation(location)
 	}
 
