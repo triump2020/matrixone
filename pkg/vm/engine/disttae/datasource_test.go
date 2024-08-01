@@ -135,7 +135,7 @@ func TestRelationDataV1_MarshalAndUnMarshal(t *testing.T) {
 
 	isEqual := func(rd1 *blockListRelData, rd2 *blockListRelData) bool {
 
-		if rd1.typ != rd2.typ || rd1.DataCnt() != rd2.DataCnt() {
+		if rd1.GetType() != rd2.GetType() || rd1.DataCnt() != rd2.DataCnt() {
 			return false
 		}
 

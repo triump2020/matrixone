@@ -367,7 +367,6 @@ func UnmarshalRelationData(data []byte) (engine.RelData, error) {
 var _ engine.RelData = new(blockListRelData)
 
 type blockListRelData struct {
-	typ engine.RelDataType
 	//blkList[0] is a empty block info
 	//blkList []*objectio.BlockInfoInProgress
 	blklist objectio.BlockInfoSliceInProgress
@@ -378,14 +377,13 @@ type blockListRelData struct {
 
 func buildBlockListRelationData() *blockListRelData {
 	return &blockListRelData{
-		typ:     engine.RelDataBlockList,
 		blklist: objectio.BlockInfoSliceInProgress{},
 	}
 }
 
 func (relData *blockListRelData) String() string {
 	var w bytes.Buffer
-	w.WriteString(fmt.Sprintf("RelData[%d]<\n", relData.typ))
+	w.WriteString(fmt.Sprintf("RelData[%d]<\n", relData.GetType()))
 	if relData.blklist != nil {
 		w.WriteString(fmt.Sprintf("\tBlockList: %s\n", relData.blklist.String()))
 	} else {
@@ -429,6 +427,10 @@ func (relData *blockListRelData) AppendBlockInfo(blk objectio.BlockInfoInProgres
 }
 
 func (relData *blockListRelData) UnmarshalBinary(data []byte) (err error) {
+	typ := engine.RelDataType(types.DecodeUint8(data))
+	if typ != engine.RelDataBlockList {
+		return moerr.NewInternalErrorNoCtx("UnmarshalBinary RelDataBlockList with %v", typ)
+	}
 	data = data[1:]
 
 	sizeofblks := types.DecodeUint32(data)
@@ -449,7 +451,7 @@ func (relData *blockListRelData) UnmarshalBinary(data []byte) (err error) {
 }
 
 func (relData *blockListRelData) MarshalBinaryWithBuffer(w *bytes.Buffer) (err error) {
-	typ := uint8(relData.typ)
+	typ := uint8(relData.GetType())
 	if _, err = w.Write(types.EncodeUint8(&typ)); err != nil {
 		return
 	}
@@ -482,7 +484,7 @@ func (relData *blockListRelData) MarshalBinaryWithBuffer(w *bytes.Buffer) (err e
 }
 
 func (relData *blockListRelData) GetType() engine.RelDataType {
-	return relData.typ
+	return engine.RelDataBlockList
 }
 
 func (relData *blockListRelData) MarshalBinary() ([]byte, error) {
@@ -506,7 +508,6 @@ func (relData *blockListRelData) GetTombstones() engine.Tombstoner {
 func (relData *blockListRelData) DataSlice(i, j int) engine.RelData {
 	blist := objectio.BlockInfoSliceInProgress(relData.blklist.Slice(i, j))
 	return &blockListRelData{
-		typ:        relData.typ,
 		blklist:    blist,
 		tombstones: relData.tombstones,
 	}
@@ -525,7 +526,6 @@ func (relData *blockListRelData) GroupByPartitionNum() map[int16]engine.RelData 
 		partitionNum := blkInfo.PartitionNum
 		if _, ok := ret[partitionNum]; !ok {
 			ret[partitionNum] = &blockListRelData{
-				typ:        relData.typ,
 				tombstones: relData.tombstones,
 			}
 			ret[partitionNum].AppendBlockInfo(objectio.EmptyBlockInfoInProgress)
@@ -539,7 +539,6 @@ func (relData *blockListRelData) GroupByPartitionNum() map[int16]engine.RelData 
 func (relData *blockListRelData) BuildEmptyRelData() engine.RelData {
 	return &blockListRelData{
 		blklist: objectio.BlockInfoSliceInProgress{},
-		typ:     relData.typ,
 	}
 }
 
