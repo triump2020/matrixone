@@ -33,12 +33,14 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/engine"
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/disttae/logtailreplay"
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/blockio"
+	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/common"
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/index"
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/options"
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 	"math"
 	"slices"
 	"sort"
+	"strings"
 )
 
 type tombstoneDataWithDeltaLoc struct {
@@ -1058,12 +1060,14 @@ func checkWorkspaceEntryType(tbl *txnTable, entry Entry) int {
 	// if no rows left, this bat can be seen deleted.
 	//
 	// Note that: some row have been deleted, but some left
+	// TODO(ghs)
 	if left, ok := tbl.getTxn().batchSelectList[entry.bat]; ok {
 		// all rows have deleted in this bat
 		if len(left) == 0 {
-			return batRowsAllDeleted
+			//return batRowsAllDeleted
+			return -1
 		} else {
-			return batRowsHaveDeletes
+			//return batRowsHaveDeletes
 		}
 	}
 
@@ -1109,6 +1113,12 @@ func (ls *LocalDataSource) filterInMemUnCommittedInserts(
 		return nil
 	}
 
+	if strings.Contains(ls.table.db.databaseName, "testdb") {
+		for i := 0; i < ls.txnOffset; i++ {
+			fmt.Println("un commit insert: ", common.MoBatchToString(writes[i].bat, 10000))
+		}
+	}
+
 	var retainedRowIds []types.Rowid
 
 	for ; ls.wsCursor < ls.txnOffset; ls.wsCursor++ {
@@ -1121,20 +1131,22 @@ func (ls *LocalDataSource) filterInMemUnCommittedInserts(
 		}
 
 		entry := ls.table.getTxn().writes[ls.wsCursor]
-
-		if t := checkWorkspaceEntryType(ls.table, entry); t == batRowsHaveDeletes {
-			leftInserts := ls.table.getTxn().batchSelectList[entry.bat]
-			retainedRowIds = make([]types.Rowid, len(leftInserts))
-			for i := range leftInserts {
-				rowId := vector.GetFixedAt[types.Rowid](entry.bat.Vecs[0], int(leftInserts[i]))
-				retainedRowIds[i] = rowId
-			}
-
-		} else if t == batRowsAllRetained {
-			retainedRowIds = vector.MustFixedCol[types.Rowid](entry.bat.Vecs[0])
-		} else {
+		if t := checkWorkspaceEntryType(ls.table, entry); t != batRowsAllRetained {
 			continue
 		}
+		//if t := checkWorkspaceEntryType(ls.table, entry); t == batRowsHaveDeletes {
+		//	leftInserts := ls.table.getTxn().batchSelectList[entry.bat]
+		//	retainedRowIds = make([]types.Rowid, len(leftInserts))
+		//	for i := range leftInserts {
+		//		rowId := vector.GetFixedAt[types.Rowid](entry.bat.Vecs[0], int(leftInserts[i]))
+		//		retainedRowIds[i] = rowId
+		//	}
+		//
+		//} else if t == batRowsAllRetained {
+		retainedRowIds = vector.MustFixedCol[types.Rowid](entry.bat.Vecs[0])
+		//} else {
+		//	continue
+		//}
 
 		offsets := rowIdsToOffset(retainedRowIds, int32(0)).([]int32)
 
@@ -1408,33 +1420,42 @@ func (ls *LocalDataSource) applyWorkspaceEntryDeletes(
 	done := false
 	writes := ls.table.getTxn().writes[:ls.txnOffset]
 
+	if strings.Contains(ls.table.db.databaseName, "testdb") {
+		for i := 0; i < ls.txnOffset; i++ {
+			fmt.Println("un commit delete: ", common.MoBatchToString(writes[i].bat, 10000))
+		}
+	}
+
 	var delRowIds []types.Rowid
 
 	for idx := range writes {
-		if t := checkWorkspaceEntryType(ls.table, writes[idx]); t == batRowsHaveDeletes {
-			rowIds := vector.MustFixedCol[types.Rowid](writes[idx].bat.Vecs[0])
-			left := ls.table.getTxn().batchSelectList[writes[idx].bat]
-			delRowIds = make([]types.Rowid, 0, len(rowIds)-len(left))
-
-			for i := range rowIds {
-				dd := true
-				for j := range left {
-					if int64(i) == left[j] {
-						dd = false
-						break
-					}
-				}
-
-				if dd {
-					delRowIds = append(delRowIds, rowIds[i])
-				}
-			}
-
-		} else if t == batRowsAllDeleted {
-			delRowIds = vector.MustFixedCol[types.Rowid](writes[idx].bat.Vecs[0])
-		} else {
+		if t := checkWorkspaceEntryType(ls.table, writes[idx]); t != batRowsAllDeleted {
 			continue
 		}
+		//if t := checkWorkspaceEntryType(ls.table, writes[idx]); t == batRowsHaveDeletes {
+		//	rowIds := vector.MustFixedCol[types.Rowid](writes[idx].bat.Vecs[0])
+		//	left := ls.table.getTxn().batchSelectList[writes[idx].bat]
+		//	delRowIds = make([]types.Rowid, 0, len(rowIds)-len(left))
+		//
+		//	for i := range rowIds {
+		//		dd := true
+		//		for j := range left {
+		//			if int64(i) == left[j] {
+		//				dd = false
+		//				break
+		//			}
+		//		}
+		//
+		//		if dd {
+		//			delRowIds = append(delRowIds, rowIds[i])
+		//		}
+		//	}
+		//
+		//} else if t == batRowsAllDeleted {
+		delRowIds = vector.MustFixedCol[types.Rowid](writes[idx].bat.Vecs[0])
+		//} else {
+		//	continue
+		//}
 
 		for _, delRowId := range delRowIds {
 			b, o := delRowId.Decode()
