@@ -18,6 +18,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math"
+	"slices"
+	"sort"
+	"strings"
+
 	"github.com/matrixorigin/matrixone/pkg/catalog"
 	"github.com/matrixorigin/matrixone/pkg/common/moerr"
 	"github.com/matrixorigin/matrixone/pkg/common/mpool"
@@ -37,10 +42,6 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/index"
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/options"
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
-	"math"
-	"slices"
-	"sort"
-	"strings"
 )
 
 type tombstoneDataWithDeltaLoc struct {
@@ -1111,12 +1112,6 @@ func (ls *LocalDataSource) filterInMemUnCommittedInserts(
 	maxRows := int(options.DefaultBlockMaxRows)
 	if len(writes) == 0 {
 		return nil
-	}
-
-	if strings.Contains(ls.table.db.databaseName, "testdb") {
-		for i := 0; i < ls.txnOffset; i++ {
-			fmt.Println("un commit insert: ", common.MoBatchToString(writes[i].bat, 10000))
-		}
 	}
 
 	var retainedRowIds []types.Rowid
