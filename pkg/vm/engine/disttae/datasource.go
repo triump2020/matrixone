@@ -21,7 +21,6 @@ import (
 	"math"
 	"slices"
 	"sort"
-	"strings"
 
 	"github.com/matrixorigin/matrixone/pkg/catalog"
 	"github.com/matrixorigin/matrixone/pkg/common/moerr"
@@ -38,7 +37,6 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/engine"
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/disttae/logtailreplay"
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/blockio"
-	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/common"
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/index"
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/options"
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
@@ -255,12 +253,12 @@ func (tomb *tombstoneDataWithDeltaLoc) ApplyPersistedTombstones(
 	rowsOffset []int32,
 	mask *nulls.Nulls,
 	apply func(
-		ctx context.Context,
-		loc objectio.Location,
-		cts types.TS,
-		rowsOffset []int32,
-		deleted *nulls.Nulls,
-	) (left []int32, err error),
+	ctx context.Context,
+	loc objectio.Location,
+	cts types.TS,
+	rowsOffset []int32,
+	deleted *nulls.Nulls,
+) (left []int32, err error),
 ) (left []int32, err error) {
 
 	if locs, ok := tomb.blk2UncommitLoc[bid]; ok {
@@ -1414,12 +1412,6 @@ func (ls *LocalDataSource) applyWorkspaceEntryDeletes(
 
 	done := false
 	writes := ls.table.getTxn().writes[:ls.txnOffset]
-
-	if strings.Contains(ls.table.db.databaseName, "testdb") {
-		for i := 0; i < ls.txnOffset; i++ {
-			fmt.Println("un commit delete: ", common.MoBatchToString(writes[i].bat, 10000))
-		}
-	}
 
 	var delRowIds []types.Rowid
 
