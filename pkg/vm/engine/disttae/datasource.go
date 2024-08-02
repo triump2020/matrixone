@@ -690,15 +690,13 @@ func (rs *RemoteDataSource) GetTombstonesInProgress(
 }
 
 func (rs *RemoteDataSource) SetOrderBy(orderby []*plan.OrderBySpec) {
-	panic("Not Support order by")
 }
 
 func (rs *RemoteDataSource) GetOrderBy() []*plan.OrderBySpec {
-	panic("Not Support order by")
+	return nil
 }
 
 func (rs *RemoteDataSource) SetFilterZM(zm objectio.ZoneMap) {
-	panic("Not Support order by")
 }
 
 // local data source
