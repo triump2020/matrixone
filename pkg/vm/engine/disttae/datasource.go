@@ -1122,10 +1122,9 @@ func (ls *LocalDataSource) filterInMemUnCommittedInserts(
 
 		entry := ls.table.getTxn().writes[ls.wsCursor]
 
-		retainedRowIds = retainedRowIds[:0]
-
 		if t := checkWorkspaceEntryType(ls.table, entry); t == batRowsHaveDeletes {
 			leftInserts := ls.table.getTxn().batchSelectList[entry.bat]
+			retainedRowIds = make([]types.Rowid, len(leftInserts))
 			for i := range leftInserts {
 				rowId := vector.GetFixedAt[types.Rowid](entry.bat.Vecs[0], int(leftInserts[i]))
 				retainedRowIds[i] = rowId
