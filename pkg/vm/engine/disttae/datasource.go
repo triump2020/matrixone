@@ -838,6 +838,8 @@ func (rs *RemoteDataSource) sortBlockList() {
 func (rs *RemoteDataSource) handleOrderBy() {
 	// for ordered scan, sort blocklist by zonemap info, and then filter by zonemap
 	if len(rs.orderBy.OrderBy) > 0 {
+		logutil.Infof("xxxx RemoteDataSource handleOrderBy, ts:%s, table:%s",
+			rs.ts.ToString(), rs.def.Name)
 		if !rs.orderBy.sorted {
 			rs.orderBy.desc = rs.orderBy.OrderBy[0].Flag&plan.OrderBySpec_DESC != 0
 			rs.getBlockZMs()

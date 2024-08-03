@@ -1807,6 +1807,12 @@ func (tbl *txnTable) BuildReaders(
 		return nil, moerr.NewInternalErrorNoCtx("not enough blocks")
 	}
 
+	logutil.Infof("xxxx tbl.BuildReades, num:%d, blkCnt:%d, txn:%s, table:%s",
+		num,
+		blkCnt,
+		tbl.db.op.Txn().DebugString(),
+		tbl.tableName)
+
 	scanType := determineScanType(relData, num)
 	def := tbl.GetTableDef(ctx)
 	mod := blkCnt % num
