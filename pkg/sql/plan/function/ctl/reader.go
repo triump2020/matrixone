@@ -15,12 +15,12 @@ import (
 )
 
 // force build remote datasource
-// mo_ctl("cn", "reader", "enable:force_build_remote_ds:t1,t2,t3");
-// mo_ctl("cn", "reader", "disable:force_build_remote_ds:t1,t2,t3");
+// mo_ctl("cn", "reader", "enable:force_build_remote_ds:tid1,tid2");
+// mo_ctl("cn", "reader", "disable:force_build_remote_ds:tid1,tid2");
 //
 // force shuffle specified number blocks and table
-// mo_ctl("cn", "reader", "enable:force_shuffle:t1,t2,t3:blk_cnt");
-// mo_ctl("cn", "reader", "disable:force_shuffle:t1,t2,t3:blk_cnt");
+// mo_ctl("cn", "reader", "enable:force_shuffle:tid1,tid2:blk_cnt");
+// mo_ctl("cn", "reader", "disable:force_shuffle:tid1,tid2:blk_cnt");
 
 func handleCtlReader(
 	proc *process.Process,

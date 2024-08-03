@@ -19,6 +19,8 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"github.com/matrixorigin/matrixone/pkg/logutil"
+	"strconv"
 	"sync"
 	"time"
 
@@ -1012,8 +1014,8 @@ func (rd *EmptyRelationData) DataCnt() int {
 
 type forceBuildRemoteDSConfig struct {
 	sync.Mutex
-	force bool
-	tbl   []string
+	force  bool
+	tblIds []uint64
 }
 
 var forceBuildRemoteDS forceBuildRemoteDSConfig
@@ -1021,7 +1023,7 @@ var forceBuildRemoteDS forceBuildRemoteDSConfig
 type forceShuffleReaderConfig struct {
 	sync.Mutex
 	force  bool
-	tbl    []string
+	tblIds []uint64
 	blkCnt int
 }
 
@@ -1031,29 +1033,49 @@ func SetForceBuildRemoteDS(force bool, tbls []string) {
 	forceBuildRemoteDS.Lock()
 	defer forceBuildRemoteDS.Unlock()
 
+	forceBuildRemoteDS.tblIds = make([]uint64, len(tbls))
+	for i, tbl := range tbls {
+		id, err := strconv.Atoi(tbl)
+		if err != nil {
+			logutil.Errorf("SetForceBuildRemoteDS: invalid table id %s", tbl)
+			return
+		}
+
+		forceBuildRemoteDS.tblIds[i] = uint64(id)
+	}
+
 	forceBuildRemoteDS.force = force
-	forceBuildRemoteDS.tbl = tbls
 }
 
-func GetForceBuildRemoteDS() (bool, []string) {
+func GetForceBuildRemoteDS() (bool, []uint64) {
 	forceBuildRemoteDS.Lock()
 	defer forceBuildRemoteDS.Unlock()
 
-	return forceBuildRemoteDS.force, forceBuildRemoteDS.tbl
+	return forceBuildRemoteDS.force, forceBuildRemoteDS.tblIds
 }
 
 func SetForceShuffleReader(force bool, tbls []string, blkCnt int) {
 	forceShuffleReader.Lock()
 	defer forceShuffleReader.Unlock()
 
+	forceShuffleReader.tblIds = make([]uint64, len(tbls))
+	for i, tbl := range tbls {
+		id, err := strconv.Atoi(tbl)
+		if err != nil {
+			logutil.Errorf("SetForceBuildRemoteDS: invalid table id %s", tbl)
+			return
+		}
+
+		forceShuffleReader.tblIds[i] = uint64(id)
+	}
+
 	forceShuffleReader.force = force
-	forceShuffleReader.tbl = tbls
 	forceShuffleReader.blkCnt = blkCnt
 }
 
-func GetForceShuffleReader() (bool, []string, int) {
+func GetForceShuffleReader() (bool, []uint64, int) {
 	forceShuffleReader.Lock()
 	defer forceShuffleReader.Unlock()
 
-	return forceShuffleReader.force, forceShuffleReader.tbl, forceShuffleReader.blkCnt
+	return forceShuffleReader.force, forceShuffleReader.tblIds, forceShuffleReader.blkCnt
 }
