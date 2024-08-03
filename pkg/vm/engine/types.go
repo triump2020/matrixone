@@ -19,7 +19,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"sync/atomic"
+	"sync"
 	"time"
 
 	"github.com/matrixorigin/matrixone/pkg/common/mpool"
@@ -1010,21 +1010,50 @@ func (rd *EmptyRelationData) DataCnt() int {
 	return 0
 }
 
-var forceBuildRemoteDS atomic.Bool
-var forceShuffleReader atomic.Bool
-
-func SetForceBuildRemoteDS(force bool) {
-	forceBuildRemoteDS.Store(force)
+type forceBuildRemoteDSConfig struct {
+	sync.Mutex
+	force bool
+	tbl   []string
 }
 
-func GetForceBuildRemoteDS() bool {
-	return forceBuildRemoteDS.Load()
+var forceBuildRemoteDS forceBuildRemoteDSConfig
+
+type forceShuffleReaderConfig struct {
+	sync.Mutex
+	force  bool
+	tbl    []string
+	blkCnt int
 }
 
-func SetForceShuffleReader(force bool) {
-	forceShuffleReader.Store(force)
+var forceShuffleReader forceShuffleReaderConfig
+
+func SetForceBuildRemoteDS(force bool, tbls []string) {
+	forceBuildRemoteDS.Lock()
+	defer forceBuildRemoteDS.Unlock()
+
+	forceBuildRemoteDS.force = force
+	forceBuildRemoteDS.tbl = tbls
 }
 
-func GetForceShuffleReader() bool {
-	return forceShuffleReader.Load()
+func GetForceBuildRemoteDS() (bool, []string) {
+	forceBuildRemoteDS.Lock()
+	defer forceBuildRemoteDS.Unlock()
+
+	return forceBuildRemoteDS.force, forceBuildRemoteDS.tbl
+}
+
+func SetForceShuffleReader(force bool, tbls []string, blkCnt int) {
+	forceShuffleReader.Lock()
+	defer forceShuffleReader.Unlock()
+
+	forceShuffleReader.force = force
+	forceShuffleReader.tbl = tbls
+	forceShuffleReader.blkCnt = blkCnt
+}
+
+func GetForceShuffleReader() (bool, []string, int) {
+	forceShuffleReader.Lock()
+	defer forceShuffleReader.Unlock()
+
+	return forceShuffleReader.force, forceShuffleReader.tbl, forceShuffleReader.blkCnt
 }
