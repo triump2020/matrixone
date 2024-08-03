@@ -25,6 +25,9 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/message"
 
 	"github.com/google/uuid"
+	"github.com/panjf2000/ants/v2"
+	"go.uber.org/zap"
+
 	"github.com/matrixorigin/matrixone/pkg/catalog"
 	"github.com/matrixorigin/matrixone/pkg/clusterservice"
 	"github.com/matrixorigin/matrixone/pkg/common/moerr"
@@ -55,8 +58,6 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/disttae/route"
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/common"
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
-	"github.com/panjf2000/ants/v2"
-	"go.uber.org/zap"
 )
 
 var _ engine.Engine = new(Engine)
@@ -677,6 +678,7 @@ func (e *Engine) BuildBlockReaders(
 		ds := NewRemoteDataSource(
 			ctx,
 			proc,
+			def,
 			fs,
 			ts,
 			shard)

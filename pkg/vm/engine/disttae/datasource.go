@@ -548,6 +548,9 @@ func (relData *blockListRelData) DataCnt() int {
 }
 
 type RemoteDataSource struct {
+	orderBy orderByData
+	def     *plan.TableDef
+
 	ctx  context.Context
 	proc *process.Process
 
@@ -561,6 +564,7 @@ type RemoteDataSource struct {
 func NewRemoteDataSource(
 	ctx context.Context,
 	proc *process.Process,
+	def *plan.TableDef,
 	fs fileservice.FileService,
 	snapshotTS timestamp.Timestamp,
 	relData engine.RelData,
@@ -569,6 +573,7 @@ func NewRemoteDataSource(
 		data: relData,
 		ctx:  ctx,
 		proc: proc,
+		def:  def,
 		fs:   fs,
 		ts:   types.TimestampToTS(snapshotTS),
 	}
@@ -587,9 +592,18 @@ func (rs *RemoteDataSource) Next(
 	if rs.cursor >= rs.data.DataCnt() {
 		return nil, engine.End, nil
 	}
+
+	rs.handleOrderBy()
+
+	if rs.cursor >= rs.data.DataCnt() {
+		return nil, engine.End, nil
+	}
+
+	blk := rs.data.GetBlockInfo(rs.cursor)
 	rs.cursor++
-	cur := rs.data.GetBlockInfo(rs.cursor - 1)
-	return &cur, engine.Persisted, nil
+
+	return &blk, engine.Persisted, nil
+
 }
 
 func (rs *RemoteDataSource) Close() {
@@ -690,16 +704,156 @@ func (rs *RemoteDataSource) GetTombstonesInProgress(
 	return mask, nil
 }
 
-func (rs *RemoteDataSource) SetOrderBy(_ []*plan.OrderBySpec) {
+type orderByData struct {
+	desc     bool
+	blockZMS []index.ZM
+	sorted   bool // blks need to be sorted by zonemap
+	OrderBy  []*plan.OrderBySpec
 
+	filterZM    objectio.ZoneMap
+	checkPolicy SkipCheckPolicy
+}
+
+func (o *orderByData) SetOrderBy(orderby []*plan.OrderBySpec) {
+	o.OrderBy = orderby
+}
+
+func (o *orderByData) GetOrderBy() []*plan.OrderBySpec {
+	return o.OrderBy
+
+}
+
+func (o *orderByData) SetFilterZM(zm objectio.ZoneMap) {
+	if !o.filterZM.IsInited() {
+		o.filterZM = zm.Clone()
+		return
+	}
+	if o.desc && o.filterZM.CompareMax(zm) < 0 {
+		o.filterZM = zm.Clone()
+		return
+	}
+	if !o.desc && o.filterZM.CompareMin(zm) > 0 {
+		o.filterZM = zm.Clone()
+		return
+	}
+}
+
+func (o *orderByData) needReadBlkByZM(i int) bool {
+	zm := o.blockZMS[i]
+	if !o.filterZM.IsInited() || !zm.IsInited() {
+		return true
+	}
+	if o.desc {
+		return o.filterZM.CompareMax(zm) <= 0
+	} else {
+		return o.filterZM.CompareMin(zm) >= 0
+	}
+}
+
+func (rs *RemoteDataSource) SetOrderBy(orderby []*plan.OrderBySpec) {
+	rs.orderBy.SetOrderBy(orderby)
 }
 
 func (rs *RemoteDataSource) GetOrderBy() []*plan.OrderBySpec {
-	return nil
+	return rs.orderBy.GetOrderBy()
 }
 
-func (rs *RemoteDataSource) SetFilterZM(_ objectio.ZoneMap) {
+func (rs *RemoteDataSource) SetFilterZM(zm objectio.ZoneMap) {
+	rs.orderBy.SetFilterZM(zm)
+}
 
+func (rs *RemoteDataSource) needReadBlkByZM(i int) bool {
+	return rs.orderBy.needReadBlkByZM(i)
+}
+
+func (rs *RemoteDataSource) getBlockZMs() {
+	orderByCol, _ := rs.orderBy.OrderBy[0].Expr.Expr.(*plan.Expr_Col)
+
+	def := rs.def
+	orderByColIDX := int(def.Cols[int(orderByCol.Col.ColPos)].Seqnum)
+
+	sliceLen := rs.data.DataCnt()
+	rs.orderBy.blockZMS = make([]index.ZM, sliceLen)
+	var objDataMeta objectio.ObjectDataMeta
+	var location objectio.Location
+	for i := rs.cursor; i < sliceLen; i++ {
+		blkinfo := rs.data.GetBlockInfo(i)
+		location = blkinfo.MetaLocation()
+		if !objectio.IsSameObjectLocVsMeta(location, objDataMeta) {
+			objMeta, err := objectio.FastLoadObjectMeta(rs.ctx, &location, false, rs.fs)
+			if err != nil {
+				panic("load object meta error when ordered scan!")
+			}
+			objDataMeta = objMeta.MustDataMeta()
+		}
+		blkMeta := objDataMeta.GetBlockMeta(uint32(location.ID()))
+		rs.orderBy.blockZMS[i] = blkMeta.ColumnMeta(uint16(orderByColIDX)).ZoneMap()
+	}
+}
+
+func (rs *RemoteDataSource) sortBlockList() {
+	sliceLen := rs.data.DataCnt()
+	helper := make([]*blockSortHelperInProgress, sliceLen)
+	for i := range sliceLen {
+		helper[i] = &blockSortHelperInProgress{}
+		blkinfo := rs.data.GetBlockInfo(i)
+		helper[i].blk = &blkinfo
+		helper[i].zm = rs.orderBy.blockZMS[i]
+	}
+	//ls.rangeSlice = make(objectio.BlockInfoSliceInProgress, ls.rangeSlice.Size())
+	rs.data.BuildEmptyRelData().AttachTombstones(rs.data.GetTombstones())
+
+	if rs.orderBy.desc {
+		sort.Slice(helper, func(i, j int) bool {
+			zm1 := helper[i].zm
+			if !zm1.IsInited() {
+				return true
+			}
+			zm2 := helper[j].zm
+			if !zm2.IsInited() {
+				return false
+			}
+			return zm1.CompareMax(zm2) > 0
+		})
+	} else {
+		sort.Slice(helper, func(i, j int) bool {
+			zm1 := helper[i].zm
+			if !zm1.IsInited() {
+				return true
+			}
+			zm2 := helper[j].zm
+			if !zm2.IsInited() {
+				return false
+			}
+			return zm1.CompareMin(zm2) < 0
+		})
+	}
+
+	for i := range helper {
+		rs.data.SetBlockInfo(i, *helper[i].blk)
+		rs.orderBy.blockZMS[i] = helper[i].zm
+	}
+}
+
+func (rs *RemoteDataSource) handleOrderBy() {
+	// for ordered scan, sort blocklist by zonemap info, and then filter by zonemap
+	if len(rs.orderBy.OrderBy) > 0 {
+		if !rs.orderBy.sorted {
+			rs.orderBy.desc = rs.orderBy.OrderBy[0].Flag&plan.OrderBySpec_DESC != 0
+			rs.getBlockZMs()
+			rs.sortBlockList()
+			rs.orderBy.sorted = true
+		}
+		i := rs.cursor
+		sliceLen := rs.data.DataCnt()
+		for i < sliceLen {
+			if rs.needReadBlkByZM(i) {
+				break
+			}
+			i++
+		}
+		rs.cursor = i
+	}
 }
 
 // local data source

@@ -1705,6 +1705,7 @@ func buildRemoteDS(
 	source = NewRemoteDataSource(
 		ctx,
 		tbl.proc.Load(),
+		tbl.tableDef,
 		tbl.getTxn().engine.fs,
 		tbl.db.op.SnapshotTS(),
 		relData,
