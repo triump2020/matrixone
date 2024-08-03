@@ -751,6 +751,10 @@ func (o *orderByData) needReadBlkByZM(i int) bool {
 }
 
 func (rs *RemoteDataSource) SetOrderBy(orderby []*plan.OrderBySpec) {
+	logutil.Infof("xxxx remote data source set order by, len:%d, ts:%s, table:%s",
+		len(orderby),
+		rs.ts.ToTimestamp().DebugString(),
+		rs.def.Name)
 	rs.orderBy.SetOrderBy(orderby)
 }
 
