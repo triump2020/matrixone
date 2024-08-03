@@ -1069,8 +1069,10 @@ func checkWorkspaceEntryType(tbl *txnTable, entry Entry, isInsert bool) bool {
 		if left, exist := tbl.getTxn().batchSelectList[entry.bat]; exist && len(left) == 0 {
 			// all rows have deleted in this bat
 			return false
+		} else if len(left) > 0 {
+			// FIXME: if len(left) > 0, we need to exclude the deleted rows in this batch
+			logutil.Fatal("FIXME: implement later")
 		}
-		// FIXME: if len(left) > 0, we need to exclude the deleted rows in this batch
 		return true
 	}
 
