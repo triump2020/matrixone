@@ -51,7 +51,7 @@ func TestRelationDataV1_MarshalAndUnMarshal(t *testing.T) {
 	}
 
 	buildTombstoner := func() *tombstoneDataWithDeltaLoc {
-		tombstoner := buildTombstoneWithDeltaLoc()
+		tombstoner := NewEmptyTombstoneWithDeltaLoc()
 
 		for i := 0; i < 10; i++ {
 			bid := types.BuildTestBlockid(int64(i), 1)
