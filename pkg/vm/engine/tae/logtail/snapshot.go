@@ -189,7 +189,7 @@ func (d *DeltaLocDataSource) ApplyTombstones(
 	bid objectio.Blockid,
 	rowsOffset []int64,
 ) ([]int64, error) {
-	deleteMask, err := d.getAndApplyTombstonesInProgress(ctx, bid)
+	deleteMask, err := d.getAndApplyTombstones(ctx, bid)
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +208,7 @@ func (d *DeltaLocDataSource) GetTombstones(
 	ctx context.Context, bid objectio.Blockid,
 ) (deletedRows *nulls.Nulls, err error) {
 	var rows *nulls.Bitmap
-	rows, err = d.getAndApplyTombstonesInProgress(ctx, bid)
+	rows, err = d.getAndApplyTombstones(ctx, bid)
 	if err != nil {
 		return
 	}
@@ -218,7 +218,7 @@ func (d *DeltaLocDataSource) GetTombstones(
 	return rows, nil
 }
 
-func (d *DeltaLocDataSource) getAndApplyTombstonesInProgress(
+func (d *DeltaLocDataSource) getAndApplyTombstones(
 	ctx context.Context, bid objectio.Blockid,
 ) (*nulls.Bitmap, error) {
 	deltaLoc, ts := d.ds.GetDeltaLoc(bid)

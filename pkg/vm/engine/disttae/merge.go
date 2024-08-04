@@ -181,7 +181,7 @@ func (t *cnMergeTask) GetSortKeyType() types.Type {
 func (t *cnMergeTask) LoadNextBatch(ctx context.Context, objIdx uint32) (*batch.Batch, *nulls.Nulls, func(), error) {
 	iter := t.blkIters[objIdx]
 	if iter.Next() {
-		blk := iter.EntryInProgress()
+		blk := iter.Entry()
 		// update delta location
 		obj := t.targets[objIdx]
 		blk.Sorted = obj.Sorted

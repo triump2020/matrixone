@@ -757,8 +757,6 @@ type Relation interface {
 	// third parameter: Transaction offset used to specify the starting position for reading data.
 	Ranges(context.Context, []*plan.Expr, int) (RelData, error)
 
-	//RangesInProgress will substitute the Ranges function in the future.
-	//RangesInProgress(context.Context, []*plan.Expr, int) (RelData, error)
 	CollectTombstones(ctx context.Context, txnOffset int) (Tombstoner, error)
 
 	TableDefs(context.Context) ([]TableDef, error)

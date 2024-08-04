@@ -121,7 +121,7 @@ func BlockDataReadNoCopy(
 
 	// build rowid column if needed
 	if rowidPos >= 0 {
-		if loaded.Vecs[rowidPos], err = buildRowidColumnInProgress(
+		if loaded.Vecs[rowidPos], err = buildRowidColumn(
 			info, nil, mp, vp,
 		); err != nil {
 
@@ -289,7 +289,7 @@ func BlockDataReadInner(
 
 		// build rowid column if needed
 		if rowidPos >= 0 {
-			if loaded.Vecs[rowidPos], err = buildRowidColumnInProgress(
+			if loaded.Vecs[rowidPos], err = buildRowidColumn(
 				info, selectRows, mp, vp,
 			); err != nil {
 				return
@@ -347,7 +347,7 @@ func BlockDataReadInner(
 
 	// build rowid column if needed
 	if rowidPos >= 0 {
-		if loaded.Vecs[rowidPos], err = buildRowidColumnInProgress(
+		if loaded.Vecs[rowidPos], err = buildRowidColumn(
 			info, nil, mp, vp,
 		); err != nil {
 			return
@@ -410,7 +410,7 @@ func getRowsIdIndex(colIndexes []uint16, colTypes []types.Type) (int, []uint16, 
 	return idx, idxes, typs
 }
 
-func buildRowidColumnInProgress(
+func buildRowidColumn(
 	info *objectio.BlockInfoInProgress,
 	sels []int64,
 	m *mpool.MPool,
