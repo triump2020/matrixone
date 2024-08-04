@@ -64,8 +64,7 @@ func ReadDataByFilter(
 	defer release()
 
 	sels = searchFunc(bat.Vecs)
-	//sels, err = ds.ApplyTombstones(ctx, info.BlockID, sels)
-	sels, err = ds.ApplyTombstonesInProgress(ctx, info.BlockID, sels)
+	sels, err = ds.ApplyTombstones(ctx, info.BlockID, sels)
 	if err != nil {
 		return
 	}
@@ -112,8 +111,7 @@ func BlockDataReadNoCopy(
 	); err != nil {
 		return nil, nil, nil, err
 	}
-	//tombstones, err := ds.GetTombstones(ctx, info.BlockID)
-	tombstones, err := ds.GetTombstonesInProgress(ctx, info.BlockID)
+	tombstones, err := ds.GetTombstones(ctx, info.BlockID)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -327,8 +325,7 @@ func BlockDataReadInner(
 		return
 	}
 
-	//tombstones, err := ds.GetTombstones(ctx, info.BlockID)
-	tombstones, err := ds.GetTombstonesInProgress(ctx, info.BlockID)
+	tombstones, err := ds.GetTombstones(ctx, info.BlockID)
 	if err != nil {
 		return
 	}

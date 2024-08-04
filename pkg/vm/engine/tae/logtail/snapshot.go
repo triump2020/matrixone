@@ -184,7 +184,7 @@ func (d *DeltaLocDataSource) Close() {
 
 }
 
-func (d *DeltaLocDataSource) ApplyTombstonesInProgress(
+func (d *DeltaLocDataSource) ApplyTombstones(
 	ctx context.Context,
 	bid objectio.Blockid,
 	rowsOffset []int64,
@@ -204,7 +204,7 @@ func (d *DeltaLocDataSource) ApplyTombstonesInProgress(
 	return rows, nil
 }
 
-func (d *DeltaLocDataSource) GetTombstonesInProgress(
+func (d *DeltaLocDataSource) GetTombstones(
 	ctx context.Context, bid objectio.Blockid,
 ) (deletedRows *nulls.Nulls, err error) {
 	var rows *nulls.Bitmap

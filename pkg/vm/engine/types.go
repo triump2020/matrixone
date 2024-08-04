@@ -708,15 +708,18 @@ type DataSource interface {
 		memFilter any,
 		mp *mpool.MPool,
 		vp VectorPool,
-		bat *batch.Batch) (*objectio.BlockInfoInProgress, DataState, error)
+		bat *batch.Batch,
+	) (*objectio.BlockInfoInProgress, DataState, error)
 
-	ApplyTombstonesInProgress(
+	ApplyTombstones(
 		ctx context.Context,
 		bid objectio.Blockid,
-		rowsOffset []int64) ([]int64, error)
+		rowsOffset []int64,
+	) ([]int64, error)
 
-	GetTombstonesInProgress(
-		ctx context.Context, bid objectio.Blockid) (deletedRows *nulls.Nulls, err error)
+	GetTombstones(
+		ctx context.Context, bid objectio.Blockid,
+	) (deletedRows *nulls.Nulls, err error)
 
 	SetOrderBy(orderby []*plan.OrderBySpec)
 

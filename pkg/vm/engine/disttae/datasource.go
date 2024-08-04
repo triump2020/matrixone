@@ -211,7 +211,7 @@ func (rs *RemoteDataSource) applyPersistedTombstones(
 		apply)
 }
 
-func (rs *RemoteDataSource) ApplyTombstonesInProgress(
+func (rs *RemoteDataSource) ApplyTombstones(
 	ctx context.Context,
 	bid objectio.Blockid,
 	rowsOffset []int64,
@@ -230,7 +230,7 @@ func (rs *RemoteDataSource) ApplyTombstonesInProgress(
 	return
 }
 
-func (rs *RemoteDataSource) GetTombstonesInProgress(
+func (rs *RemoteDataSource) GetTombstones(
 	ctx context.Context, bid objectio.Blockid,
 ) (mask *nulls.Nulls, err error) {
 
@@ -620,7 +620,7 @@ func (ls *LocalDataSource) filterInMemUnCommittedInserts(
 		offsets := rowIdsToOffset(retainedRowIds, int64(0)).([]int64)
 
 		b, _ := retainedRowIds[0].Decode()
-		sels, err := ls.ApplyTombstonesInProgress(ls.ctx, b, offsets)
+		sels, err := ls.ApplyTombstones(ls.ctx, b, offsets)
 		if err != nil {
 			return err
 		}
@@ -692,7 +692,7 @@ func (ls *LocalDataSource) filterInMemCommittedInserts(
 		entry := ls.pStateRows.insIter.Entry()
 		b, o := entry.RowID.Decode()
 
-		sel, err = ls.ApplyTombstonesInProgress(ls.ctx, b, []int64{int64(o)})
+		sel, err = ls.ApplyTombstones(ls.ctx, b, []int64{int64(o)})
 		if err != nil {
 			return err
 		}
@@ -784,14 +784,14 @@ func loadBlockDeletesByDeltaLoc(
 	return deleteMask, nil
 }
 
-// ApplyTombstonesInProgress check if any deletes exist in
+// ApplyTombstones check if any deletes exist in
 //  1. unCommittedInmemDeletes:
 //     a. workspace writes
 //     b. flushed to s3
 //     c. raw rowId offset deletes (not flush yet)
 //  3. committedInmemDeletes
 //  4. committedPersistedTombstone
-func (ls *LocalDataSource) ApplyTombstonesInProgress(
+func (ls *LocalDataSource) ApplyTombstones(
 	ctx context.Context,
 	bid objectio.Blockid,
 	rowsOffset []int64,
@@ -819,7 +819,7 @@ func (ls *LocalDataSource) ApplyTombstonesInProgress(
 	return rowsOffset, nil
 }
 
-func (ls *LocalDataSource) GetTombstonesInProgress(
+func (ls *LocalDataSource) GetTombstones(
 	ctx context.Context, bid objectio.Blockid,
 ) (deletedRows *nulls.Nulls, err error) {
 
