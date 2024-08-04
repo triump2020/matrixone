@@ -1815,7 +1815,7 @@ func (tbl *txnTable) BuildReaders(
 
 	//relData maybe is nil, indicate that only read data from memory.
 	if relData == nil || relData.DataCnt() == 0 {
-		relData = buildBlockListRelationData()
+		relData = NewEmptyBlockListRelationData()
 		relData.AppendBlockInfo(objectio.EmptyBlockInfoInProgress)
 	}
 	blkCnt := relData.DataCnt()
@@ -2123,7 +2123,7 @@ func (tbl *txnTable) transferDeletes(
 ) error {
 	var blks []objectio.BlockInfoInProgress
 	sid := tbl.proc.Load().GetService()
-	relData := buildBlockListRelationData()
+	relData := NewEmptyBlockListRelationData()
 	relData.AppendBlockInfo(objectio.EmptyBlockInfoInProgress)
 	ds, err := tbl.buildLocalDataSource(ctx, 0, relData, SkipCheckPolicy(CheckCommittedS3Only))
 	if err != nil {

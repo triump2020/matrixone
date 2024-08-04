@@ -85,7 +85,7 @@ func newCNMergeTask(
 	targets []logtailreplay.ObjectInfo,
 	targetObjSize uint32,
 ) (*cnMergeTask, error) {
-	relData := buildBlockListRelationData()
+	relData := NewEmptyBlockListRelationData()
 	relData.AppendBlockInfo(objectio.EmptyBlockInfoInProgress)
 	source, err := tbl.buildLocalDataSource(ctx, 0, relData, CheckAll)
 	if err != nil {
