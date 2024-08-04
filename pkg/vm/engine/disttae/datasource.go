@@ -41,16 +41,19 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-type RemoteDataSource struct {
-	ctx  context.Context
-	proc *process.Process
+type TombstoneApplyPolicy uint64
 
-	fs fileservice.FileService
-	ts types.TS
+const (
+	Policy_SkipUncommitedInMemory = 1 << iota
+	Policy_SkipCommittedInMemory
+	Policy_SkipUncommitedS3
+	Policy_SkipCommittedS3
+)
 
-	cursor int
-	data   engine.RelData
-}
+const (
+	Policy_CheckAll             = 0
+	Policy_CheckCommittedS3Only = Policy_SkipUncommitedInMemory | Policy_SkipCommittedInMemory | Policy_SkipUncommitedS3
+)
 
 func NewRemoteDataSource(
 	ctx context.Context,
@@ -66,6 +69,64 @@ func NewRemoteDataSource(
 		fs:   fs,
 		ts:   types.TimestampToTS(snapshotTS),
 	}
+}
+
+func NewLocalDataSource(
+	ctx context.Context,
+	table *txnTable,
+	txnOffset int,
+	rangesSlice objectio.BlockInfoSliceInProgress,
+	skipReadMem bool,
+	policy TombstoneApplyPolicy,
+) (source *LocalDataSource, err error) {
+
+	source = &LocalDataSource{}
+	source.fs = table.getTxn().engine.fs
+	source.ctx = ctx
+	source.mp = table.proc.Load().Mp()
+	source.tombstonePolicy = policy
+
+	if rangesSlice != nil && rangesSlice.Len() > 0 {
+		if bytes.Equal(
+			objectio.EncodeBlockInfoInProgress(*rangesSlice.Get(0)),
+			objectio.EmptyBlockInfoInProgressBytes) {
+			rangesSlice = rangesSlice.Slice(1, rangesSlice.Len())
+		}
+
+		source.rangeSlice = rangesSlice
+	}
+
+	state, err := table.getPartitionState(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	source.table = table
+	source.pState = state
+	source.txnOffset = txnOffset
+	source.snapshotTS = types.TimestampToTS(table.getTxn().op.SnapshotTS())
+
+	source.iteratePhase = engine.InMem
+	if skipReadMem {
+		source.iteratePhase = engine.Persisted
+	}
+
+	return source, nil
+}
+
+// --------------------------------------------------------------------------------
+//	RemoteDataSource defines and APIs
+// --------------------------------------------------------------------------------
+
+type RemoteDataSource struct {
+	ctx  context.Context
+	proc *process.Process
+
+	fs fileservice.FileService
+	ts types.TS
+
+	cursor int
+	data   engine.RelData
 }
 
 func (rs *RemoteDataSource) Next(
@@ -198,7 +259,9 @@ func (rs *RemoteDataSource) SetFilterZM(_ objectio.ZoneMap) {
 
 }
 
-// local data source
+// --------------------------------------------------------------------------------
+//	LocalDataSource defines and APIs
+// --------------------------------------------------------------------------------
 
 type LocalDataSource struct {
 	rangeSlice objectio.BlockInfoSliceInProgress
@@ -235,65 +298,8 @@ type LocalDataSource struct {
 	sorted   bool // blks need to be sorted by zonemap
 	OrderBy  []*plan.OrderBySpec
 
-	filterZM    objectio.ZoneMap
-	checkPolicy SkipCheckPolicy
-}
-
-type SkipCheckPolicy uint64
-
-const (
-	SkipUncommitedInMemory = 1 << iota
-	SkipCommittedInMemory
-	SkipUncommitedS3
-	SkipCommittedS3
-)
-
-const (
-	CheckAll             = 0
-	CheckCommittedS3Only = SkipUncommitedInMemory | SkipCommittedInMemory | SkipUncommitedS3
-)
-
-func NewLocalDataSource(
-	ctx context.Context,
-	table *txnTable,
-	txnOffset int,
-	rangesSlice objectio.BlockInfoSliceInProgress,
-	skipReadMem bool,
-	policy SkipCheckPolicy,
-) (source *LocalDataSource, err error) {
-
-	source = &LocalDataSource{}
-	source.fs = table.getTxn().engine.fs
-	source.ctx = ctx
-	source.mp = table.proc.Load().Mp()
-	source.checkPolicy = policy
-
-	if rangesSlice != nil && rangesSlice.Len() > 0 {
-		if bytes.Equal(
-			objectio.EncodeBlockInfoInProgress(*rangesSlice.Get(0)),
-			objectio.EmptyBlockInfoInProgressBytes) {
-			rangesSlice = rangesSlice.Slice(1, rangesSlice.Len())
-		}
-
-		source.rangeSlice = rangesSlice
-	}
-
-	state, err := table.getPartitionState(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	source.table = table
-	source.pState = state
-	source.txnOffset = txnOffset
-	source.snapshotTS = types.TimestampToTS(table.getTxn().op.SnapshotTS())
-
-	source.iteratePhase = engine.InMem
-	if skipReadMem {
-		source.iteratePhase = engine.Persisted
-	}
-
-	return source, nil
+	filterZM        objectio.ZoneMap
+	tombstonePolicy TombstoneApplyPolicy
 }
 
 func (ls *LocalDataSource) String() string {
@@ -820,21 +826,21 @@ func (ls *LocalDataSource) GetTombstonesInProgress(
 	deletedRows = &nulls.Nulls{}
 	deletedRows.InitWithSize(8192)
 
-	if ls.checkPolicy&SkipUncommitedInMemory == 0 {
+	if ls.tombstonePolicy&Policy_SkipUncommitedInMemory == 0 {
 		ls.applyWorkspaceEntryDeletes(bid, nil, deletedRows)
 	}
-	if ls.checkPolicy&SkipUncommitedS3 == 0 {
+	if ls.tombstonePolicy&Policy_SkipUncommitedS3 == 0 {
 		_, err = ls.applyWorkspaceFlushedS3Deletes(bid, nil, deletedRows)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if ls.checkPolicy&SkipUncommitedInMemory == 0 {
+	if ls.tombstonePolicy&Policy_SkipUncommitedInMemory == 0 {
 		ls.applyWorkspaceRawRowIdDeletes(bid, nil, deletedRows)
 	}
 
-	if ls.checkPolicy&SkipCommittedInMemory == 0 {
+	if ls.tombstonePolicy&Policy_SkipCommittedInMemory == 0 {
 		ls.applyPStateInMemDeletes(bid, nil, deletedRows)
 	}
 

@@ -1738,14 +1738,14 @@ func BuildLocalDataSource(
 		tbl = rel.(*txnTableDelegate).origin
 	}
 
-	return tbl.buildLocalDataSource(ctx, txnOffset, ranges, CheckAll)
+	return tbl.buildLocalDataSource(ctx, txnOffset, ranges, Policy_CheckAll)
 }
 
 func (tbl *txnTable) buildLocalDataSource(
 	ctx context.Context,
 	txnOffset int,
 	relData engine.RelData,
-	policy SkipCheckPolicy,
+	policy TombstoneApplyPolicy,
 ) (source engine.DataSource, err error) {
 
 	switch relData.GetType() {
@@ -1835,7 +1835,7 @@ func (tbl *txnTable) BuildReaders(
 		} else {
 			shard = relData.DataSlice(i*divide+mod, (i+1)*divide+mod)
 		}
-		ds, err := tbl.buildLocalDataSource(ctx, txnOffset, shard, CheckAll)
+		ds, err := tbl.buildLocalDataSource(ctx, txnOffset, shard, Policy_CheckAll)
 		if err != nil {
 			return nil, err
 		}
@@ -2125,7 +2125,7 @@ func (tbl *txnTable) transferDeletes(
 	sid := tbl.proc.Load().GetService()
 	relData := NewEmptyBlockListRelationData()
 	relData.AppendBlockInfo(objectio.EmptyBlockInfoInProgress)
-	ds, err := tbl.buildLocalDataSource(ctx, 0, relData, SkipCheckPolicy(CheckCommittedS3Only))
+	ds, err := tbl.buildLocalDataSource(ctx, 0, relData, TombstoneApplyPolicy(Policy_CheckCommittedS3Only))
 	if err != nil {
 		return err
 	}
