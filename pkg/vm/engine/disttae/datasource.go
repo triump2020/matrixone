@@ -377,9 +377,10 @@ func (ls *LocalDataSource) getBlockZMs() {
 
 func (ls *LocalDataSource) sortBlockList() {
 	sliceLen := ls.rangeSlice.Len()
-	helper := make([]*blockSortHelperInProgress, sliceLen)
+	// FIXME: no pointer in helper
+	helper := make([]*blockSortHelper, sliceLen)
 	for i := range sliceLen {
-		helper[i] = &blockSortHelperInProgress{}
+		helper[i] = &blockSortHelper{}
 		helper[i].blk = ls.rangeSlice.Get(i)
 		helper[i].zm = ls.blockZMS[i]
 	}
