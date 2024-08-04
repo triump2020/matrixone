@@ -47,7 +47,7 @@ type BlockReadFilter struct {
 func ReadDataByFilter(
 	ctx context.Context,
 	sid string,
-	info *objectio.BlockInfoInProgress,
+	info *objectio.BlockInfo,
 	ds engine.DataSource,
 	columns []uint16,
 	colTypes []types.Type,
@@ -76,7 +76,7 @@ func ReadDataByFilter(
 func BlockDataReadNoCopy(
 	ctx context.Context,
 	sid string,
-	info *objectio.BlockInfoInProgress,
+	info *objectio.BlockInfo,
 	ds engine.DataSource,
 	columns []uint16,
 	colTypes []types.Type,
@@ -142,7 +142,7 @@ func BlockDataReadNoCopy(
 func BlockDataRead(
 	ctx context.Context,
 	sid string,
-	info *objectio.BlockInfoInProgress,
+	info *objectio.BlockInfo,
 	ds engine.DataSource,
 	columns []uint16,
 	colTypes []types.Type,
@@ -256,7 +256,7 @@ func BlockCompactionRead(
 func BlockDataReadInner(
 	ctx context.Context,
 	sid string,
-	info *objectio.BlockInfoInProgress,
+	info *objectio.BlockInfo,
 	ds engine.DataSource,
 	columns []uint16,
 	colTypes []types.Type,
@@ -414,7 +414,7 @@ func getRowsIdIndex(colIndexes []uint16, colTypes []types.Type) (int, []uint16, 
 }
 
 func buildRowidColumnInProgress(
-	info *objectio.BlockInfoInProgress,
+	info *objectio.BlockInfo,
 	sels []int64,
 	m *mpool.MPool,
 	vp engine.VectorPool,
@@ -451,7 +451,7 @@ func readBlockDataInprogress(
 	ctx context.Context,
 	colIndexes []uint16,
 	colTypes []types.Type,
-	info *objectio.BlockInfoInProgress,
+	info *objectio.BlockInfo,
 	ts types.TS,
 	fs fileservice.FileService,
 	m *mpool.MPool,
@@ -607,7 +607,7 @@ func BlockPrefetch(
 	sid string,
 	idxes []uint16,
 	service fileservice.FileService,
-	infos []*objectio.BlockInfoInProgress,
+	infos []*objectio.BlockInfo,
 	prefetchFile bool,
 ) error {
 	if len(infos) == 0 {

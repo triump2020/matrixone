@@ -651,10 +651,10 @@ type RelData interface {
 	AppendShardID(id uint64)
 
 	// for block info list
-	GetBlockInfoSlice() objectio.BlockInfoSliceInProgress
-	GetBlockInfo(i int) objectio.BlockInfoInProgress
-	SetBlockInfo(i int, blk objectio.BlockInfoInProgress)
-	AppendBlockInfo(blk objectio.BlockInfoInProgress)
+	GetBlockInfoSlice() objectio.BlockInfoSlice
+	GetBlockInfo(i int) objectio.BlockInfo
+	SetBlockInfo(i int, blk objectio.BlockInfo)
+	AppendBlockInfo(blk objectio.BlockInfo)
 }
 
 // ForRangeShardID [begin, end)
@@ -677,7 +677,7 @@ func ForRangeShardID(
 func ForRangeBlockInfo(
 	begin, end int,
 	relData RelData,
-	onBlock func(blk objectio.BlockInfoInProgress) (bool, error)) error {
+	onBlock func(blk objectio.BlockInfo) (bool, error)) error {
 	slice := relData.GetBlockInfoSlice()
 	slice = slice.Slice(begin, end)
 	sliceLen := slice.Len()
@@ -708,7 +708,7 @@ type DataSource interface {
 		memFilter any,
 		mp *mpool.MPool,
 		vp VectorPool,
-		bat *batch.Batch) (*objectio.BlockInfoInProgress, DataState, error)
+		bat *batch.Batch) (*objectio.BlockInfo, DataState, error)
 
 	ApplyTombstonesInProgress(
 		ctx context.Context,
@@ -919,7 +919,7 @@ type EntireEngine struct {
 }
 
 func IsMemtable(tblRange []byte) bool {
-	return bytes.Equal(tblRange, objectio.EmptyBlockInfoInProgressBytes)
+	return bytes.Equal(tblRange, objectio.EmptyBlockInfoBytes)
 }
 
 type EmptyRelationData struct{}
@@ -948,19 +948,19 @@ func (rd *EmptyRelationData) AppendShardID(id uint64) {
 	panic("not supported")
 }
 
-func (rd *EmptyRelationData) GetBlockInfoSlice() objectio.BlockInfoSliceInProgress {
+func (rd *EmptyRelationData) GetBlockInfoSlice() objectio.BlockInfoSlice {
 	panic("not supported")
 }
 
-func (rd *EmptyRelationData) GetBlockInfo(i int) objectio.BlockInfoInProgress {
+func (rd *EmptyRelationData) GetBlockInfo(i int) objectio.BlockInfo {
 	panic("not supported")
 }
 
-func (rd *EmptyRelationData) SetBlockInfo(i int, blk objectio.BlockInfoInProgress) {
+func (rd *EmptyRelationData) SetBlockInfo(i int, blk objectio.BlockInfo) {
 	panic("not supported")
 }
 
-func (rd *EmptyRelationData) AppendBlockInfo(blk objectio.BlockInfoInProgress) {
+func (rd *EmptyRelationData) AppendBlockInfo(blk objectio.BlockInfo) {
 	panic("not supported")
 }
 
