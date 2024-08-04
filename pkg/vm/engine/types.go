@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"github.com/matrixorigin/matrixone/pkg/fileservice"
 	"strconv"
 	"sync"
 	"time"
@@ -597,6 +598,7 @@ type Tombstoner interface {
 
 	UnmarshalBinary(buf []byte) error
 
+	PrefetchTombstones(srvId string, fs fileservice.FileService, bid []objectio.Blockid)
 	ApplyInMemTombstones(
 		bid types.Blockid,
 		rowsOffset []int64,
