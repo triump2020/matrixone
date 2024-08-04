@@ -106,7 +106,7 @@ func BlockDataReadNoCopy(
 	}()
 
 	// read block data from storage specified by meta location
-	if loaded, rowidPos, deleteMask, release, err = readBlockDataInprogress(
+	if loaded, rowidPos, deleteMask, release, err = readBlockData(
 		ctx, columns, colTypes, info, ts, fs, mp, vp, policy,
 	); err != nil {
 		return nil, nil, nil, err
@@ -274,7 +274,7 @@ func BlockDataReadInner(
 	)
 
 	// read block data from storage specified by meta location
-	if loaded, rowidPos, deleteMask, release, err = readBlockDataInprogress(
+	if loaded, rowidPos, deleteMask, release, err = readBlockData(
 		ctx, columns, colTypes, info, ts, fs, mp, vp, policy,
 	); err != nil {
 		return
@@ -444,7 +444,7 @@ func buildRowidColumn(
 	return
 }
 
-func readBlockDataInprogress(
+func readBlockData(
 	ctx context.Context,
 	colIndexes []uint16,
 	colTypes []types.Type,
@@ -600,6 +600,7 @@ func EvalDeleteRowsByTimestampForDeletesPersistedByCN(
 // columns  Which columns should be taken for columns
 // service  fileservice
 // infos [s3object name][block]
+// FIXME: using objectio.BlockInfoSlice
 func BlockPrefetch(
 	sid string,
 	idxes []uint16,
