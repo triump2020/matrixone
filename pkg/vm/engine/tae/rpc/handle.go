@@ -728,6 +728,15 @@ func (h *Handle) HandleWrite(
 				}
 			}
 		}
+		//for test
+		if tb.Schema().(*catalog.Schema).Name == "test_17907" {
+			logutil.Infof("xxxx insert batch %v, table:%s, txn:%s", 
+			common.MoBatchToString(req.Batch, 10),
+			tb.Schema().(*catalog.Schema).Name,
+			txn.String())
+		}
+
+
 		//Appends a batch of data into table.
 		err = AppendDataToTable(ctx, tb, req.Batch)
 		return
