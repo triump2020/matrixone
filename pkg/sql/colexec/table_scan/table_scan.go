@@ -16,8 +16,10 @@ package table_scan
 
 import (
 	"bytes"
+	"fmt"
 	"time"
 
+	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/common"
 	"github.com/matrixorigin/matrixone/pkg/vm/message"
 
 	"github.com/matrixorigin/matrixone/pkg/txn/client"
@@ -122,6 +124,11 @@ func (tableScan *TableScan) Call(proc *process.Process) (vm.CallResult, error) {
 
 		if bat.IsEmpty() {
 			continue
+		}
+
+		if tableScan.Debug {
+			fmt.Println("--- TableScan : Build stage ---")
+			fmt.Println(common.MoBatchToString(bat, 100))
 		}
 
 		trace.GetService(proc.GetService()).TxnRead(

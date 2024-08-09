@@ -67,6 +67,8 @@ type FuzzyFilter struct {
 
 	RuntimeFilterSpec *plan.RuntimeFilterSpec
 	vm.OperatorBase
+
+	Debug bool
 }
 
 func (fuzzyFilter *FuzzyFilter) GetOperatorBase() *vm.OperatorBase {

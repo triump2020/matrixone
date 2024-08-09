@@ -41,6 +41,7 @@ type TableScan struct {
 
 	vm.OperatorBase
 	colexec.Projection
+	Debug bool
 }
 
 func (tableScan *TableScan) GetOperatorBase() *vm.OperatorBase {
@@ -70,6 +71,7 @@ func NewArgument() *TableScan {
 
 func (tableScan *TableScan) Release() {
 	if tableScan != nil {
+		tableScan.Debug = false
 		reuse.Free[TableScan](tableScan, nil)
 	}
 }

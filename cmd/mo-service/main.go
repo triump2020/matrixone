@@ -210,9 +210,9 @@ func startService(
 	if err != nil {
 		return err
 	}
-	if err = initTraceMetric(ctx, st, cfg, stopper, etlFS, cfg.mustGetServiceUUID()); err != nil {
-		return err
-	}
+	// if err = initTraceMetric(ctx, st, cfg, stopper, etlFS, cfg.mustGetServiceUUID()); err != nil {
+	// 	return err
+	// }
 
 	if globalEtlFS == nil {
 		globalEtlFS = etlFS

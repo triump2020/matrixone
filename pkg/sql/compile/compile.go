@@ -1773,6 +1773,9 @@ func (c *Compile) compileTableScanWithNode(n *plan.Node, node engine.Node, first
 	}
 
 	op := constructTableScan()
+	if strings.Contains(c.sql, "insert into test_17907 values") {
+		op.Debug = true
+	}
 	op.SetAnalyzeControl(c.anal.curNodeIdx, firstFlag)
 	s.setRootOperator(op)
 	s.Proc = c.proc.NewNoContextChildProc(0)
@@ -2762,6 +2765,10 @@ func (c *Compile) compileFuzzyFilter(n *plan.Node, ns []*plan.Node, left []*Scop
 	op.SetAnalyzeControl(c.anal.curNodeIdx, currentFirstFlag)
 	rs.setRootOperator(op)
 	c.anal.isFirst = false
+
+	if strings.Contains(c.sql, "insert into test_17907 values") {
+		op.Debug = true
+	}
 
 	fuzzyCheck, err := newFuzzyCheck(n)
 	if err != nil {
