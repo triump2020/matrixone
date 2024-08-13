@@ -187,14 +187,6 @@ func BlockDataRead(
 		}
 
 		if len(sels) == 0 {
-			//result := batch.NewWithSize(len(colTypes))
-			//for i, typ := range colTypes {
-			//	if vp == nil {
-			//		result.Vecs[i] = vector.NewVec(typ)
-			//	} else {
-			//		result.Vecs[i] = vp.GetVector(typ)
-			//	}
-			//}
 			return nil
 		}
 	}
@@ -303,16 +295,6 @@ func BlockDataReadInner(
 
 		// assemble result batch only with selected rows
 		for i, col := range loaded.Vecs {
-			//typ := *col.GetType()
-			//if typ.Oid == types.T_Rowid {
-			//	result.Vecs[i] = col
-			//	continue
-			//}
-			//if vp == nil {
-			//	result.Vecs[i] = vector.NewVec(typ)
-			//} else {
-			//	result.Vecs[i] = vp.GetVector(typ)
-			//}
 			if err = bat.Vecs[i].PreExtendWithArea(len(selectRows), 0, mp); err != nil {
 				break
 			}
@@ -320,13 +302,6 @@ func BlockDataReadInner(
 				break
 			}
 		}
-		//if err != nil {
-		//	for _, col := range bat.Vecs {
-		//		if col != nil {
-		//			col.Free(mp)
-		//		}
-		//	}
-		//}
 		return
 	}
 
@@ -363,38 +338,16 @@ func BlockDataReadInner(
 	}
 
 	// assemble result batch
-	for i, _ := range loaded.Vecs {
-		//typ := *col.GetType()
-
-		//if typ.Oid == types.T_Rowid {
-		//	// rowid is already allocted by the mpool, no need to create a new vector
-		//	result.Vecs[i] = col
-		//} else {
-		//	// for other types, we need to create a new vector
-		//	if vp == nil {
-		//		result.Vecs[i] = vector.NewVec(typ)
-		//	} else {
-		//		result.Vecs[i] = vp.GetVector(typ)
-		//	}
-		//	// copy the data from loaded vector to result vector
-		//	// TODO: avoid this allocation and copy
-		//	if err = vector.GetUnionAllFunction(typ, mp)(result.Vecs[i], col); err != nil {
-		//		break
-		//	}
-		//}
+	for i, col := range loaded.Vecs {
+		typ := *col.GetType()
+		// TODO: avoid this allocation and copy
+		if err = vector.GetUnionAllFunction(typ, mp)(bat.Vecs[i], col); err != nil {
+			break
+		}
 		if len(deletedRows) > 0 {
 			bat.Vecs[i].Shrink(deletedRows, true)
 		}
 	}
-
-	// if any error happens, free the result batch allocated
-	//if err != nil {
-	//	for _, col := range result.Vecs {
-	//		if col != nil {
-	//			col.Free(mp)
-	//		}
-	//	}
-	//}
 	return
 }
 
