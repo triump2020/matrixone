@@ -315,26 +315,17 @@ func (r *reader) Read(
 	bat *batch.Batch,
 ) (isEnd bool, err error) {
 
+	var dataState engine.DataState
+
 	start := time.Now()
 	defer func() {
 		v2.TxnBlockReaderDurationHistogram.Observe(time.Since(start).Seconds())
-		//if bat == nil {
-		//	r.Close()
-		//}
+		if err != nil || dataState == engine.End {
+			r.Close()
+		}
 	}()
 
 	r.tryUpdateColumns(cols)
-
-	//bat = batch.NewWithSize(len(r.columns.colTypes))
-	//bat.Attrs = append(bat.Attrs, cols...)
-
-	//for i := 0; i < len(r.columns.colTypes); i++ {
-	//	if vp == nil {
-	//		bat.Vecs[i] = vector.NewVec(r.columns.colTypes[i])
-	//	} else {
-	//		bat.Vecs[i] = vp.GetVector(r.columns.colTypes[i])
-	//	}
-	//}
 
 	blkInfo, state, err := r.source.Next(
 		ctx,
@@ -345,6 +336,8 @@ func (r *reader) Read(
 		mp,
 		vp,
 		bat)
+
+	dataState = state
 
 	if err != nil {
 		return false, err
