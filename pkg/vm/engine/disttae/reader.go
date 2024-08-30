@@ -16,8 +16,12 @@ package disttae
 
 import (
 	"context"
+	"fmt"
+	"regexp"
 	"sort"
 	"time"
+
+	"go.uber.org/zap"
 
 	"github.com/matrixorigin/matrixone/pkg/catalog"
 	"github.com/matrixorigin/matrixone/pkg/common/moerr"
@@ -40,7 +44,6 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/blockio"
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/index"
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
-	"go.uber.org/zap"
 )
 
 // -----------------------------------------------------------------
@@ -526,6 +529,7 @@ func (r *blockMergeReader) loadDeletes(ctx context.Context, cols []string) error
 	if err != nil {
 		return err
 	}
+	rowids := ""
 	ts := types.TimestampToTS(r.ts)
 
 	var iter logtailreplay.RowsIter
@@ -541,6 +545,7 @@ func (r *blockMergeReader) loadDeletes(ctx context.Context, cols []string) error
 			}
 			_, offset := entry.RowID.Decode()
 			r.buffer = append(r.buffer, int64(offset))
+			rowids = fmt.Sprintf("%s[%s]", rowids, entry.RowID.String())
 		}
 	} else {
 		iter = state.NewRowsIter(ts, &info.BlockID, true)
@@ -549,8 +554,17 @@ func (r *blockMergeReader) loadDeletes(ctx context.Context, cols []string) error
 			entry := iter.Entry()
 			_, offset := entry.RowID.Decode()
 			r.buffer = append(r.buffer, int64(offset))
+			rowids = fmt.Sprintf("%s[%s]", rowids, entry.RowID.String())
 		}
 		v2.TaskLoadMemDeletesPerBlockHistogram.Observe(float64(len(r.buffer) - currlen))
+	}
+
+	if regexp.MustCompile(`.*sbtest.*`).MatchString(r.table.tableName) && rowids != "" {
+		logutil.Infof("xxxx txn:%s table:%s, "+
+			"block merge reader load deletes %s from partitionState.rows",
+			r.table.db.op.Txn().DebugString(),
+			r.table.tableName,
+			rowids)
 	}
 
 	iter.Close()
@@ -560,6 +574,7 @@ func (r *blockMergeReader) loadDeletes(ctx context.Context, cols []string) error
 		txnOffset = r.table.getTxn().GetSnapshotWriteOffset()
 	}
 
+	rowids = ""
 	//TODO:: if r.table.writes is a map , the time complexity could be O(1)
 	//load deletes from txn.writes for the specified block
 	r.table.getTxn().forEachTableWrites(
@@ -575,10 +590,19 @@ func (r *blockMergeReader) loadDeletes(ctx context.Context, cols []string) error
 					id, offset := v.Decode()
 					if id == info.BlockID {
 						r.buffer = append(r.buffer, int64(offset))
+						rowids = fmt.Sprintf("%s[%s]", rowids, v.String())
 					}
 				}
 			}
 		})
+
+	if regexp.MustCompile(`.*sbtest.*`).MatchString(r.table.tableName) && rowids != "" {
+		logutil.Infof("xxxx txn:%s table:%s, "+
+			"block merge reader load deletes %s from worksapce",
+			r.table.db.op.Txn().DebugString(),
+			r.table.tableName,
+			rowids)
+	}
 	//load deletes from txn.deletedBlocks.
 	txn := r.table.getTxn()
 	txn.deletedBlocks.getDeletedOffsetsByBlock(&info.BlockID, &r.buffer)
