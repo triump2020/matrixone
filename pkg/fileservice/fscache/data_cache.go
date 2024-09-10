@@ -1,4 +1,4 @@
-// Copyright 2022 Matrix Origin
+// Copyright 2024 Matrix Origin
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,33 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package hashmap
+package fscache
 
 import (
-	"testing"
-
-	"github.com/dolthub/maphash"
-	"github.com/stretchr/testify/require"
+	"context"
+	pb "github.com/matrixorigin/matrixone/pkg/pb/query"
 )
 
-func TestHashmap(t *testing.T) {
-	m := New[int, int](0)
-	hasher := maphash.NewHasher[int]()
-	for i := 0; i < 1000; i++ {
-		v := new(int)
-		*v = i
-		m.Set(hasher.Hash(i), i, v)
-	}
-	// test Len
-	require.Equal(t, 1000, m.Len())
-	// test Get
-	for i := 0; i < 1000; i++ {
-		v, ok := m.Get(hasher.Hash(i), i)
-		require.Equal(t, true, ok)
-		require.Equal(t, i, *v)
-	}
-	// test Delete
-	m.Delete(0, 0)
-	_, ok := m.Get(0, 0)
-	require.Equal(t, false, ok)
+type CacheKey = pb.CacheKey
+
+type DataCache interface {
+	EnsureNBytes(n int)
+	Capacity() int64
+	Used() int64
+	Available() int64
+	Get(context.Context, CacheKey) (Data, bool)
+	Set(context.Context, CacheKey, Data) error
+	DeletePaths(context.Context, []string)
+	Flush()
+	Evict(chan int64)
 }

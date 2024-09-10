@@ -59,7 +59,6 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/util/sysview"
 	"github.com/matrixorigin/matrixone/pkg/util/trace"
 	"github.com/matrixorigin/matrixone/pkg/util/trace/impl/motrace"
-	"github.com/matrixorigin/matrixone/pkg/vm/engine/disttae/route"
 )
 
 type TenantInfo struct {
@@ -4103,6 +4102,7 @@ func doDropAccount(ctx context.Context, ses *Session, da *dropAccount) (err erro
 			return rtnErr
 		}
 		bh.ClearExecResultSet()
+		ses.Infof(ctx, "dropAccount %s sql: %s", da.Name, sql)
 		rtnErr = bh.Exec(ctx, sql)
 		if rtnErr != nil {
 			return rtnErr
@@ -4149,6 +4149,7 @@ func doDropAccount(ctx context.Context, ses *Session, da *dropAccount) (err erro
 		//step 8 : drop table mo_mysql_compatibility_mode
 		//step 9 : drop table %!%mo_increment_columns
 		for _, sql = range getSqlForDropAccount() {
+			ses.Infof(ctx, "dropAccount %s sql: %s", da.Name, sql)
 			rtnErr = bh.Exec(deleteCtx, sql)
 			if rtnErr != nil {
 				return rtnErr
@@ -4159,6 +4160,7 @@ func doDropAccount(ctx context.Context, ses *Session, da *dropAccount) (err erro
 		databases = make(map[string]int8)
 		dbSql = "show databases;"
 		bh.ClearExecResultSet()
+		ses.Infof(ctx, "dropAccount %s sql: %s", da.Name, dbSql)
 		rtnErr = bh.Exec(deleteCtx, dbSql)
 		if rtnErr != nil {
 			return rtnErr
@@ -4195,6 +4197,7 @@ func doDropAccount(ctx context.Context, ses *Session, da *dropAccount) (err erro
 		}
 
 		for _, sql = range sqlsForDropDatabases {
+			ses.Infof(ctx, "dropAccount %s sql: %s", da.Name, sql)
 			rtnErr = bh.Exec(deleteCtx, sql)
 			if rtnErr != nil {
 				return rtnErr
@@ -4202,35 +4205,41 @@ func doDropAccount(ctx context.Context, ses *Session, da *dropAccount) (err erro
 		}
 
 		// drop table mo_mysql_compatibility_mode
+		ses.Infof(ctx, "dropAccount %s sql: %s", da.Name, dropMoMysqlCompatibilityModeSql)
 		rtnErr = bh.Exec(deleteCtx, dropMoMysqlCompatibilityModeSql)
 		if rtnErr != nil {
 			return rtnErr
 		}
 
 		// drop table mo_pubs
+		ses.Infof(ctx, "dropAccount %s sql: %s", da.Name, dropMoPubsSql)
 		rtnErr = bh.Exec(deleteCtx, dropMoPubsSql)
 		if rtnErr != nil {
 			return rtnErr
 		}
 
 		// drop autoIcr table
+		ses.Infof(ctx, "dropAccount %s sql: %s", da.Name, dropAutoIcrColSql)
 		rtnErr = bh.Exec(deleteCtx, dropAutoIcrColSql)
 		if rtnErr != nil {
 			return rtnErr
 		}
 
 		// drop mo_catalog.mo_indexes under general tenant
+		ses.Infof(ctx, "dropAccount %s sql: %s", da.Name, dropMoIndexes)
 		rtnErr = bh.Exec(deleteCtx, dropMoIndexes)
 		if rtnErr != nil {
 			return rtnErr
 		}
 
 		// drop mo_catalog.mo_table_partitions under general tenant
+		ses.Infof(ctx, "dropAccount %s sql: %s", da.Name, dropMoTablePartitions)
 		rtnErr = bh.Exec(deleteCtx, dropMoTablePartitions)
 		if rtnErr != nil {
 			return rtnErr
 		}
 
+		ses.Infof(ctx, "dropAccount %s sql: %s", da.Name, dropMoForeignKeys)
 		rtnErr = bh.Exec(deleteCtx, dropMoForeignKeys)
 		if rtnErr != nil {
 			return rtnErr
@@ -4241,6 +4250,7 @@ func doDropAccount(ctx context.Context, ses *Session, da *dropAccount) (err erro
 		if rtnErr != nil {
 			return rtnErr
 		}
+		ses.Infof(ctx, "dropAccount %s sql: %s", da.Name, sql)
 		rtnErr = bh.Exec(ctx, sql)
 		if rtnErr != nil {
 			return rtnErr
@@ -4249,6 +4259,7 @@ func doDropAccount(ctx context.Context, ses *Session, da *dropAccount) (err erro
 		// get all cluster table in the mo_catalog
 		sql = "show tables from mo_catalog;"
 		bh.ClearExecResultSet()
+		ses.Infof(ctx, "dropAccount %s sql: %s", da.Name, sql)
 		rtnErr = bh.Exec(ctx, sql)
 		if rtnErr != nil {
 			return rtnErr
@@ -4273,6 +4284,7 @@ func doDropAccount(ctx context.Context, ses *Session, da *dropAccount) (err erro
 		for clusterTable := range clusterTables {
 			sql = fmt.Sprintf("delete from mo_catalog.`%s` where account_id = %d;", clusterTable, accountId)
 			bh.ClearExecResultSet()
+			ses.Infof(ctx, "dropAccount %s sql: %s", da.Name, sql)
 			rtnErr = bh.Exec(ctx, sql)
 			if rtnErr != nil {
 				return rtnErr
@@ -4286,6 +4298,9 @@ func doDropAccount(ctx context.Context, ses *Session, da *dropAccount) (err erro
 		return err
 	}
 
+	if !hasAccount {
+		return err
+	}
 	// if drop the account, add the account to kill queue
 	ses.getRoutineManager().accountRoutine.EnKillQueue(accountId, version)
 
@@ -4299,26 +4314,19 @@ func doDropAccount(ctx context.Context, ses *Session, da *dropAccount) (err erro
 func postDropSuspendAccount(
 	ctx context.Context, ses *Session, accountName string, accountID int64, version uint64,
 ) (err error) {
+	if accountID == 0 {
+		return err
+	}
 	qc := getGlobalPu().QueryClient
 	if qc == nil {
 		return moerr.NewInternalError(ctx, "query client is not initialized")
 	}
 	var nodes []string
-	currTenant := ses.GetTenantInfo().GetTenant()
-	currUser := ses.GetTenantInfo().GetUser()
-	labels := clusterservice.NewSelector().SelectByLabel(
-		map[string]string{"account": accountName}, clusterservice.Contain)
-	sysTenant := isSysTenant(currTenant)
-	if sysTenant {
-		route.RouteForSuperTenant(clusterservice.NewSelector(), currUser, nil,
-			func(s *metadata.CNService) {
-				nodes = append(nodes, s.QueryAddress)
-			})
-	} else {
-		route.RouteForCommonTenant(labels, nil, func(s *metadata.CNService) {
+	clusterservice.GetMOCluster().GetCNService(clusterservice.NewSelectAll(),
+		func(s metadata.CNService) bool {
 			nodes = append(nodes, s.QueryAddress)
+			return true
 		})
-	}
 
 	var retErr error
 	genRequest := func() *query.Request {
@@ -4341,6 +4349,7 @@ func postDropSuspendAccount(
 		retErr = moerr.NewInternalError(ctx,
 			fmt.Sprintf("kill connection for account %s failed on node %s", accountName, nodeAddr))
 	}
+	logger.Info("[send kill request]send kill request to nodes", zap.String("qc service:", qc.ServiceID()), zap.Strings("nodes", nodes))
 
 	err = queryservice.RequestMultipleCn(ctx, nodes, qc, genRequest, handleValidResponse, handleInvalidResponse)
 	return errors.Join(err, retErr)
@@ -8394,7 +8403,7 @@ func Upload(ses FeSession, execCtx *ExecCtx, localPath string, storageDir string
 				Filepath: localPath,
 			},
 		}
-		return processLoadLocal(ses, execCtx, param, loadLocalWriter)
+		return processLoadLocal(ses, execCtx, param, loadLocalWriter, loadLocalReader)
 	})
 
 	// read from pipe and upload
@@ -9246,22 +9255,13 @@ func postAlterSessionStatus(
 	if qc == nil {
 		return moerr.NewInternalError(ctx, "query client is not initialized")
 	}
-	currTenant := ses.GetTenantInfo().GetTenant()
-	currUser := ses.GetTenantInfo().GetUser()
+
 	var nodes []string
-	labels := clusterservice.NewSelector().SelectByLabel(
-		map[string]string{"account": accountName}, clusterservice.Contain)
-	sysTenant := isSysTenant(currTenant)
-	if sysTenant {
-		route.RouteForSuperTenant(clusterservice.NewSelector(), currUser, nil,
-			func(s *metadata.CNService) {
-				nodes = append(nodes, s.QueryAddress)
-			})
-	} else {
-		route.RouteForCommonTenant(labels, nil, func(s *metadata.CNService) {
+	clusterservice.GetMOCluster().GetCNService(clusterservice.NewSelectAll(),
+		func(s metadata.CNService) bool {
 			nodes = append(nodes, s.QueryAddress)
+			return true
 		})
-	}
 
 	var retErr, err error
 

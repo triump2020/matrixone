@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/matrixorigin/matrixone/pkg/common/morpc"
@@ -56,7 +57,7 @@ type CacheCallbacks struct {
 	PostEvict []CacheCallbackFunc
 }
 
-type CacheCallbackFunc = func(CacheKey, fscache.Data)
+type CacheCallbackFunc = func(fscache.CacheKey, fscache.Data)
 
 func (c *CacheConfig) setDefaults() {
 	if c.MemoryCapacity == nil {
@@ -85,7 +86,7 @@ func (c *CacheConfig) SetRemoteCacheCallback() {
 	}
 	c.InitKeyRouter = &sync.Once{}
 	c.CacheCallbacks.PostSet = append(c.CacheCallbacks.PostSet,
-		func(key CacheKey, data fscache.Data) {
+		func(key fscache.CacheKey, data fscache.Data) {
 			c.InitKeyRouter.Do(func() {
 				c.KeyRouter = c.KeyRouterFactory()
 			})
@@ -101,7 +102,7 @@ func (c *CacheConfig) SetRemoteCacheCallback() {
 		},
 	)
 	c.CacheCallbacks.PostEvict = append(c.CacheCallbacks.PostEvict,
-		func(key CacheKey, data fscache.Data) {
+		func(key fscache.CacheKey, data fscache.Data) {
 			c.InitKeyRouter.Do(func() {
 				c.KeyRouter = c.KeyRouterFactory()
 			})
@@ -125,18 +126,11 @@ var DisabledCacheConfig = CacheConfig{
 
 const DisableCacheCapacity = 1
 
-var initDefaultCacheDataAllocator sync.Once
-
-var _defaultCacheDataAllocator CacheDataAllocator
-
-func GetDefaultCacheDataAllocator() CacheDataAllocator {
-	initDefaultCacheDataAllocator.Do(func() {
-		_defaultCacheDataAllocator = &bytesAllocator{
-			allocator: getBytesAllocator(),
-		}
-	})
-	return _defaultCacheDataAllocator
-}
+var DefaultCacheDataAllocator = sync.OnceValue(func() CacheDataAllocator {
+	return &bytesAllocator{
+		allocator: memoryCacheAllocator(),
+	}
+})
 
 // VectorCache caches IOVector
 type IOVectorCache interface {
@@ -198,4 +192,42 @@ func readCache(ctx context.Context, cache IOVectorCache, vector *IOVector) error
 	return nil
 }
 
-type CacheKey = pb.CacheKey
+var (
+	GlobalMemoryCacheSizeHint atomic.Int64
+	GlobalDiskCacheSizeHint   atomic.Int64
+
+	allMemoryCaches sync.Map // *MemCache -> name
+	allDiskCaches   sync.Map // *DiskCache -> name
+)
+
+func EvictMemoryCaches() map[string]int64 {
+	ret := make(map[string]int64)
+	ch := make(chan int64, 1)
+
+	allMemoryCaches.Range(func(k, v any) bool {
+		cache := k.(*MemCache)
+		name := v.(string)
+		cache.Evict(ch)
+		ret[name] = <-ch
+
+		return true
+	})
+
+	return ret
+}
+
+func EvictDiskCaches() map[string]int64 {
+	ret := make(map[string]int64)
+	ch := make(chan int64, 1)
+
+	allDiskCaches.Range(func(k, v any) bool {
+		cache := k.(*DiskCache)
+		name := v.(string)
+		cache.Evict(ch)
+		ret[name] = <-ch
+
+		return true
+	})
+
+	return ret
+}

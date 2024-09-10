@@ -38,8 +38,9 @@ import (
 )
 
 type DiskCache struct {
-	path            string
-	perfCounterSets []*perfcounter.CounterSet
+	path               string
+	cacheDataAllocator CacheDataAllocator
+	perfCounterSets    []*perfcounter.CounterSet
 
 	updatingPaths struct {
 		*sync.Cond
@@ -55,6 +56,8 @@ func NewDiskCache(
 	capacity fscache.CapacityFunc,
 	perfCounterSets []*perfcounter.CounterSet,
 	asyncLoad bool,
+	name string,
+	cacheDataAllocator CacheDataAllocator,
 ) (ret *DiskCache, err error) {
 
 	err = os.MkdirAll(path, 0755)
@@ -62,12 +65,32 @@ func NewDiskCache(
 		return nil, err
 	}
 
+	if cacheDataAllocator == nil {
+		cacheDataAllocator = DefaultCacheDataAllocator()
+	}
+
 	ret = &DiskCache{
-		path:            path,
-		perfCounterSets: perfCounterSets,
+		path:               path,
+		cacheDataAllocator: cacheDataAllocator,
+		perfCounterSets:    perfCounterSets,
 
 		cache: fifocache.New(
-			capacity,
+
+			func() int64 {
+				// read from global size hint
+				if n := GlobalDiskCacheSizeHint.Load(); n > 0 {
+					return n
+				}
+				// fallback
+				return capacity()
+			},
+
+			func(key string) uint8 {
+				return uint8(xxhash.Sum64String(key))
+			},
+
+			nil,
+			nil,
 			func(path string, _ struct{}) {
 				err := os.Remove(path)
 				if err == nil {
@@ -80,9 +103,6 @@ func NewDiskCache(
 					)
 				}
 			},
-			func(key string) uint8 {
-				return uint8(xxhash.Sum64String(key))
-			},
 		),
 	}
 	ret.updatingPaths.Cond = sync.NewCond(new(sync.Mutex))
@@ -92,6 +112,10 @@ func NewDiskCache(
 		go ret.loadCache()
 	} else {
 		ret.loadCache()
+	}
+
+	if name != "" {
+		allDiskCaches.Store(ret, name)
 	}
 
 	return ret, nil
@@ -124,13 +148,14 @@ func (d *DiskCache) loadCache() {
 		}()
 	}
 
-	var numFiles, numCacheFiles int
+	var numFiles, numCacheFiles, numTempFiles, numDeleted int
 
 	_ = filepath.WalkDir(d.path, func(path string, entry os.DirEntry, err error) error {
 		numFiles++
 		if err != nil {
 			return nil //ignore
 		}
+
 		if entry.IsDir() {
 			// try remove if empty. for cleaning old structure
 			if path != d.path {
@@ -138,9 +163,27 @@ func (d *DiskCache) loadCache() {
 				_ = os.Remove(path)
 			}
 			return nil
-		}
-		if !strings.HasSuffix(entry.Name(), cacheFileSuffix) {
-			return nil
+
+		} else {
+			// plain files
+			if !strings.HasSuffix(entry.Name(), cacheFileSuffix) {
+				// not cache file
+				if strings.HasSuffix(entry.Name(), cacheFileTempSuffix) {
+					numTempFiles++
+					// temp file
+					info, err := entry.Info()
+					if err == nil && time.Since(info.ModTime()) > time.Hour*8 {
+						// old temp file
+						_ = os.Remove(path)
+						numDeleted++
+					}
+				} else {
+					// unknown file
+					_ = os.Remove(path)
+					numDeleted++
+				}
+				return nil
+			}
 		}
 
 		numCacheFiles++
@@ -158,6 +201,8 @@ func (d *DiskCache) loadCache() {
 	logutil.Info("disk cache info loaded",
 		zap.Any("all files", numFiles),
 		zap.Any("cache files", numCacheFiles),
+		zap.Any("temp files", numTempFiles),
+		zap.Any("deleted files", numDeleted),
 		zap.Any("time", time.Since(t0)),
 	)
 
@@ -284,7 +329,7 @@ func (d *DiskCache) Read(
 			d.cache.Set(diskPath, struct{}{}, fileSize(stat))
 		}
 
-		if err := entry.ReadFromOSFile(ctx, file); err != nil {
+		if err := entry.ReadFromOSFile(ctx, file, d.cacheDataAllocator); err != nil {
 			return err
 		}
 
@@ -419,10 +464,17 @@ func (d *DiskCache) writeFile(
 	if err != nil {
 		return false, err
 	}
-	f, err := os.CreateTemp(dir, "*")
+	f, err := os.CreateTemp(dir, "*"+cacheFileTempSuffix)
 	if err != nil {
 		return false, err
 	}
+	defer func() {
+		if err != nil {
+			_ = f.Close()
+			_ = os.Remove(f.Name())
+		}
+	}()
+
 	numCreate++
 	from, err := openReader(ctx)
 	if err != nil {
@@ -434,8 +486,6 @@ func (d *DiskCache) writeFile(
 	defer put.Put()
 	_, err = io.CopyBuffer(f, from, buf)
 	if err != nil {
-		f.Close()
-		os.Remove(f.Name())
 		return false, err
 	}
 
@@ -468,7 +518,10 @@ func (d *DiskCache) writeFile(
 func (d *DiskCache) Flush() {
 }
 
-const cacheFileSuffix = ".mofscache"
+const (
+	cacheFileSuffix     = ".mofscache"
+	cacheFileTempSuffix = cacheFileSuffix + ".tmp"
+)
 
 func (d *DiskCache) pathForIOEntry(path string, entry IOEntry) string {
 	if entry.Size < 0 {
@@ -573,4 +626,8 @@ func fileSize(info fs.FileInfo) int64 {
 		return int64(sys.Blocks) * 512 // it's always 512, not sys.Blksize
 	}
 	return info.Size()
+}
+
+func (d *DiskCache) Close() {
+	allDiskCaches.Delete(d)
 }
