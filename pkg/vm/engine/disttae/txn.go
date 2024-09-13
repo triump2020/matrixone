@@ -947,6 +947,12 @@ func (txn *Transaction) forEachTableHasDeletesLocked(f func(tbl *txnTable) error
 	for i := 0; i < len(txn.writes); i++ {
 		e := txn.writes[i]
 		if e.typ != DELETE || e.fileName != "" {
+			if e.typ == DELETE && e.fileName != "" {
+				logutil.Infof("xxxx CN dosen't support transfer deletes on S3, txn:%s, table:%s",
+					txn.op.Txn().DebugString(),
+					e.tableName,
+				)
+			}
 			continue
 		}
 		if _, ok := tables[e.tableId]; ok {
