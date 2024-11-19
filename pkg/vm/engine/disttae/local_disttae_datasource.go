@@ -18,9 +18,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"go.uber.org/zap"
 	"slices"
 	"sort"
+
+	"go.uber.org/zap"
 
 	"github.com/matrixorigin/matrixone/pkg/catalog"
 	"github.com/matrixorigin/matrixone/pkg/common/mpool"
@@ -82,6 +83,12 @@ func NewLocalDataSource(
 			logutil.Infof("NewLocalDataSource:tbl:%p, table name:%s, get partition state:%p,snapshot op:%s",
 				table, table.tableName, state, table.db.op.Txn().DebugString())
 		}
+
+		if table.tableName == "debug" && table.db.op.IsSnapOp() {
+			logutil.Infof("NewLocalDataSource:tbl:%p, table name:%s, get partition state:%p,snapshot op:%s",
+				table, table.tableName, state, table.db.op.Txn().DebugString())
+		}
+
 		source.pState = state
 	}
 

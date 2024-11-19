@@ -698,6 +698,14 @@ func (tbl *txnTable) doRanges(
 			tbl.db.op.Txn().DebugString())
 	}
 
+	if tbl.tableName == "debug" && tbl.db.op.IsSnapOp() {
+		logutil.Infof("doRanges:get partition state: %p, tbl:%p, table name:%s, snapshot txn op:%s",
+			part,
+			tbl,
+			tbl.tableName,
+			tbl.db.op.Txn().DebugString())
+	}
+
 	if err = tbl.rangesOnePart(
 		ctx,
 		part,

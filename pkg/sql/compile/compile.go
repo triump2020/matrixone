@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"time"
@@ -1875,8 +1876,16 @@ func (c *Compile) compileTableScanDataSource(s *Scope) error {
 			n.ScanSnapshot.TS.Less(c.proc.GetTxnOperator().Txn().SnapshotTS) {
 			if c.proc.GetCloneTxnOperator() != nil {
 				txnOp = c.proc.GetCloneTxnOperator()
+				if n.TableDef.Name == "debug" {
+					logutil.Infof("xxxx compileTableScanDataSource: get snapshot txn op :%s",
+						txnOp.Txn().DebugString())
+				}
 			} else {
 				txnOp = c.proc.GetTxnOperator().CloneSnapshotOp(*n.ScanSnapshot.TS)
+				if n.TableDef.Name == "debug" {
+					logutil.Infof("xxxx compileTableScanDataSource: clone snapshot txn op :%s",
+						txnOp.Txn().DebugString())
+				}
 				c.proc.SetCloneTxnOperator(txnOp)
 			}
 
@@ -4089,6 +4098,11 @@ func (c *Compile) handleDbRelContext(node *plan.Node, onRemoteCN bool) (engine.R
 
 			txnOp = c.proc.GetTxnOperator().CloneSnapshotOp(*node.ScanSnapshot.TS)
 			c.proc.SetCloneTxnOperator(txnOp)
+			if node.TableDef.Name == "debug" {
+				logutil.Infof("xxxx handleDbRelContext: clone snapshot txn op :%s, stack:%s",
+					c.proc.GetCloneTxnOperator().Txn().DebugString(),
+					string(debug.Stack()))
+			}
 
 			if node.ScanSnapshot.Tenant != nil {
 				ctx = context.WithValue(ctx, defines.TenantIDKey{}, node.ScanSnapshot.Tenant.TenantID)

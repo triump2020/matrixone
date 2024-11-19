@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/matrixorigin/matrixone/pkg/logutil"
 	"github.com/matrixorigin/matrixone/pkg/sql/colexec/group"
 	"github.com/matrixorigin/matrixone/pkg/sql/colexec/projection"
 
@@ -1006,6 +1007,11 @@ func (s *Scope) buildReaders(c *Compile) (readers []engine.Reader, err error) {
 		crs := new(perfcounter.CounterSet)
 		newCtx := perfcounter.AttachS3RequestKey(ctx, crs)
 
+		if s.DataSource.TableDef.Name == "debug" {
+			logutil.Infof("xxxx buildReaders for table debug, txn op:%s",
+				c.proc.GetCloneTxnOperator().Txn().DebugString())
+		}
+
 		readers, err = s.DataSource.Rel.BuildReaders(
 			newCtx,
 			c.proc,
@@ -1059,6 +1065,10 @@ func (s *Scope) buildReaders(c *Compile) (readers []engine.Reader, err error) {
 					} else {
 						txnOp = c.proc.GetTxnOperator().CloneSnapshotOp(*n.ScanSnapshot.TS)
 						c.proc.SetCloneTxnOperator(txnOp)
+						if s.DataSource.TableDef.Name == "debug" {
+							logutil.Infof("xxxx buildReaders: clone snapshot txn op, txn op:%s",
+								c.proc.GetCloneTxnOperator().Txn().DebugString())
+						}
 					}
 
 					if n.ScanSnapshot.Tenant != nil {

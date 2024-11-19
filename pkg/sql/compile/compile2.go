@@ -26,6 +26,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/common/moerr"
 	"github.com/matrixorigin/matrixone/pkg/container/batch"
 	"github.com/matrixorigin/matrixone/pkg/defines"
+	"github.com/matrixorigin/matrixone/pkg/logutil"
 	"github.com/matrixorigin/matrixone/pkg/pb/plan"
 	"github.com/matrixorigin/matrixone/pkg/perfcounter"
 	"github.com/matrixorigin/matrixone/pkg/sql/parsers/tree"
@@ -167,6 +168,8 @@ func (c *Compile) Run(_ uint64) (queryResult *util2.RunResult, err error) {
 		writeOffset = uint64(txnOperator.GetWorkspace().GetSnapshotWriteOffset())
 		txnOperator.GetWorkspace().IncrSQLCount()
 	}
+
+	logutil.Infof("xxxx run sql:%s, txn :%s", executeSQL, txnOperator.Txn().DebugString())
 
 	var isExplainPhyPlan = false
 	var option *ExplainOption
