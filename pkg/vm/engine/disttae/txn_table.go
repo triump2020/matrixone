@@ -156,17 +156,33 @@ func (tbl *txnTable) PrefetchAllMeta(ctx context.Context) bool {
 }
 
 func (tbl *txnTable) Stats(ctx context.Context, sync bool) (*pb.StatsInfo, error) {
+	var stats *pb.StatsInfo
+	defer func() {
+		if tbl.tableName == "t_epv_log_part_usage" {
+			statsStr := ""
+			if stats != nil {
+				//statsStr = stats.String()
+				statsStr = fmt.Sprintf("[%d, %d]", stats.AccurateObjectNumber, stats.BlockNumber)
+			}
+			logutil.Infof("xxxx txnTable.Stats, tbl:%s, txn:%s, stats:%p, statsStr:%s",
+				tbl.tableName,
+				tbl.db.op.Txn().DebugString(),
+				stats,
+				statsStr)
+		}
+	}()
 	_, err := tbl.getPartitionState(ctx)
 	if err != nil {
 		logutil.Errorf("failed to get partition state of table %d: %v", tbl.tableId, err)
 		return nil, err
 	}
 	if !tbl.db.op.IsSnapOp() {
-		return tbl.getEngine().Stats(ctx, pb.StatsInfoKey{
+		stats = tbl.getEngine().Stats(ctx, pb.StatsInfoKey{
 			AccId:      tbl.accountId,
 			DatabaseID: tbl.db.databaseId,
 			TableID:    tbl.tableId,
-		}, sync), nil
+		}, sync)
+		return stats, nil
 	}
 	info, err := tbl.stats(ctx)
 	if err != nil {
@@ -708,6 +724,20 @@ func (tbl *txnTable) doRanges(ctx context.Context, rangesParam engine.RangesPara
 
 	defer func() {
 		cost := time.Since(start)
+
+		if tbl.tableName == "t_epv_log_part_usage" {
+			logutil.Info(
+				"xxxx txnTable.doRanges",
+				zap.String("name", tbl.tableDef.Name),
+				zap.String("exprs", plan2.FormatExprs(rangesParam.BlockFilters)),
+				zap.Uint64("tbl-id", tbl.tableId),
+				zap.String("txn", tbl.db.op.Txn().DebugString()),
+				zap.Int("blocks", blocks.Len()),
+				zap.String("ps", fmt.Sprintf("%p", part)),
+				zap.Duration("cost", cost),
+				zap.Error(err),
+			)
+		}
 
 		var (
 			step, slowStep uint64
